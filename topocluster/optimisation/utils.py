@@ -40,7 +40,6 @@ def log_images(
 
     if monochrome:
         images = images.mean(dim=1, keepdim=True)
-    # torchvision.utils.save_image(images, f'./experiments/finn/{prefix}{name}.png', nrow=nrows)
     shw = torchvision.utils.make_grid(images, nrow=nrows).clamp(0, 1).cpu()
     wandb_log(
         args,

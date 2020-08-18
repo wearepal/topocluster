@@ -142,7 +142,7 @@ class ClusterArgs(BaseArgs):
     # Training settings
     gpu: int = 0  # which GPU to use (if available)
     resume: Optional[str] = None
-    save_dir: str = "experiments/finn"
+    save_dir: str = "experiments"
     evaluate: bool = False
     super_val: bool = False  # Train classifier on encodings as part of validation step.
     super_val_freq: int = 0  # how often to do super val, if 0, do it together with the normal val
