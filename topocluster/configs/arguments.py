@@ -116,6 +116,14 @@ class BaseArgs(TypedFlags):
     # Global variables
     _s_dim: int
     _y_dim: int
+    
+    # General training settings
+    epochs: int = 250
+    gpu: int = 0  # which GPU to use (if available)
+    batch_size: int = 100
+    test_batch_size: Optional[int] = None
+    num_workers: int = 4
+    seed: int = 42
 
     def process_args(self):
         if not 0 < self.data_pcnt <= 1:
@@ -127,11 +135,6 @@ class ClusterArgs(BaseArgs):
 
     # Optimization settings
     early_stopping: int = 30
-    epochs: int = 250
-    batch_size: int = 256
-    test_batch_size: Optional[int] = None
-    num_workers: int = 4
-    seed: int = 42
     eval_on_recon: bool = True
 
     # Evaluation settings
@@ -140,7 +143,6 @@ class ClusterArgs(BaseArgs):
     encode_batch_size: int = 1000
 
     # Training settings
-    gpu: int = 0  # which GPU to use (if available)
     resume: Optional[str] = None
     save_dir: str = "experiments"
     evaluate: bool = False
@@ -206,9 +208,3 @@ class ClusterArgs(BaseArgs):
         super().process_args()
         if self.super_val_freq < 0:
             raise ValueError("frequency cannot be negative")
-
-    def convert_arg_line_to_args(self, arg_line: str) -> List[str]:
-        """Parse each line like a YAML file."""
-        if arg_line.startswith(("b_", "c_")):
-            arg_line = arg_line[2:]
-        return super().convert_arg_line_to_args(arg_line)
