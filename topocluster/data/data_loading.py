@@ -1,7 +1,5 @@
-import platform
 from typing import Dict, Literal, NamedTuple, Tuple
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -9,7 +7,7 @@ from torch.utils.data import Dataset, Subset, random_split
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
-from ethicml.data import create_celeba_dataset, create_genfaces_dataset, celeba
+from ethicml.data import create_genfaces_dataset, celeba
 from ethicml.vision import TorchImageDataset
 from ethicml.vision.data import LdColorizer
 from topocluster.configs import BaseArgs
