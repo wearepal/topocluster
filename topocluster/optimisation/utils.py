@@ -35,7 +35,7 @@ def log_images(
     if args.recon_loss == "ce":
         images = images.argmax(dim=1).float() / 255
     else:
-        if args.dataset in ("celeba", "ssrp", "genfaces"):
+        if args.dataset == "celeba":
             images = 0.5 * images + 0.5
 
     if monochrome:

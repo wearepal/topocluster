@@ -57,7 +57,7 @@ CELEBATTRS = Literal[
 class BaseArgs(TypedFlags):
     """General data set settings."""
 
-    dataset: Literal["adult", "cmnist", "celeba", "genfaces"] = "cmnist"
+    dataset: Literal["adult", "cmnist", "celeba"] = "cmnist"
 
     data_pcnt: float = 1.0  # data pcnt should be a real value > 0, and up to 1
     biased_train: bool = True  # if True, make the training set biased, dependent on mixing factor
@@ -102,10 +102,6 @@ class BaseArgs(TypedFlags):
     # CelebA settings
     celeba_sens_attr: CELEBATTRS = "Male"
     celeba_target_attr: CELEBATTRS = "Smiling"
-
-    # GenFaces settings
-    genfaces_sens_attr: GenfacesAttributes = "gender"
-    genfaces_target_attr: GenfacesAttributes = "emotion"
 
     # Cluster settings
     cluster_label_file: str = ""

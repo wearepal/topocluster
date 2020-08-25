@@ -3,11 +3,11 @@ from typing import Dict, Literal, NamedTuple, Tuple
 import torch
 import torch.nn as nn
 from torch import Tensor
-from torch.utils.data import Dataset, Subset, random_split
+from torch.utils.data import Dataset, Subset
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
-from ethicml.data import create_genfaces_dataset, celeba
+from ethicml.data import celeba
 from ethicml.vision import TorchImageDataset
 from ethicml.vision.data import LdColorizer
 from topocluster.configs import BaseArgs
@@ -235,53 +235,6 @@ def load_dataset(args: BaseArgs) -> DatasetTriplet:
         context_data = Subset(all_data, context_inds)
         train_data = Subset(all_data, train_inds)
         test_data = Subset(all_data, test_inds)
-
-    elif args.dataset == "genfaces":
-
-        image_size = 64
-        transform = [
-            transforms.Resize(image_size),
-            transforms.CenterCrop(image_size),
-            transforms.ToTensor(),
-        ]
-        if args.quant_level != "8":
-            transform.append(Quantize(int(args.quant_level)))
-        if args.input_noise:
-            transform.append(NoisyDequantize(int(args.quant_level)))
-        transform.append(transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)))
-        transform = transforms.Compose(transform)
-
-        unbiased_pcnt = args.test_pcnt + args.context_pcnt
-        unbiased_data = create_genfaces_dataset(
-            root=data_root,
-            sens_attr_name=args.genfaces_sens_attr,
-            target_attr_name=args.genfaces_target_attr,
-            biased=False,
-            mixing_factor=args.mixing_factor,
-            unbiased_pcnt=unbiased_pcnt,
-            download=True,
-            transform=transform,
-            seed=args.data_split_seed,
-        )
-
-        context_len = round(args.context_pcnt / unbiased_pcnt * len(unbiased_data))
-        test_len = len(unbiased_data) - context_len
-        context_data, test_data = random_split(unbiased_data, lengths=(context_len, test_len))
-
-        train_data = create_genfaces_dataset(
-            root=data_root,
-            sens_attr_name=args.genfaces_sens_attr,
-            target_attr_name=args.genfaces_target_attr,
-            biased=True,
-            mixing_factor=args.mixing_factor,
-            unbiased_pcnt=unbiased_pcnt,
-            download=True,
-            transform=transform,
-            seed=args.data_split_seed,
-        )
-
-        args._y_dim = 1
-        args._s_dim = unbiased_data.s_dim
 
     elif args.dataset == "adult":
         context_data, train_data, test_data = load_adult_data(args)
