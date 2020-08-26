@@ -3,55 +3,11 @@ from typing import Dict, List, Literal, Optional
 import torch
 from typed_flags import TypedFlags
 
-from ethicml.data import GenfacesAttributes
+from ethicml.data import CelebAttrs
 from ethicml.data.tabular_data.adult import AdultSplits
 
 
 __all__ = ["BaseArgs", "ClusterArgs", "CELEBATTRS"]
-
-
-CELEBATTRS = Literal[
-    "5_o_Clock_Shadow",
-    "Arched_Eyebrows",
-    "Attractive",
-    "Bags_Under_Eyes",
-    "Bald",
-    "Bangs",
-    "Big_Lips",
-    "Big_Nose",
-    "Black_Hair",
-    "Blond_Hair",
-    "Blurry",
-    "Brown_Hair",
-    "Bushy_Eyebrows",
-    "Chubby",
-    "Double_Chin",
-    "Eyeglasses",
-    "Goatee",
-    "Gray_Hair",
-    "Heavy_Makeup",
-    "High_Cheekbones",
-    "Male",
-    "Mouth_Slightly_Open",
-    "Mustache",
-    "Narrow_Eyes",
-    "No_Beard",
-    "Oval_Face",
-    "Pale_Skin",
-    "Pointy_Nose",
-    "Receding_Hairline",
-    "Rosy_Cheeks",
-    "Sideburns",
-    "Smiling",
-    "Straight_Hair",
-    "Wavy_Hair",
-    "Wearing_Earrings",
-    "Wearing_Hat",
-    "Wearing_Lipstick",
-    "Wearing_Necklace",
-    "Wearing_Necktie",
-    "Young",
-]
 
 
 class BaseArgs(TypedFlags):
@@ -100,8 +56,8 @@ class BaseArgs(TypedFlags):
     colors: List[int] = []
 
     # CelebA settings
-    celeba_sens_attr: CELEBATTRS = "Male"
-    celeba_target_attr: CELEBATTRS = "Smiling"
+    celeba_sens_attr: CelebAttrs = "Male"
+    celeba_target_attr: CelebAttrs = "Smiling"
 
     # Cluster settings
     cluster_label_file: str = ""
@@ -116,7 +72,7 @@ class BaseArgs(TypedFlags):
     # General training settings
     epochs: int = 250
     gpu: int = 0  # which GPU to use (if available)
-    batch_size: int = 100
+    batch_size: int = 256
     test_batch_size: Optional[int] = None
     num_workers: int = 4
     seed: int = 42
