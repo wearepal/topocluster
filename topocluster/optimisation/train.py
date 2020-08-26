@@ -15,7 +15,6 @@ from torchvision.models import resnet18, resnet50
 import wandb
 
 from topocluster.data.data_loading import load_dataset, DatasetTriplet
-from topocluster.data.misc import adaptive_collate
 from topocluster.models.configs.classifiers import fc_net, mp_64x64_net, mp_32x32_net
 from topocluster.utils import (
     AverageMeter,
@@ -402,6 +401,7 @@ def train(model: Model, context_data: DataLoader, train_data: DataLoader, epoch:
 
         if ARGS.with_supervision and not ARGS.use_multi_head:
             class_id = get_class_id(s=s_t, y=y_t, s_count=s_count, to_cluster=ARGS.cluster)
+            import pdb; pdb.set_trace()
             loss_sup, logging_sup = model.supervised_loss(
                 x_t, class_id, ce_weight=ARGS.sup_ce_weight, bce_weight=ARGS.sup_bce_weight
             )
