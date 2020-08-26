@@ -14,7 +14,6 @@ from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.models import resnet18, resnet50
 import wandb
 
-from topocluster.data.dataset_wrappers import RotationPrediction
 from topocluster.data.data_loading import load_dataset, DatasetTriplet
 from topocluster.data.misc import adaptive_collate
 from topocluster.models.configs.classifiers import fc_net, mp_64x64_net, mp_32x32_net
@@ -117,6 +116,7 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
     )
     ARGS.test_batch_size = ARGS.test_batch_size if ARGS.test_batch_size else ARGS.batch_size
     context_batch_size = round(ARGS.batch_size * len(datasets.context) / len(datasets.train))
+    
     context_loader = DataLoader(
         datasets.context,
         shuffle=True,
@@ -124,24 +124,15 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         num_workers=ARGS.num_workers,
         pin_memory=True,
     )
+
     enc_train_data = ConcatDataset([datasets.context, datasets.train])
-    if args.encoder == "rotnet":
-        enc_train_loader = DataLoader(
-            RotationPrediction(enc_train_data, apply_all=True),
-            shuffle=True,
-            batch_size=ARGS.batch_size,
-            num_workers=ARGS.num_workers,
-            pin_memory=True,
-            collate_fn=adaptive_collate,
-        )
-    else:
-        enc_train_loader = DataLoader(
-            enc_train_data,
-            shuffle=True,
-            batch_size=ARGS.batch_size,
-            num_workers=ARGS.num_workers,
-            pin_memory=True,
-        )
+    enc_train_loader = DataLoader(
+        enc_train_data,
+        shuffle=True,
+        batch_size=ARGS.batch_size,
+        num_workers=ARGS.num_workers,
+        pin_memory=True,
+    )
 
     train_loader = DataLoader(
         datasets.train,
@@ -150,6 +141,7 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         num_workers=ARGS.num_workers,
         pin_memory=True,
     )
+
     val_loader = DataLoader(
         datasets.test,
         shuffle=False,
