@@ -188,7 +188,6 @@ def load_dataset(args: BaseArgs) -> DatasetTriplet:
         all_data = TorchImageDataset(
             data=dataset.load(),
             root=base_dir,
-            map_to_binary=True,
             transform=transform,
             target_transform=None,
         )
