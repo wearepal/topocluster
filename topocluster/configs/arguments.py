@@ -7,7 +7,7 @@ from ethicml.data import CelebAttrs
 from ethicml.data.tabular_data.adult import AdultSplits
 
 
-__all__ = ["BaseArgs", "ClusterArgs", "CELEBATTRS"]
+__all__ = ["BaseArgs", "ClusterArgs"]
 
 
 class BaseArgs(TypedFlags):
