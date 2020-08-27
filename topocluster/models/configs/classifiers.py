@@ -15,7 +15,7 @@ __all__ = [
     "residual_64x64_net",
     "strided_28x28_net",
     "ModelFn",
-    "fc_net"
+    "fc_net",
 ]
 
 

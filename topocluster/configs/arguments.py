@@ -22,6 +22,7 @@ class BaseArgs(TypedFlags):
     test_pcnt: float = 0.2
     data_split_seed: int = 888
     root: str = ""
+    save_dir: str = "experiments"
 
     # Dataset manipulation
     missing_s: List[int] = []
@@ -68,8 +69,8 @@ class BaseArgs(TypedFlags):
     # Global variables
     _s_dim: int
     _y_dim: int
-    
-    # General training settings
+
+    #  General training settings
     epochs: int = 250
     gpu: int = 0  # which GPU to use (if available)
     batch_size: int = 256
@@ -96,7 +97,6 @@ class ClusterArgs(BaseArgs):
 
     # Training settings
     resume: Optional[str] = None
-    save_dir: str = "experiments"
     evaluate: bool = False
     super_val: bool = False  # Train classifier on encodings as part of validation step.
     super_val_freq: int = 0  # how often to do super val, if 0, do it together with the normal val
