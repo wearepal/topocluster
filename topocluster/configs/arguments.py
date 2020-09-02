@@ -64,7 +64,7 @@ class BaseArgs(TypedFlags):
     cluster_label_file: str = ""
 
     # General settings
-    use_wandb: bool = True
+    use_wandb: bool = False
 
     # Global variables
     _s_dim: int
@@ -78,7 +78,7 @@ class BaseArgs(TypedFlags):
     num_workers: int = 4
     seed: int = 42
 
-    def process_args(self):
+    def process_args(self) -> None:
         if not 0 < self.data_pcnt <= 1:
             raise ValueError("data_pcnt has to be between 0 and 1")
 
@@ -123,6 +123,7 @@ class ClusterArgs(BaseArgs):
     enc_lr: float = 1e-3
     enc_wd: float = 0
     enc_wandb: bool = False
+    save_encodings: bool = False
     finetune_encoder: bool = False
     finetune_lr: float = 1e-6
     finetune_wd: float = 0

@@ -22,7 +22,7 @@ def log_sample_images(args, data, name, step):
     log_images(args, x, f"Samples from {name}", prefix="eval", step=step)
 
 
-def encode_dataset(args: ClusterArgs, data: Dataset, generator: Encoder,) -> Dataset:
+def encode_dataset(args: ClusterArgs, data: Dataset, generator: Encoder) -> TensorDataset:
     print("Encoding dataset...", flush=True)  # flush to avoid conflict with tqdm
     all_enc = []
     all_s = []

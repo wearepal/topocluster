@@ -1,5 +1,6 @@
 """Main training file"""
 from __future__ import annotations
+
 import time
 from logging import Logger
 from pathlib import Path
@@ -7,43 +8,47 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import git
 import numpy as np
-from sklearn.metrics import confusion_matrix
 import torch
-from torch import Tensor
-from torch.utils.data import DataLoader, ConcatDataset
-from torchvision.models import resnet18, resnet50
+import torch.nn as nn
 import wandb
+from sklearn.metrics import confusion_matrix
+from torch import Tensor
+from torch.utils.data import ConcatDataset, DataLoader
+from torchvision.models import resnet18, resnet50
 
-from topocluster.data.data_loading import load_dataset, DatasetTriplet
-from topocluster.models.configs.classifiers import fc_net, mp_64x64_net, mp_32x32_net
+from topocluster.configs import ClusterArgs
+from topocluster.data.data_loading import DatasetTriplet, load_dataset
+from topocluster.models import (
+    Classifier,
+    CosineSimThreshold,
+    Encoder,
+    Method,
+    Model,
+    MultiHeadModel,
+    PseudoLabelEnc,
+    PseudoLabelEncNoNorm,
+    PseudoLabeler,
+    PseudoLabelOutput,
+    RankingStatistics,
+    SelfSupervised,
+    build_classifier,
+)
+from topocluster.models.configs.classifiers import fc_net, mp_32x32_net, mp_64x64_net
 from topocluster.utils import (
     AverageMeter,
     count_parameters,
+    get_data_dim,
     get_logger,
     prod,
     random_seed,
     readable_duration,
     save_results,
     wandb_log,
-    get_data_dim,
-)
-from topocluster.configs import ClusterArgs
-from topocluster.models import (
-    Classifier,
-    CosineSimThreshold,
-    Encoder,
-    PseudoLabeler,
-    Method,
-    Model,
-    MultiHeadModel,
-    PseudoLabelEnc,
-    PseudoLabelEncNoNorm,
-    PseudoLabelOutput,
-    RankingStatistics,
-    SelfSupervised,
-    build_classifier,
 )
 
+from .build import build_ae
+from .evaluation import classify_dataset, encode_dataset
+from .k_means import train as train_k_means
 from .utils import (
     convert_and_save_results,
     count_occurances,
@@ -53,9 +58,6 @@ from .utils import (
     restore_model,
     save_model,
 )
-from .evaluation import classify_dataset
-from .build import build_ae
-from .k_means import train as train_k_means
 
 __all__ = ["main"]
 
@@ -124,7 +126,7 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         pin_memory=True,
     )
 
-    enc_train_data = ConcatDataset([datasets.context, datasets.train])
+    enc_train_data: ConcatDataset = ConcatDataset([datasets.context, datasets.train])
     enc_train_loader = DataLoader(
         enc_train_data,
         shuffle=True,
@@ -217,6 +219,27 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
             LOGGER.info("Stopping here because W&B will be messed up...")
             return
 
+    if ARGS.save_encodings:
+        LOGGER.info("Encoding all datasets.")
+        encoded_data_ctx = encode_dataset(ARGS, data=datasets.context, generator=encoder)
+        encoded_data_ctx_np = dict(
+            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_ctx.tensors])
+        )
+        np.savez(save_dir / "context_data_encoded", **encoded_data_ctx_np)
+        encoded_data_tr = encode_dataset(ARGS, data=datasets.train, generator=encoder)
+        encoded_data_tr_np = dict(
+            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_tr.tensors])
+        )
+        np.savez(save_dir / "train_data_encoded", **encoded_data_tr_np)
+        encoded_data_te = encode_dataset(ARGS, data=datasets.test, generator=encoder)
+        encoded_data_te_np = dict(
+            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_te.tensors])
+        )
+        np.savez(save_dir / "test_data_encoded", **encoded_data_te_np)
+        LOGGER.info(
+            f"Datasets have been encoded and saved to {save_dir.resolve()}."
+        )
+
     cluster_label_path = get_cluster_label_path(ARGS, save_dir)
     if ARGS.method == "kmeans":
         kmeans_results = train_k_means(ARGS, encoder, datasets.context, num_clusters, s_count)
@@ -283,6 +306,7 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
             model_kwargs=labeler_kwargs,
             optimizer_kwargs=labeler_optimizer_kwargs,
         )
+        assert isinstance(labeler, nn.ModuleList)
         labeler.to(args._device)
         LOGGER.info("Fitting the labeler to the labeled data.")
         labeler.fit(
