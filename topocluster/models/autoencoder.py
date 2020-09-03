@@ -91,7 +91,6 @@ class AutoEncoder(Encoder):
 
                     self.zero_grad()
                     _, loss, _ = self.routine(x)
-                    # loss /= x[0].nelement()
 
                     loss.backward()
                     self.step()
@@ -107,7 +106,7 @@ class AutoEncoder(Encoder):
 
         recon_all = self.decode(encoding)
         recon_loss = self.recon_loss_fn(recon_all, x)
-        recon_loss /= x.size(0)
+        recon_loss /= x.nelement()
         return encoding, recon_loss, {"Loss reconstruction": recon_loss.item()}
 
     def freeze_initial_layers(self, num_layers: int, optimizer_kwargs: Dict[str, Any]) -> None:

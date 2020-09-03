@@ -10,6 +10,7 @@ import git
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data.dataset import Dataset
 import wandb
 from sklearn.metrics import confusion_matrix
 from torch import Tensor
@@ -221,21 +222,17 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
 
     if ARGS.save_encodings:
         LOGGER.info("Encoding all datasets.")
-        encoded_data_ctx = encode_dataset(ARGS, data=datasets.context, generator=encoder)
-        encoded_data_ctx_np = dict(
-            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_ctx.tensors])
-        )
-        np.savez(save_dir / "context_data_encoded", **encoded_data_ctx_np)
-        encoded_data_tr = encode_dataset(ARGS, data=datasets.train, generator=encoder)
-        encoded_data_tr_np = dict(
-            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_tr.tensors])
-        )
-        np.savez(save_dir / "train_data_encoded", **encoded_data_tr_np)
-        encoded_data_te = encode_dataset(ARGS, data=datasets.test, generator=encoder)
-        encoded_data_te_np = dict(
-            zip(["x", "s", "y"], [data.numpy() for data in encoded_data_te.tensors])
-        )
-        np.savez(save_dir / "test_data_encoded", **encoded_data_te_np)
+ 
+        def _encode_and_save_dataset(_dataset: Dataset, name: str) -> None:
+            _encoded_dataset = encode_dataset(ARGS, data=_dataset, generator=encoder)
+            _x, _s, _y = _encoded_dataset.tensors
+            _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both")
+            np.savez(save_dir / name, x=_x, class_id=_class_id)
+        
+        _encode_and_save_dataset(datasets.context, name="context_data_encoded")
+        _encode_and_save_dataset(datasets.train, name="train_data_encoded")
+        _encode_and_save_dataset(datasets.test, name="test_data_encoded")
+
         LOGGER.info(
             f"Datasets have been encoded and saved to {save_dir.resolve()}."
         )
