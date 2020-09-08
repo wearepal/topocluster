@@ -49,7 +49,7 @@ from topocluster.utils import (
 
 from .build import build_ae
 from .evaluation import classify_dataset, encode_dataset
-from .k_means import train as train_k_means
+from .unsupervised import cluster as u_cluster
 from .utils import (
     convert_and_save_results,
     count_occurances,
@@ -181,7 +181,9 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
     encoder: Encoder
     enc_shape: Tuple[int, ...]
     if ARGS.encoder in ("ae", "vae"):
-        encoder, enc_shape = build_ae(ARGS, input_shape, feature_group_slices)
+        encoder, enc_shape = build_ae(
+            args=ARGS, input_shape=input_shape, feature_group_slices=feature_group_slices
+        )
     else:
         if len(input_shape) < 2:
             raise ValueError("RotNet can only be applied to image data.")
@@ -222,185 +224,189 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
 
     if ARGS.save_encodings:
         LOGGER.info("Encoding all datasets.")
- 
+
         def _encode_and_save_dataset(_dataset: Dataset, name: str) -> None:
             _encoded_dataset = encode_dataset(ARGS, data=_dataset, generator=encoder)
             _x, _s, _y = _encoded_dataset.tensors
             _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both")
             np.savez(save_dir / name, x=_x, class_id=_class_id)
-        
+
         _encode_and_save_dataset(datasets.context, name="context_data_encoded")
         _encode_and_save_dataset(datasets.train, name="train_data_encoded")
         _encode_and_save_dataset(datasets.test, name="test_data_encoded")
 
-        LOGGER.info(
-            f"Datasets have been encoded and saved to {save_dir.resolve()}."
-        )
+        LOGGER.info(f"Datasets have been encoded and saved to {save_dir.resolve()}.")
 
     cluster_label_path = get_cluster_label_path(ARGS, save_dir)
-    if ARGS.method == "kmeans":
-        kmeans_results = train_k_means(ARGS, encoder, datasets.context, num_clusters, s_count)
-        pth = save_results(save_path=cluster_label_path, cluster_results=kmeans_results)
+    if ARGS.method in ("kmeans", "topocluster"):
+        results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
+        pth = save_results(save_path=cluster_label_path, cluster_results=results)
         return (), pth
-    if ARGS.finetune_encoder:
-        encoder.freeze_initial_layers(
-            ARGS.freeze_layers, {"lr": ARGS.finetune_lr, "weight_decay": ARGS.weight_decay}
-        )
+    elif ARGS.method == "tp":  #  Clustering by topological persistence
+        ...
+    else:
+        if ARGS.finetune_encoder:
+            encoder.freeze_initial_layers(
+                ARGS.freeze_layers, {"lr": ARGS.finetune_lr, "weight_decay": ARGS.weight_decay}
+            )
 
-    # ================================= labeler =================================
-    pseudo_labeler: PseudoLabeler
-    if ARGS.pseudo_labeler == "ranking":
-        pseudo_labeler = RankingStatistics(k_num=ARGS.k_num)
-    elif ARGS.pseudo_labeler == "cosine":
-        pseudo_labeler = CosineSimThreshold(
-            upper_threshold=ARGS.upper_threshold, lower_threshold=ARGS.lower_threshold
-        )
+        # ================================= labeler =================================
+        pseudo_labeler: PseudoLabeler
+        if ARGS.pseudo_labeler == "ranking":
+            pseudo_labeler = RankingStatistics(k_num=ARGS.k_num)
+        elif ARGS.pseudo_labeler == "cosine":
+            pseudo_labeler = CosineSimThreshold(
+                upper_threshold=ARGS.upper_threshold, lower_threshold=ARGS.lower_threshold
+            )
 
-    # ================================= method =================================
-    method: Method
-    if ARGS.method == "pl_enc":
-        method = PseudoLabelEnc()
-    elif ARGS.method == "pl_output":
-        method = PseudoLabelOutput()
-    elif ARGS.method == "pl_enc_no_norm":
-        method = PseudoLabelEncNoNorm()
+        # ================================= method =================================
+        method: Method
+        if ARGS.method == "pl_enc":
+            method = PseudoLabelEnc()
+        elif ARGS.method == "pl_output":
+            method = PseudoLabelOutput()
+        elif ARGS.method == "pl_enc_no_norm":
+            method = PseudoLabelEncNoNorm()
 
-    # ================================= classifier =================================
-    clf_optimizer_kwargs = {"lr": ARGS.lr, "weight_decay": ARGS.weight_decay}
-    clf_kwargs = {}
-    clf_fn = fc_net
-    clf_kwargs["hidden_dims"] = args.cl_hidden_dims
-    clf_input_shape = (prod(enc_shape),)  # fc_net first flattens the input
-
-    classifier = build_classifier(
-        input_shape=clf_input_shape,
-        target_dim=s_count if ARGS.use_multi_head else num_clusters,
-        model_fn=clf_fn,
-        model_kwargs=clf_kwargs,
-        optimizer_kwargs=clf_optimizer_kwargs,
-        num_heads=y_count if ARGS.use_multi_head else 1,
-    )
-    classifier.to(args._device)
-
-    model: Union[Model, MultiHeadModel]
-    if ARGS.use_multi_head:
-        labeler_kwargs = {}
-        if args.dataset == "cmnist":
-            labeler_fn = mp_32x32_net
-        elif args.dataset == "celeba":
-            labeler_fn = mp_64x64_net
-        else:
-            labeler_fn = fc_net
-            labeler_kwargs["hidden_dims"] = args.labeler_hidden_dims
-
-        labeler_optimizer_kwargs = {"lr": ARGS.labeler_lr, "weight_decay": ARGS.labeler_wd}
+        # ================================= classifier =================================
+        clf_optimizer_kwargs = {"lr": ARGS.lr, "weight_decay": ARGS.weight_decay}
+        clf_kwargs = {}
         clf_fn = fc_net
         clf_kwargs["hidden_dims"] = args.cl_hidden_dims
-        labeler: Classifier = build_classifier(
-            input_shape=input_shape,
-            target_dim=s_count,
-            model_fn=labeler_fn,
-            model_kwargs=labeler_kwargs,
-            optimizer_kwargs=labeler_optimizer_kwargs,
+        clf_input_shape = (prod(enc_shape),)  # fc_net first flattens the input
+
+        classifier = build_classifier(
+            input_shape=clf_input_shape,
+            target_dim=s_count if ARGS.use_multi_head else num_clusters,
+            model_fn=clf_fn,
+            model_kwargs=clf_kwargs,
+            optimizer_kwargs=clf_optimizer_kwargs,
+            num_heads=y_count if ARGS.use_multi_head else 1,
         )
-        assert isinstance(labeler, nn.ModuleList)
-        labeler.to(args._device)
-        LOGGER.info("Fitting the labeler to the labeled data.")
-        labeler.fit(
-            train_loader,
-            epochs=ARGS.labeler_epochs,
-            device=ARGS._device,
-            use_wandb=ARGS.labeler_wandb,
-        )
-        labeler.eval()
-        model = MultiHeadModel(
-            encoder=encoder,
-            classifiers=classifier,
-            method=method,
-            pseudo_labeler=pseudo_labeler,
-            labeler=labeler,
-            train_encoder=ARGS.finetune_encoder,
-        )
-    else:
-        model = Model(
-            encoder=encoder,
-            classifier=classifier,
-            method=method,
-            pseudo_labeler=pseudo_labeler,
-            train_encoder=ARGS.finetune_encoder,
-        )
+        classifier.to(args._device)
 
-    start_epoch = 1  # start at 1 so that the val_freq works correctly
-    # Resume from checkpoint
-    if ARGS.resume is not None:
-        LOGGER.info("Restoring generator from checkpoint")
-        model, start_epoch = restore_model(ARGS, Path(ARGS.resume), model)
-        if ARGS.evaluate:
-            pth_path = convert_and_save_results(
-                ARGS,
-                cluster_label_path,
-                classify_dataset(ARGS, model, datasets.context),
-                context_acc=float("nan"),  # TODO: compute this
-            )
-            return model, pth_path
-
-    # Logging
-    # wandb.set_model_graph(str(generator))
-    num_parameters = count_parameters(model)
-    LOGGER.info("Number of trainable parameters: {}", num_parameters)
-
-    # best_loss = float("inf")
-    best_acc = 0.0
-    n_vals_without_improvement = 0
-    # super_val_freq = ARGS.super_val_freq or ARGS.val_freq
-
-    itr = 0
-    # Train generator for N epochs
-    for epoch in range(start_epoch, start_epoch + ARGS.epochs):
-        if n_vals_without_improvement > ARGS.early_stopping > 0:
-            break
-
-        itr = train(model=model, context_data=context_loader, train_data=train_loader, epoch=epoch)
-
-        if epoch % ARGS.val_freq == 0:
-            val_acc, val_log = validate(model, val_loader)
-
-            if val_acc > best_acc:
-                best_acc = val_acc
-                save_model(args, save_dir, model, epoch=epoch, sha=sha, best=True)
-                n_vals_without_improvement = 0
+        model: Union[Model, MultiHeadModel]
+        if ARGS.use_multi_head:
+            labeler_kwargs = {}
+            if args.dataset == "cmnist":
+                labeler_fn = mp_32x32_net
+            elif args.dataset == "celeba":
+                labeler_fn = mp_64x64_net
             else:
-                n_vals_without_improvement += 1
+                labeler_fn = fc_net
+                labeler_kwargs["hidden_dims"] = args.labeler_hidden_dims
 
-            prepare = (
-                f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}" for k, v in val_log.items()
+            labeler_optimizer_kwargs = {"lr": ARGS.labeler_lr, "weight_decay": ARGS.labeler_wd}
+            clf_fn = fc_net
+            clf_kwargs["hidden_dims"] = args.cl_hidden_dims
+            labeler: Classifier = build_classifier(
+                input_shape=input_shape,
+                target_dim=s_count,
+                model_fn=labeler_fn,
+                model_kwargs=labeler_kwargs,
+                optimizer_kwargs=labeler_optimizer_kwargs,
             )
-            LOGGER.info(
-                "[VAL] Epoch {:04d} | {} | " "No improvement during validation: {:02d}",
-                epoch,
-                " | ".join(prepare),
-                n_vals_without_improvement,
+            assert isinstance(labeler, nn.ModuleList)
+            labeler.to(args._device)
+            LOGGER.info("Fitting the labeler to the labeled data.")
+            labeler.fit(
+                train_loader,
+                epochs=ARGS.labeler_epochs,
+                device=ARGS._device,
+                use_wandb=ARGS.labeler_wandb,
             )
-            wandb_log(ARGS, val_log, step=itr)
-        # if ARGS.super_val and epoch % super_val_freq == 0:
-        #     log_metrics(ARGS, model=model.bundle, data=datasets, step=itr)
-        #     save_model(args, save_dir, model=model.bundle, epoch=epoch, sha=sha)
+            labeler.eval()
+            model = MultiHeadModel(
+                encoder=encoder,
+                classifiers=classifier,
+                method=method,
+                pseudo_labeler=pseudo_labeler,
+                labeler=labeler,
+                train_encoder=ARGS.finetune_encoder,
+            )
+        else:
+            model = Model(
+                encoder=encoder,
+                classifier=classifier,
+                method=method,
+                pseudo_labeler=pseudo_labeler,
+                train_encoder=ARGS.finetune_encoder,
+            )
 
-    LOGGER.info("Training has finished.")
-    # path = save_model(args, save_dir, model=model, epoch=epoch, sha=sha)
-    # model, _ = restore_model(args, path, model=model)
-    test_acc, _ = validate(model, val_loader)
-    context_acc, _ = validate(model, context_loader)
-    print("test_acc", test_acc)
-    print("context_acc", context_acc)
-    pth_path = convert_and_save_results(
-        ARGS,
-        cluster_label_path=cluster_label_path,
-        results=classify_dataset(ARGS, model, datasets.context),
-        context_acc=context_acc,
-        test_acc=test_acc,
-    )
-    return model, pth_path
+        start_epoch = 1  # start at 1 so that the val_freq works correctly
+        # Resume from checkpoint
+        if ARGS.resume is not None:
+            LOGGER.info("Restoring generator from checkpoint")
+            model, start_epoch = restore_model(ARGS, Path(ARGS.resume), model)
+            if ARGS.evaluate:
+                pth_path = convert_and_save_results(
+                    ARGS,
+                    cluster_label_path,
+                    classify_dataset(ARGS, model, datasets.context),
+                    context_acc=float("nan"),  # TODO: compute this
+                )
+                return model, pth_path
+
+        # Logging
+        # wandb.set_model_graph(str(generator))
+        num_parameters = count_parameters(model)
+        LOGGER.info("Number of trainable parameters: {}", num_parameters)
+
+        # best_loss = float("inf")
+        best_acc = 0.0
+        n_vals_without_improvement = 0
+        # super_val_freq = ARGS.super_val_freq or ARGS.val_freq
+
+        itr = 0
+        # Train generator for N epochs
+        for epoch in range(start_epoch, start_epoch + ARGS.epochs):
+            if n_vals_without_improvement > ARGS.early_stopping > 0:
+                break
+
+            itr = train(
+                model=model, context_data=context_loader, train_data=train_loader, epoch=epoch
+            )
+
+            if epoch % ARGS.val_freq == 0:
+                val_acc, val_log = validate(model, val_loader)
+
+                if val_acc > best_acc:
+                    best_acc = val_acc
+                    save_model(args, save_dir, model, epoch=epoch, sha=sha, best=True)
+                    n_vals_without_improvement = 0
+                else:
+                    n_vals_without_improvement += 1
+
+                prepare = (
+                    f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}"
+                    for k, v in val_log.items()
+                )
+                LOGGER.info(
+                    "[VAL] Epoch {:04d} | {} | " "No improvement during validation: {:02d}",
+                    epoch,
+                    " | ".join(prepare),
+                    n_vals_without_improvement,
+                )
+                wandb_log(ARGS, val_log, step=itr)
+            # if ARGS.super_val and epoch % super_val_freq == 0:
+            #     log_metrics(ARGS, model=model.bundle, data=datasets, step=itr)
+            #     save_model(args, save_dir, model=model.bundle, epoch=epoch, sha=sha)
+
+        LOGGER.info("Training has finished.")
+        # path = save_model(args, save_dir, model=model, epoch=epoch, sha=sha)
+        # model, _ = restore_model(args, path, model=model)
+        test_acc, _ = validate(model, val_loader)
+        context_acc, _ = validate(model, context_loader)
+        print("test_acc", test_acc)
+        print("context_acc", context_acc)
+        pth_path = convert_and_save_results(
+            ARGS,
+            cluster_label_path=cluster_label_path,
+            results=classify_dataset(ARGS, model, datasets.context),
+            context_acc=context_acc,
+            test_acc=test_acc,
+        )
+        return model, pth_path
 
 
 def train(model: Model, context_data: DataLoader, train_data: DataLoader, epoch: int) -> int:

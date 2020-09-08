@@ -29,7 +29,7 @@ def build_ae(
         encoder, decoder, enc_shape = conv_autoencoder(
             input_shape,
             args.init_channels,
-            encoding_dim=args.enc_channels,
+            encoding_dim=args.enc_dim,
             decoding_dim=decoding_dim,
             levels=args.enc_levels,
             decoder_out_act=decoder_out_act,
@@ -39,7 +39,7 @@ def build_ae(
         encoder, decoder, enc_shape = fc_autoencoder(
             input_shape,
             args.init_channels,
-            encoding_dim=args.enc_channels,
+            encoding_dim=args.enc_dim,
             levels=args.enc_levels,
             variational=variational,
         )

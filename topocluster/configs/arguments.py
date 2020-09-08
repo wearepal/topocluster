@@ -1,11 +1,9 @@
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import torch
-from typed_flags import TypedFlags
-
 from ethicml.data import CelebAttrs
 from ethicml.data.tabular_data.adult import AdultSplits
-
+from typed_flags import TypedFlags
 
 __all__ = ["BaseArgs", "ClusterArgs"]
 
@@ -78,6 +76,14 @@ class BaseArgs(TypedFlags):
     num_workers: int = 4
     seed: int = 42
 
+    #  Arguments related to topological clustering
+    tc_batch_size: Optional[int] = None
+    tc_scale: float = 0.5
+    tc_k_kde: int = 100
+    tc_k_vrc: int = 15
+    tc_threshold: float = 1.0
+    tc_umap_kwargs: Optional[Dict[str, Any]] = None
+
     def process_args(self) -> None:
         if not 0 < self.data_pcnt <= 1:
             raise ValueError("data_pcnt has to be between 0 and 1")
@@ -110,7 +116,7 @@ class ClusterArgs(BaseArgs):
     # Encoder settings
     encoder: Literal["ae", "vae", "rotnet"] = "ae"
     enc_levels: int = 4
-    enc_channels: int = 64
+    enc_dim: int = 64
     init_channels: int = 32
     recon_loss: Literal["l1", "l2", "bce", "huber", "ce", "mixed"] = "l2"
     vgg_weight: float = 0
@@ -144,7 +150,9 @@ class ClusterArgs(BaseArgs):
     use_multi_head: bool = False
 
     # Method
-    method: Literal["pl_enc", "pl_output", "pl_enc_no_norm", "kmeans"] = "pl_enc_no_norm"
+    method: Literal[
+        "pl_enc", "pl_output", "pl_enc_no_norm", "kmeans", "topocluster"
+    ] = "pl_enc_no_norm"
 
     _device: torch.device
     _s_dim: int
