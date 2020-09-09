@@ -8,3 +8,6 @@ subsample_context:
   2: 0.2
   3: 1.0
 filter_labels: 2 4
+enc_levels: 5
+enc_dim: 32
+batch_size: 128
