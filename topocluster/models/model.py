@@ -108,7 +108,7 @@ class MultiHeadModel(nn.Module):
                 y = self.labeler(x).argmax(dim=-1)
         for i in range(len(self.classifiers)):
             mask = y == i
-            if len(mask.nonzero()) > 0:
+            if len(mask.nonzero(as_tuple=False)) > 0:
                 yield x[mask], y[mask], mask
 
     def supervised_loss(
