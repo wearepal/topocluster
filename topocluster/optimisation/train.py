@@ -242,8 +242,6 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
         pth = save_results(save_path=cluster_label_path, cluster_results=results)
         return (), pth
-    elif ARGS.method == "tp":  #  Clustering by topological persistence
-        ...
     else:
         if ARGS.finetune_encoder:
             encoder.freeze_initial_layers(

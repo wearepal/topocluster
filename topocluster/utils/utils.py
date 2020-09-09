@@ -1,13 +1,13 @@
 import logging
-import os
 import random
-from typing import Any, Dict, Sequence, TypeVar, Iterable, Iterator, Tuple
+from typing import Any, Dict, Iterable, Iterator, Optional, Sequence, Tuple, TypeVar
 
 import numpy as np
 import torch
+import torch.nn as nn
+import wandb
 from torch.utils.data import DataLoader
 
-import wandb
 from topocluster.configs import BaseArgs
 
 LOGGER = None
@@ -21,7 +21,6 @@ __all__ = [
     "prod",
     "random_seed",
     "readable_duration",
-    "save_checkpoint",
     "wandb_log",
     "get_data_dim",
 ]
@@ -36,7 +35,9 @@ def get_data_dim(data_loader: DataLoader) -> Tuple[int, ...]:
     return tuple(x_dim)
 
 
-def wandb_log(args: BaseArgs, row: Dict[str, Any], step: int, commit: bool = True):
+def wandb_log(
+    args: BaseArgs, row: Dict[str, Any], step: Optional[int] = None, commit: bool = True
+) -> None:
     """Wrapper around wandb's log function"""
     if args.use_wandb:
         wandb.log(row, commit=commit, step=step)
@@ -96,16 +97,16 @@ def get_logger(logpath, filepath, package_files=None, displaying=True, saving=Tr
 class AverageMeter:
     """Computes and stores the average and current value"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.reset()
 
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
+    def reset(self) -> None:
+        self.val = 0.0
+        self.avg = 0.0
+        self.sum = 0.0
+        self.count = 0.0
 
-    def update(self, val, n=1):
+    def update(self, val: float, n: int = 1) -> None:
         self.val = val
         self.sum += val * n
         self.count += n
@@ -115,15 +116,18 @@ class AverageMeter:
 class RunningAverageMeter:
     """Computes and stores the average and current value"""
 
-    def __init__(self, momentum=0.99):
+    val: Optional[float]
+    avg: Optional[float]
+
+    def __init__(self, momentum: float = 0.99) -> None:
         self.momentum = momentum
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         self.val = None
-        self.avg = 0
+        self.avg = 0.0
 
-    def update(self, val):
+    def update(self, val: Optional[float]):
         if self.val is None:
             self.avg = val
         else:
@@ -144,19 +148,12 @@ def inf_generator(iterable: Iterable[T]) -> Iterator[T]:
             iterator = iter(iterable)
 
 
-def save_checkpoint(state, save, epoch):
-    if not os.path.exists(save):
-        os.makedirs(save)
-    filename = os.path.join(save, "checkpt-%04d.pth" % epoch)
-    torch.save(state, filename)
-
-
-def count_parameters(model):
+def count_parameters(model: nn.Module) -> int:
     """Count all parameters (that have a gradient) in the given model"""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def random_seed(seed_value, use_cuda) -> None:
+def random_seed(seed_value: int, use_cuda: bool) -> None:
     np.random.seed(seed_value)  # cpu vars
     torch.manual_seed(seed_value)  # cpu  vars
     random.seed(seed_value)  # Python

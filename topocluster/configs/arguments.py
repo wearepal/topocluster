@@ -82,7 +82,7 @@ class BaseArgs(TypedFlags):
     tc_k_kde: int = 100
     tc_k_vrc: int = 15
     tc_threshold: float = 1.0
-    tc_umap_kwargs: Optional[Dict[str, Any]] = None
+    tc_umap_kwargs: Optional[Dict[str, int]] = None
 
     def process_args(self) -> None:
         if not 0 < self.data_pcnt <= 1:
