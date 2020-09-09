@@ -79,7 +79,7 @@ class BaseArgs(TypedFlags):
     #  Arguments related to topological clustering
     tc_batch_size: Optional[int] = None
     tc_scale: float = 0.5
-    tc_k_kde: int = 100
+    tc_k_kde: int = 200
     tc_k_vrc: int = 15
     tc_threshold: float = 1.0
     tc_umap_kwargs: Optional[Dict[str, int]] = None
