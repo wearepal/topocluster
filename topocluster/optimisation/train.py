@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 from logging import Logger
 from pathlib import Path
+from turtle import pd
 from typing import Dict, List, Optional, Tuple, Union
 
 import git
@@ -107,6 +108,7 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
     ARGS._device = torch.device(
         f"cuda:{ARGS.gpu}" if (torch.cuda.is_available() and ARGS.gpu >= 0) else "cpu"
     )
+    import pdb; pdb.set_trace()
     LOGGER.info("{} GPUs available. Using device '{}'", torch.cuda.device_count(), ARGS._device)
 
     # ==== construct dataset ====
