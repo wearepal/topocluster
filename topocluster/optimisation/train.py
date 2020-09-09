@@ -4,7 +4,6 @@ from __future__ import annotations
 import time
 from logging import Logger
 from pathlib import Path
-from turtle import pd
 from typing import Dict, List, Optional, Tuple, Union
 
 import git
