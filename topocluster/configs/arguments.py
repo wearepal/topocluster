@@ -87,6 +87,9 @@ class BaseArgs(TypedFlags):
     def process_args(self) -> None:
         if not 0 < self.data_pcnt <= 1:
             raise ValueError("data_pcnt has to be between 0 and 1")
+        if self.tc_umap_kwargs:
+            self.tc_umap_kwargs.setdefault("n_components", 10)
+            self.tc_umap_kwargs.setdefault("n_neighbors", self.tc_k_vrc)
 
 
 class ClusterArgs(BaseArgs):
