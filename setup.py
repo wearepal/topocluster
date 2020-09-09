@@ -27,7 +27,6 @@ setup(
         "typed-flags",
         "wandb == 0.8.27",
         "umap-learn"
-        "fastcore",
     ],
 )
 
