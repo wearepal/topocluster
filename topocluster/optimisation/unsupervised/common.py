@@ -58,7 +58,7 @@ def cluster(
         reduced = reducer.fit_transform(encoded)
         cluster_viz, ax = plt.subplots(dpi=100)
         ax.scatter(reduced[:, 0], reduced[:, 1], c=preds.cpu().detach().numpy(), cmap="tab10")
-        ax.set_title("UMAP-reduced Clusters")
+        ax.set_title(f"UMAP-reduced Clusters, threshold={args.tc_threshold}")
         logging_dict["cluster_viz"] = wandb.Image(cluster_viz)
         plt.close(cluster_viz)
 
