@@ -60,7 +60,7 @@ class BaseArgs(TypedFlags):
 
     # Cluster settings
     cluster_label_file: str = ""
-
+    visualize_clusters: bool = False
     # General settings
     use_wandb: bool = False
 
@@ -82,12 +82,12 @@ class BaseArgs(TypedFlags):
     tc_k_kde: int = 200
     tc_k_vrc: int = 15
     tc_threshold: float = 1.0
-    tc_umap_kwargs: Optional[Dict[str, int]] = None
+    tc_umap_kwargs: Optional[Dict[str, int]] = {}
 
     def process_args(self) -> None:
         if not 0 < self.data_pcnt <= 1:
             raise ValueError("data_pcnt has to be between 0 and 1")
-        if self.tc_umap_kwargs:
+        if self.tc_umap_kwargs is not None:
             self.tc_umap_kwargs.setdefault("n_components", 10)
             self.tc_umap_kwargs.setdefault("n_neighbors", self.tc_k_vrc)
 
@@ -155,7 +155,7 @@ class ClusterArgs(BaseArgs):
     # Method
     method: Literal[
         "pl_enc", "pl_output", "pl_enc_no_norm", "kmeans", "topocluster"
-    ] = "pl_enc_no_norm"
+    ] = "topocluster"
 
     _device: torch.device
     _s_dim: int

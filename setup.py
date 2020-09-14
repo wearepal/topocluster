@@ -26,7 +26,7 @@ setup(
         "tqdm >= 4.31",
         "typed-flags",
         "wandb == 0.8.27",
-        "umap-learn"
+        "umap-learn",
     ],
 )
 

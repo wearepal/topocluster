@@ -91,7 +91,7 @@ class TopoCluster:
 
 def compute_barcode(
     point_cloud: np.ndarray, k_kde: int, k_vrc: int, scale: float, threshold: float
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[Dict[int, np.ndarray[np.int]], np.ndarray[np.float]]:
     point_cloud = point_cloud.astype(float)
     #  Compute the k-NN KDE
     density_map, _ = compute_density_map(point_cloud, k_kde, scale)
@@ -126,7 +126,9 @@ def compute_barcode(
         return ddd, np.array([[0, 0]])
 
 
-def major(pc, k_vrc, k_kde, scale, destnum, lr, epochs):
+def major(
+    pc: np.ndarray[np.float32], k_vrc: int, k_kde: int, scale: float, destnum: int, lr: float, epochs: int
+):
     for _ in range(epochs):
         f, I1 = compute_density_map(pc, k_kde, scale)
         f = f.astype(float)
@@ -219,7 +221,7 @@ def multiply(arr: np.ndarray, scalar: float) -> np.ndarray:
 
 def compute_density_map(x: np.ndarray, k: int, scale: float) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the k-nearest neighbours kernel density estimate."""
-    x = x.astype("float32")
+    x = x.astype(np.float32)
     index = IndexFlatL2(len(x[0]))
     index.add(x)
     values, indexes = index.search(x, k)
@@ -228,12 +230,12 @@ def compute_density_map(x: np.ndarray, k: int, scale: float) -> Tuple[np.ndarray
 
 
 @jit(nopython=True)
-def find_entry_idx_by_point(entries: Dict[int, List[int]], point_idx: int) -> np.int64:
+def find_entry_idx_by_point(entries: Dict[int, List[int]], point_idx: int) -> Optional[np.int64]:
     for index, entry in entries.items():
         for i in entry:
             if i == point_idx:
                 return np.int64(index)
-
+    return None
 
 @jit(nopython=True)
 def cluster(

@@ -1,6 +1,8 @@
 from typing import Any, Dict
 
 import numpy as np
+from torch.tensor import Tensor
+import umap
 import wandb
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
@@ -44,9 +46,21 @@ def cluster(
             umap_kwargs=args.tc_umap_kwargs,
         )
         preds, barcode = clusterer.fit(encoded, threshold=args.tc_threshold)
-        pd = clusterer.plot_pd(barcode, dpi=400)
+        pd = clusterer.plot_pd(barcode, dpi=100)
         logging_dict["persistence_diagram"] = wandb.Image(pd)
+        plt.close(pd)
 
+    if args.visualize_clusters:
+        if isinstance(encoded, Tensor):
+            encoded = encoded.cpu().detach().numpy()
+        n_neighbours = args.tc_umap_kwargs["n_components"] if args.tc_umap_kwargs else None
+        reducer = umap.UMAP(n_neighbors=n_neighbours, n_components=2)
+        reduced = reducer.fit_transform(encoded)
+        cluster_viz, ax = plt.subplots(dpi=100)
+        ax.scatter(reduced[:, 0], reduced[:, 1], c=preds.cpu().detach().numpy(), cmap="tab10")
+        ax.set_title("UMAP-reduced Clusters")
+        cluster_viz.legend(title="Cluster Label")
+        logging_dict["cluster_viz"] = wandb.Image(cluster_viz)
     counts = np.zeros((num_clusters, num_clusters), dtype=np.int64)
     counts, _ = count_occurances(counts, preds.cpu().numpy(), s, y, s_count, args.cluster)
     context_acc, _, logging_dict_t = find_assignment(counts, preds.size(0))
