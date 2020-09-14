@@ -1,12 +1,12 @@
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from topocluster.optimisation.unsupervised import TopoCluster
 from topocluster.optimisation.unsupervised.common import cluster
 
+np.random.seed(0)
 mean = [3.1, 0]
 cov = [[0.07, 0], [0, 0.07]]
 x, y = np.random.multivariate_normal(mean, cov, 500).T
@@ -39,7 +39,7 @@ print(torch.sort(barcode[:, 0] - barcode[:, 1]))
 # we can see 0.35791 is so much bigger than the rest (0.0744). So if we set a number between 0.35791 and 0.0744. The corresponding candidate
 # cluster will be kept.
 
-print(cluster_labels)
-print(time.time() - start)
+# print(cluster_labels)
+# print(time.time() - start)
 pd = clusterer.plot_pd(barcode)
-plt.show()
+print(cluster_labels[:10])

@@ -1,22 +1,22 @@
 from __future__ import annotations
-from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
-import warnings
 
-import numpy as np
+import warnings
+from collections import defaultdict
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import umap
 from faiss import IndexFlatL2
 from numba import jit
-import torch
-
-import umap
 from torch import Tensor
-
 
 __all__ = ["TopoCluster"]
 
 
 class TopoCluster:
+    
     def __init__(
         self,
         k_kde: int = 100,
@@ -29,7 +29,14 @@ class TopoCluster:
         self.k_vrc = k_vrc
         self.scale = scale
         self.batch_size = batch_size
+        self._set_umap_defaults(umap_kwargs)
         self.reducer = umap.UMAP(**umap_kwargs) if umap_kwargs is not None else None
+
+    def _set_umap_defaults(self, umap_kwargs: Optional[Dict[str, Any]]) -> None:
+        if umap_kwargs is not None:
+            umap_kwargs.setdefault("n_components", 10)
+            umap_kwargs.setdefault("n_neighbors", self.k_vrc)
+            umap_kwargs.setdefault("random_state", 42)
 
     @staticmethod
     def plot_pd(barcode: Union[Tensor, np.ndarray[np.float]], dpi: int = 100) -> plt.Figure:
@@ -65,23 +72,24 @@ class TopoCluster:
                 threshold=threshold,
             )
 
+        clusters: Mapping[int, Union[List[np.int], np.array[np.int]]]
         if batch_size < num_samples:
-            clusters, barcode = defaultdict(list), []
+            clusters = defaultdict(list)
+            barcode: List[np.array[np.float32]] = []
             batches = np.array_split(x, indices_or_sections=batch_size, axis=0)
             for batch in batches:
                 clusters_b, pd_b = _partialled(batch)
                 for key, values in clusters_b.items():
                     clusters[key].extend(values)
                 barcode.append(pd_b)
-
+            
             barcode = np.concatenate(barcode, axis=0)
-
         else:
             clusters, barcode = _partialled(x)
 
         cluster_labels = np.empty(x.shape[0])
-        for k, y in enumerate(clusters.values()):
-            cluster_labels[y] = k
+        for k, v in enumerate(clusters.values()):
+            cluster_labels[v] = k
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.int32)
         barcode = torch.as_tensor(barcode, dtype=torch.float32)
