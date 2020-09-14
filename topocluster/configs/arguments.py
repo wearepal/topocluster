@@ -60,7 +60,7 @@ class BaseArgs(TypedFlags):
 
     # Cluster settings
     cluster_label_file: str = ""
-    visualize_clusters: bool = False
+    visualize_clusters: bool = True
     # General settings
     use_wandb: bool = False
 
