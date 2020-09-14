@@ -58,11 +58,11 @@ def cluster(
         reduced = reducer.fit_transform(encoded)
         cluster_viz, ax = plt.subplots(dpi=100)
         ax.scatter(reduced[:, 0], reduced[:, 1], c=preds.cpu().detach().numpy(), cmap="tab10")
-        plt.legend(loc='upper left', ncol=1)
         ax.set_title("UMAP-reduced Clusters")
+        plt.legend(loc='upper left')
+        logging_dict["cluster_viz"] = wandb.Image(cluster_viz)
         plt.close(cluster_viz)
 
-        logging_dict["cluster_viz"] = wandb.Image(cluster_viz)
     counts = np.zeros((num_clusters, num_clusters), dtype=np.int64)
     counts, _ = count_occurances(counts, preds.cpu().numpy(), s, y, s_count, args.cluster)
     context_acc, _, logging_dict_t = find_assignment(counts, preds.size(0))
