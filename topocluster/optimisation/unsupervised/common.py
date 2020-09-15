@@ -74,7 +74,7 @@ def cluster(
         def _plot_clusters(_preds: np.ndarray[np.float32], _suffix: str = "") -> None:
             cluster_viz, ax = plt.subplots(dpi=100)
             ax.scatter(
-                reduced[:, 0], reduced[:, 1], c=_preds, cmap="tab10"    # type: ignore[arg-type]
+                reduced[:, 0], reduced[:, 1], c=_preds, cmap="tab10"  # type: ignore[arg-type]
             )
             ax.set_title(f"UMAP-reduced Clusters, {_suffix}")
             key = "cluster_viz"

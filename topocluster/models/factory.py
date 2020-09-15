@@ -1,8 +1,6 @@
 from typing import Tuple, Union, List, Optional, Mapping, Dict
 import torch.nn as nn
 
-from topocluster import layers
-from topocluster.configs import ClusterArgs
 from topocluster.models import Classifier
 from topocluster.models.configs import ModelFn
 
