@@ -16,7 +16,6 @@ __all__ = ["TopoCluster"]
 
 
 class TopoCluster:
-    
     def __init__(
         self,
         k_kde: int = 100,
@@ -82,7 +81,7 @@ class TopoCluster:
                 for key, values in clusters_b.items():
                     clusters[key].extend(values)
                 barcode.append(pd_b)
-            
+
             barcode = np.concatenate(barcode, axis=0)
         else:
             clusters, barcode = _partialled(x)
@@ -135,7 +134,13 @@ def compute_barcode(
 
 
 def major(
-    pc: np.ndarray[np.float32], k_vrc: int, k_kde: int, scale: float, destnum: int, lr: float, epochs: int
+    pc: np.ndarray[np.float32],
+    k_vrc: int,
+    k_kde: int,
+    scale: float,
+    destnum: int,
+    lr: float,
+    epochs: int,
 ):
     for _ in range(epochs):
         f, I1 = compute_density_map(pc, k_kde, scale)
@@ -244,6 +249,7 @@ def find_entry_idx_by_point(entries: Dict[int, List[int]], point_idx: int) -> Op
             if i == point_idx:
                 return np.int64(index)
     return None
+
 
 @jit(nopython=True)
 def cluster(

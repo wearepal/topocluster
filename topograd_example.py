@@ -4,7 +4,6 @@ import numpy as np
 import torch
 
 from topocluster.optimisation.unsupervised import TopoCluster
-from topocluster.optimisation.unsupervised.common import cluster
 
 np.random.seed(0)
 mean = [3.1, 0]
