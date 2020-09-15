@@ -26,7 +26,8 @@ __all__ = [
 ]
 
 T = TypeVar("T")
- 
+
+
 def get_data_dim(data_loader: DataLoader) -> Tuple[int, ...]:
     x = next(iter(data_loader))[0]
     x_dim = x.shape[1:]
@@ -53,7 +54,7 @@ class BraceString(str):
 class StyleAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra=None):
         super(StyleAdapter, self).__init__(logger, extra)
-    
+
     @staticmethod
     def process(msg: str, kwargs: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         # if kwargs.pop('style', "%") == "{":  # optional

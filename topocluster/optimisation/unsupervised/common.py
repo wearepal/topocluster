@@ -63,14 +63,16 @@ def cluster(
         ax.set_title(f"UMAP-reduced Clusters, threshold={args.tc_threshold}")
         logging_dict["cluster_viz"] = wandb.Image(cluster_viz)
         plt.close(cluster_viz)
-    try:    
+    try:
         counts = np.zeros((num_clusters, num_clusters), dtype=np.int64)
         counts, _ = count_occurances(counts, preds.cpu().numpy(), s, y, s_count, args.cluster)
         context_acc, _, logging_dict_t = find_assignment(counts, preds.size(0))
         logging_dict.update(logging_dict_t)
     except IndexError:
-        warnings.warn("Clustering purity could not be computed because the number of predicted " 
-                      "clusters exceeds the number of groun-truth clusters.") 
+        warnings.warn(
+            "Clustering purity could not be computed because the number of predicted "
+            "clusters exceeds the number of groun-truth clusters."
+        )
     prepared = (
         f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}" for k, v in logging_dict.items()
     )
