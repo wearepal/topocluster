@@ -54,7 +54,7 @@ def cluster(
         if isinstance(encoded, Tensor):
             encoded = encoded.cpu().detach().numpy()
         n_neighbours = args.tc_umap_kwargs["n_components"] if args.tc_umap_kwargs else None
-        reducer = umap.UMAP(n_neighbors=n_neighbours, n_components=2)
+        reducer = umap.UMAP(n_neighbors=n_neighbours, n_components=2, random_state=args.seed)
         reduced = reducer.fit_transform(encoded)
         cluster_viz, ax = plt.subplots(dpi=100)
         ax.scatter(reduced[:, 0], reduced[:, 1], c=preds.cpu().detach().numpy(), cmap="tab10")
