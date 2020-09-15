@@ -64,7 +64,7 @@ class TopoCluster:
             _x: np.ndarray,
         ) -> Tuple[Dict[int, np.ndarray[np.int]], np.ndarray[np.float]]:
             return compute_barcode(
-                point_cloud=_x,
+                pc=_x,
                 k_kde=self.k_kde,
                 k_vrc=self.k_vrc,
                 scale=self.scale,
@@ -72,17 +72,19 @@ class TopoCluster:
             )
 
         clusters: Mapping[int, Union[List[np.int], np.array[np.int]]]
+        barcode: np.ndarray[np.float32]
+
         if batch_size < num_samples:
             clusters = defaultdict(list)
-            barcode: List[np.array[np.float32]] = []
+            barcode_ls: List[np.array[np.float32]] = []
             batches = np.array_split(x, indices_or_sections=batch_size, axis=0)
             for batch in batches:
                 clusters_b, pd_b = _partialled(batch)
                 for key, values in clusters_b.items():
                     clusters[key].extend(values)
-                barcode.append(pd_b)
+                barcode_ls.append(pd_b)
 
-            barcode = np.concatenate(barcode, axis=0)
+            barcode = np.concatenate(barcode_ls, axis=0)
         else:
             clusters, barcode = _partialled(x)
 
@@ -97,18 +99,18 @@ class TopoCluster:
 
 
 def compute_barcode(
-    point_cloud: np.ndarray, k_kde: int, k_vrc: int, scale: float, threshold: float
+    pc: np.ndarray, k_kde: int, k_vrc: int, scale: float, threshold: float
 ) -> Tuple[Dict[int, np.ndarray[np.int]], np.ndarray[np.float]]:
-    point_cloud = point_cloud.astype(float)
+    pc = pc.astype(float)
     #  Compute the k-NN KDE
-    density_map, _ = compute_density_map(point_cloud, k_kde, scale)
+    density_map, _ = compute_density_map(pc, k_kde, scale)
     density_map = density_map.astype(float)
 
     sorted_idxs = np.argsort(density_map)
     density_map_sorted = density_map[sorted_idxs]
-    point_cloud = point_cloud[sorted_idxs]
+    pc = pc[sorted_idxs]
 
-    _, vrc_indexes = compute_vrc(point_cloud, k=k_vrc)
+    _, vrc_indexes = compute_vrc(pc, k=k_vrc)
     ddd, ddqq = cluster(density_map_sorted, vrc_indexes, threshold=threshold)
     if threshold == 1:
         see = np.array([elem for elem in ddqq if (elem != np.array([-1, -1])).any()])
@@ -140,12 +142,14 @@ def major(
     scale: float,
     destnum: int,
     lr: float,
-    epochs: int,
-):
-    for _ in range(epochs):
+    iters: int,
+) -> Tuple[np.ndarray[np.float32], np.ndarray[np.float32]]:
+    if iters < 1:
+        raise ValueError("Number of iterations must be at least 1.")
+    for _ in range(iters):
         f, I1 = compute_density_map(pc, k_kde, scale)
-        f = f.astype(float)
-        pc = pc.astype(float)
+        f = f.astype(np.float32)
+        pc = pc.astype(np.float32)
 
         sorted_idxs = np.argsort(f)
         I1 = I1[sorted_idxs]
@@ -175,20 +179,20 @@ def major(
         nochangepairs = pdpairs[nochanging]
         #             print(oripd)
         for i in changepairs:
-            coeff = (
+            coeff0 = (
                 np.sqrt(2)
                 / len(changepairs)
                 * np.exp(-np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / scale)
             )
-            direction = pc[i[0]] - pc[I1[i[0]]]
-            pc[I1[i[0]]] = pc[I1[i[0]]] - lr * multiply(direction, coeff)
+            direction0 = pc[i[0]] - pc[I1[i[0]]]
+            pc[I1[i[0]]] -= lr * multiply(direction0, coeff0)
             coeff1 = (
                 -np.sqrt(2)
                 / len(changepairs)
                 * np.exp(-np.linalg.norm(pc[i[1]] - pc[I1[i[1]]], axis=1) ** 2 / scale)
             )
             direction1 = pc[i[1]] - pc[I1[i[1]]]
-            pc[I1[i[1]]] = pc[I1[i[1]]] - lr * multiply(direction1, coeff1)
+            pc[I1[i[1]]] -= multiply(direction1, coeff1)
 
         pd11 = f[changepairs]
         print("weakening dist: " + str(np.sum(pd11[:, 0] - pd11[:, 1]) / 2))
@@ -198,7 +202,7 @@ def major(
             if dist == 0:
                 pass
             else:
-                coeff = (
+                coeff0 = (
                     1
                     / dist
                     * (f[i[0]] - dest[0])
@@ -206,8 +210,8 @@ def major(
                     / len(nochangepairs)
                     * np.exp(-np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / scale)
                 )
-                direction = pc[i[0]] - pc[I1[i[0]]]
-                pc[I1[i[0]]] = pc[I1[i[0]]] - lr * multiply(direction, coeff)
+                direction0 = pc[i[0]] - pc[I1[i[0]]]
+                pc[I1[i[0]]] -= lr * multiply(direction0, coeff0)
                 coeff1 = (
                     1
                     / dist
@@ -235,7 +239,7 @@ def multiply(arr: np.ndarray, scalar: float) -> np.ndarray:
 def compute_density_map(x: np.ndarray, k: int, scale: float) -> Tuple[np.ndarray, np.ndarray]:
     """Compute the k-nearest neighbours kernel density estimate."""
     x = x.astype(np.float32)
-    index = IndexFlatL2(len(x[0]))
+    index = IndexFlatL2(x.shape[1])
     index.add(x)
     values, indexes = index.search(x, k)
     result = np.sum(np.exp(-values / scale), axis=1) / (k * scale)
@@ -274,7 +278,13 @@ def cluster(
 
 
 @jit(nopython=True)
-def merge(f, entries, i, upper_star_idxs, threshold):
+def merge(
+    f: np.ndarray,
+    entries: Dict[int, List[int]],
+    ref_idx: int,
+    upper_star_idxs: List[int],
+    threshold: float,
+) -> Tuple[Dict[int, List[int]], np.ndarray[np.int]]:
     ggg = np.array([[-1, -1]])
 
     for j in range(len(upper_star_idxs)):
@@ -287,19 +297,18 @@ def merge(f, entries, i, upper_star_idxs, threshold):
     for j in upper_star_idxs:
         entry_idx = find_entry_idx_by_point(entries, j)
 
-        if (e_up != entry_idx) and (f[np.int64(entry_idx)] - f[np.int64(i)] < threshold):
-            ggg = np.append(ggg, np.array([[int(entry_idx), int(i)]]), axis=0)
+        if (e_up != entry_idx) and (f[np.int64(entry_idx)] - f[np.int64(ref_idx)] < threshold):
+            ggg = np.append(ggg, np.array([[int(entry_idx), int(ref_idx)]]), axis=0)
             entries[e_up] = np.append(entries[e_up], entries[entry_idx])
             entries.pop(entry_idx)
 
     return entries, ggg
 
 
-def compute_vrc(point_cloud: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+def compute_vrc(pc: np.ndarray[np.float32], k: int) -> Tuple[np.ndarray, np.ndarray]:
     """"Compute the Vietroris-Rips Complex."""
-    point_cloud = point_cloud.astype("float32")
-    _, dim = point_cloud.shape
-    cpuindex = IndexFlatL2(dim)
-    cpuindex.add(point_cloud)
+    pc = pc.astype(np.float32)
+    cpuindex = IndexFlatL2(pc.shape[1])
+    cpuindex.add(pc)
 
-    return cpuindex.search(point_cloud, k)
+    return cpuindex.search(pc, k)
