@@ -85,7 +85,7 @@ def cluster(
             logging_dict[key] = wandb.Image(cluster_viz)
             plt.close(cluster_viz)
 
-        _plot_clusters(_preds=ground_truth, _suffix="ground_truth")
+        _plot_clusters(_preds=ground_truth, _suffix="ground truth")
 
     if args.method == "kmeans":
         preds = run_kmeans_faiss(
