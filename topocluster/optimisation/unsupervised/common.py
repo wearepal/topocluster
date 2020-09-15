@@ -60,7 +60,9 @@ def cluster(
         _logging_dict_t["NMI"] = _nmi
 
         if _suffix:
-            _logging_dict_t = {f"{key}_{_suffix}": value for key, value in _logging_dict_t.items()}
+            _logging_dict_t = {
+                f"{key}_[{_suffix}]": value for key, value in _logging_dict_t.items()
+            }
             logging_dict.update(_logging_dict_t)
         return _acc, _ari, _nmi
 
@@ -83,7 +85,7 @@ def cluster(
             logging_dict[key] = wandb.Image(cluster_viz)
             plt.close(cluster_viz)
 
-        _plot_clusters(_preds=ground_truth, _suffix="[ground_truth]")
+        _plot_clusters(_preds=ground_truth, _suffix="ground_truth")
 
     if args.method == "kmeans":
         preds = run_kmeans_faiss(
@@ -129,11 +131,12 @@ def cluster(
 
         best_score = float("-inf")
         for thresh in thresholds:
-            suffix = f"[thresholds={thresh}"
+            suffix = f"threshold={thresh}"
             preds, barcode = clusterer.fit(encoded, threshold=thresh)
-            pd = clusterer.plot_pd(barcode, dpi=100)
-            logging_dict[f"persistence_diagram_{suffix}"] = wandb.Image(pd)
-            plt.close(pd)
+            if thresh == 1:
+                pd = clusterer.plot_pd(barcode, dpi=100)
+                logging_dict[f"persistence_diagram_{suffix}"] = wandb.Image(pd)
+                plt.close(pd)
 
             preds_np = preds.detach().cpu().numpy()
             if args.visualize_clusters:
@@ -154,15 +157,17 @@ def cluster(
                 results.context_nmi = nmi
                 results.context_acc = acc
 
-        if len(thresholds) > 1:
+        if len(thresholds) > 1:  #  type: ignore[attr-defined]
             fig, ax = plt.subplots(dpi=100)
             if all_acc:
-                ax.plot(thresholds, all_acc, label="Acc.")
-            ax.plot(thresholds, all_ari, label="ARI")
-            ax.plot(thresholds, all_nmi, label="NMI")
+                ax.plot(thresholds, all_acc, label="Acc.", color="blueviolet")
+            ax.plot(thresholds, all_ari, label="ARI", color="dodgerblue")
+            ax.plot(thresholds, all_nmi, label="NMI", color="orangered")
             ax.set_xlabel("threshold")
             ax.legend()
-            ax.set_title("Topocluster Threshold Sweep")
+            ax.set_title("Threshold Sweep")
+            ax.set_ylim(0, 1)
+            ax.set_xlim(min(thresholds), max(thresholds))
             logging_dict["threshold_sweep"] = wandb.Image(fig)
             plt.close(fig)
 

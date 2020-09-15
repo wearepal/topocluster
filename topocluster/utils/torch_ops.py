@@ -1,3 +1,5 @@
+from typing import Any, Type, Union
+
 import torch
 import torch.distributions as td
 from torch import Tensor, jit
@@ -16,11 +18,11 @@ __all__ = [
 
 class RoundSTE(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, inputs: Tensor):
+    def forward(ctx: Any, inputs: Tensor) -> Tensor:
         return inputs.round()
 
     @staticmethod
-    def backward(ctx, grad_output: Tensor):
+    def backward(ctx: Any, grad_output: Tensor) -> Tensor:
         """Straight-through estimator"""
         return grad_output
 
@@ -45,6 +47,7 @@ def sample_concrete(logits: Tensor, temperature: float) -> Tensor:
         Tensor: Samples from a concrete distribution with the
         given temperature.
     """
+    Concrete: Union[Type[td.RelaxedBernoulli], Type[td.RelaxedOneHotCategorical]]
     if logits.dim() <= 1 or logits.size(1) <= 1:
         Concrete = td.RelaxedBernoulli
     else:
