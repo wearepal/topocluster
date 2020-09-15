@@ -131,7 +131,7 @@ def cluster(
 
         best_score = float("-inf")
         for thresh in thresholds:
-            suffix = f"threshold={thresh}"
+            suffix = f"threshold={thresh:.2f}"
             preds, barcode = clusterer.fit(encoded, threshold=thresh)
             if thresh == 1:
                 pd = clusterer.plot_pd(barcode, dpi=100)
