@@ -1,6 +1,6 @@
 """Functions related to saving and loading results."""
 from pathlib import Path
-from typing import Any, Dict, NamedTuple
+from typing import Any, Dict, NamedTuple, Optional
 
 import torch
 
@@ -15,7 +15,7 @@ class ClusterResults(NamedTuple):
     flags: Dict[str, Any]
     cluster_ids: torch.Tensor
     class_ids: torch.Tensor
-    context_acc: float
+    context_acc: Optional[float]
     test_acc: float = float("nan")
 
 

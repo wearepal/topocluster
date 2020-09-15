@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 import warnings
@@ -52,6 +52,7 @@ def cluster(
         logging_dict["persistence_diagram"] = wandb.Image(pd)
         plt.close(pd)
 
+    context_acc: Optional[float]
     if args.visualize_clusters:
         if isinstance(encoded, Tensor):
             encoded = encoded.cpu().detach().numpy()
@@ -73,6 +74,7 @@ def cluster(
             "Clustering purity could not be computed because the number of predicted "
             "clusters exceeds the number of groun-truth clusters."
         )
+        context_acc = None
     prepared = (
         f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}" for k, v in logging_dict.items()
     )
