@@ -74,16 +74,16 @@ def cluster(
         reduced = reducer.fit_transform(encoded)
 
         def _plot_clusters(_preds: np.ndarray[np.float32], _suffix: str = "") -> None:
-            cluster_viz, ax = plt.subplots(dpi=100)
-            ax.scatter(
+            _cluster_viz, _ax = plt.subplots(dpi=100)
+            _ax.scatter(
                 reduced[:, 0], reduced[:, 1], c=_preds, cmap="tab10"  # type: ignore[arg-type]
             )
-            ax.set_title(f"UMAP-reduced Clusters, {_suffix}")
+            _ax.set_title(f"UMAP-reduced Clusters, {_suffix}")
             key = "cluster_viz"
             if _suffix:
                 key += f"_{_suffix}"
-            logging_dict[key] = wandb.Image(cluster_viz)
-            plt.close(cluster_viz)
+            logging_dict[key] = wandb.Image(_cluster_viz)
+            plt.close(_cluster_viz)
 
         _plot_clusters(_preds=ground_truth, _suffix="ground truth")
 
