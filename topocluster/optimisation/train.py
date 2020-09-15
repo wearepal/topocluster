@@ -4,15 +4,13 @@ from __future__ import annotations
 import time
 from logging import Logger
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
-import git
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data.dataset import Dataset
 import wandb
-from sklearn.metrics import confusion_matrix
 from torch import Tensor
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision.models import resnet18, resnet50
@@ -20,45 +18,20 @@ from torchvision.models import resnet18, resnet50
 from topocluster.configs import ClusterArgs
 from topocluster.data.data_loading import DatasetTriplet, load_dataset
 from topocluster.models import (
-    Classifier,
-    CosineSimThreshold,
     Encoder,
-    Method,
-    Model,
-    MultiHeadModel,
-    PseudoLabelEnc,
-    PseudoLabelEncNoNorm,
-    PseudoLabeler,
-    PseudoLabelOutput,
-    RankingStatistics,
     SelfSupervised,
-    build_classifier,
 )
-from topocluster.models.configs.classifiers import fc_net, mp_32x32_net, mp_64x64_net
 from topocluster.utils import (
-    AverageMeter,
-    count_parameters,
     get_data_dim,
     get_logger,
-    prod,
     random_seed,
-    readable_duration,
-    save_results,
-    wandb_log,
 )
 
 from .build import build_ae
-from .evaluation import classify_dataset, encode_dataset
+from .evaluation import encode_dataset
 from .unsupervised import cluster as u_cluster
-from .utils import (
-    convert_and_save_results,
-    count_occurances,
-    find_assignment,
-    get_class_id,
-    get_cluster_label_path,
-    restore_model,
-    save_model,
-)
+from .utils import ClusterResults, get_class_id, get_cluster_label_path
+
 
 __all__ = ["main"]
 
@@ -66,7 +39,9 @@ ARGS: ClusterArgs = None  # type: ignore[assignment]
 LOGGER: Logger = None  # type: ignore[assignment]
 
 
-def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tuple[Model, Path]:
+def main(
+    raw_args: Optional[List[str]] = None, known_only: bool = False
+) -> Tuple[Optional[ClusterResults], Optional[Path]]:
     """Main function
 
     Args:
@@ -75,10 +50,8 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
     Returns:
         the trained generator
     """
-    repo = git.Repo(search_parent_directories=True)
-    sha = repo.head.object.hexsha
-
     args = ClusterArgs(fromfile_prefix_chars="@")
+
     if known_only:
         args.parse_args(raw_args, known_only=True)
         remaining = args.extra_args
@@ -136,26 +109,11 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         pin_memory=True,
     )
 
-    train_loader = DataLoader(
-        datasets.train,
-        shuffle=True,
-        batch_size=ARGS.batch_size,
-        num_workers=ARGS.num_workers,
-        pin_memory=True,
-    )
-
-    val_loader = DataLoader(
-        datasets.test,
-        shuffle=False,
-        batch_size=ARGS.test_batch_size,
-        num_workers=ARGS.num_workers,
-        pin_memory=True,
-    )
-
     # ==== construct networks ====
     input_shape = get_data_dim(context_loader)
-    s_count = datasets.s_dim if datasets.s_dim > 1 else 2
-    y_count = datasets.y_dim if datasets.y_dim > 1 else 2
+    s_count = max(datasets.s_dim, 2)
+    y_count = max(datasets.y_dim, 2)
+
     if ARGS.cluster == "s":
         num_clusters = s_count
     elif ARGS.cluster == "y":
@@ -200,9 +158,11 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
     if args.enc_path:
         if args.encoder == "rotnet":
             assert isinstance(encoder, SelfSupervised)
-            encoder = encoder.get_encoder()
+            encoder_net = encoder.get_encoder()
+        else:
+            encoder_net = encoder
         save_dict = torch.load(args.enc_path, map_location=lambda storage, loc: storage)
-        encoder.load_state_dict(save_dict["encoder"])
+        encoder_net.load_state_dict(save_dict["encoder"])
         if "args" in save_dict:
             args_encoder = save_dict["args"]
             assert args.encoder == args_encoder["encoder_type"]
@@ -213,294 +173,318 @@ def main(raw_args: Optional[List[str]] = None, known_only: bool = False) -> Tupl
         )
         if args.encoder == "rotnet":
             assert isinstance(encoder, SelfSupervised)
-            encoder = encoder.get_encoder()
+            encoder_net = encoder.get_encoder()
+        else:
+            encoder_net = encoder
         # the args names follow the convention of the standalone VAE commandline args
         args_encoder = {"encoder_type": args.encoder, "levels": args.enc_levels}
-        torch.save({"encoder": encoder.state_dict(), "args": args_encoder}, save_dir / "encoder")
+        torch.save(
+            {"encoder": encoder_net.state_dict(), "args": args_encoder}, save_dir / "encoder"
+        )
         LOGGER.info("To make use of this encoder:\n--enc-path {}", save_dir.resolve() / "encoder")
         if ARGS.enc_wandb:
             LOGGER.info("Stopping here because W&B will be messed up...")
-            return
+            return None, None
 
     if ARGS.save_encodings:
         LOGGER.info("Encoding all datasets.")
 
-        def _encode_and_save_dataset(_dataset: Dataset, name: str) -> None:
+        def _encode_and_save_dataset(_dataset: Dataset, _name: str) -> None:
             _encoded_dataset = encode_dataset(ARGS, data=_dataset, generator=encoder)
-            _x, _s, _y = _encoded_dataset.tensors
-            _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both")
-            np.savez(save_dir / name, x=_x, class_id=_class_id)
+            _x, _s, _y = (tensor.numpy() for tensor in _encoded_dataset.tensors)
+            _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both").numpy()
+            np.savez(save_dir / _name, x=_x, class_id=_class_id)
 
-        _encode_and_save_dataset(datasets.context, name="context_data_encoded")
-        _encode_and_save_dataset(datasets.train, name="train_data_encoded")
-        _encode_and_save_dataset(datasets.test, name="test_data_encoded")
+        _encode_and_save_dataset(datasets.context, _name="context_data_encoded")
+        _encode_and_save_dataset(datasets.train, _name="train_data_encoded")
+        _encode_and_save_dataset(datasets.test, _name="test_data_encoded")
 
         LOGGER.info(f"Datasets have been encoded and saved to {save_dir.resolve()}.")
 
     cluster_label_path = get_cluster_label_path(ARGS, save_dir)
     if ARGS.method in ("kmeans", "topocluster"):
         results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
-        pth = save_results(save_path=cluster_label_path, cluster_results=results)
-        return (), pth
+        path_to_preds = results.save(save_path=cluster_label_path)
+        return results, path_to_preds
     else:
-        if ARGS.finetune_encoder:
-            encoder.freeze_initial_layers(
-                ARGS.freeze_layers, {"lr": ARGS.finetune_lr, "weight_decay": ARGS.weight_decay}
-            )
+        raise ValueError("Invalid method.")
 
-        # ================================= labeler =================================
-        pseudo_labeler: PseudoLabeler
-        if ARGS.pseudo_labeler == "ranking":
-            pseudo_labeler = RankingStatistics(k_num=ARGS.k_num)
-        elif ARGS.pseudo_labeler == "cosine":
-            pseudo_labeler = CosineSimThreshold(
-                upper_threshold=ARGS.upper_threshold, lower_threshold=ARGS.lower_threshold
-            )
+    # else:
+    #     train_loader = DataLoader(
+    #         datasets.train,
+    #         shuffle=True,
+    #         batch_size=ARGS.batch_size,
+    #         num_workers=ARGS.num_workers,
+    #         pin_memory=True,
+    #     )
 
-        # ================================= method =================================
-        method: Method
-        if ARGS.method == "pl_enc":
-            method = PseudoLabelEnc()
-        elif ARGS.method == "pl_output":
-            method = PseudoLabelOutput()
-        elif ARGS.method == "pl_enc_no_norm":
-            method = PseudoLabelEncNoNorm()
-
-        # ================================= classifier =================================
-        clf_optimizer_kwargs = {"lr": ARGS.lr, "weight_decay": ARGS.weight_decay}
-        clf_kwargs = {}
-        clf_fn = fc_net
-        clf_kwargs["hidden_dims"] = args.cl_hidden_dims
-        clf_input_shape = (prod(enc_shape),)  # fc_net first flattens the input
-
-        classifier = build_classifier(
-            input_shape=clf_input_shape,
-            target_dim=s_count if ARGS.use_multi_head else num_clusters,
-            model_fn=clf_fn,
-            model_kwargs=clf_kwargs,
-            optimizer_kwargs=clf_optimizer_kwargs,
-            num_heads=y_count if ARGS.use_multi_head else 1,
-        )
-        classifier.to(args._device)
-
-        model: Union[Model, MultiHeadModel]
-        if ARGS.use_multi_head:
-            labeler_kwargs = {}
-            if args.dataset == "cmnist":
-                labeler_fn = mp_32x32_net
-            elif args.dataset == "celeba":
-                labeler_fn = mp_64x64_net
-            else:
-                labeler_fn = fc_net
-                labeler_kwargs["hidden_dims"] = args.labeler_hidden_dims
-
-            labeler_optimizer_kwargs = {"lr": ARGS.labeler_lr, "weight_decay": ARGS.labeler_wd}
-            clf_fn = fc_net
-            clf_kwargs["hidden_dims"] = args.cl_hidden_dims
-            labeler: Classifier = build_classifier(
-                input_shape=input_shape,
-                target_dim=s_count,
-                model_fn=labeler_fn,
-                model_kwargs=labeler_kwargs,
-                optimizer_kwargs=labeler_optimizer_kwargs,
-            )
-            assert isinstance(labeler, nn.ModuleList)
-            labeler.to(args._device)
-            LOGGER.info("Fitting the labeler to the labeled data.")
-            labeler.fit(
-                train_loader,
-                epochs=ARGS.labeler_epochs,
-                device=ARGS._device,
-                use_wandb=ARGS.labeler_wandb,
-            )
-            labeler.eval()
-            model = MultiHeadModel(
-                encoder=encoder,
-                classifiers=classifier,
-                method=method,
-                pseudo_labeler=pseudo_labeler,
-                labeler=labeler,
-                train_encoder=ARGS.finetune_encoder,
-            )
-        else:
-            model = Model(
-                encoder=encoder,
-                classifier=classifier,
-                method=method,
-                pseudo_labeler=pseudo_labeler,
-                train_encoder=ARGS.finetune_encoder,
-            )
-
-        start_epoch = 1  # start at 1 so that the val_freq works correctly
-        # Resume from checkpoint
-        if ARGS.resume is not None:
-            LOGGER.info("Restoring generator from checkpoint")
-            model, start_epoch = restore_model(ARGS, Path(ARGS.resume), model)
-            if ARGS.evaluate:
-                pth_path = convert_and_save_results(
-                    ARGS,
-                    cluster_label_path,
-                    classify_dataset(ARGS, model, datasets.context),
-                    context_acc=float("nan"),  # TODO: compute this
-                )
-                return model, pth_path
-
-        # Logging
-        # wandb.set_model_graph(str(generator))
-        num_parameters = count_parameters(model)
-        LOGGER.info("Number of trainable parameters: {}", num_parameters)
-
-        # best_loss = float("inf")
-        best_acc = 0.0
-        n_vals_without_improvement = 0
-        # super_val_freq = ARGS.super_val_freq or ARGS.val_freq
-
-        itr = 0
-        # Train generator for N epochs
-        for epoch in range(start_epoch, start_epoch + ARGS.epochs):
-            if n_vals_without_improvement > ARGS.early_stopping > 0:
-                break
-
-            itr = train(
-                model=model, context_data=context_loader, train_data=train_loader, epoch=epoch
-            )
-
-            if epoch % ARGS.val_freq == 0:
-                val_acc, val_log = validate(model, val_loader)
-
-                if val_acc > best_acc:
-                    best_acc = val_acc
-                    save_model(args, save_dir, model, epoch=epoch, sha=sha, best=True)
-                    n_vals_without_improvement = 0
-                else:
-                    n_vals_without_improvement += 1
-
-                prepare = (
-                    f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}"
-                    for k, v in val_log.items()
-                )
-                LOGGER.info(
-                    "[VAL] Epoch {:04d} | {} | " "No improvement during validation: {:02d}",
-                    epoch,
-                    " | ".join(prepare),
-                    n_vals_without_improvement,
-                )
-                wandb_log(ARGS, val_log, step=itr)
-            # if ARGS.super_val and epoch % super_val_freq == 0:
-            #     log_metrics(ARGS, model=model.bundle, data=datasets, step=itr)
-            #     save_model(args, save_dir, model=model.bundle, epoch=epoch, sha=sha)
-
-        LOGGER.info("Training has finished.")
-        # path = save_model(args, save_dir, model=model, epoch=epoch, sha=sha)
-        # model, _ = restore_model(args, path, model=model)
-        test_acc, _ = validate(model, val_loader)
-        context_acc, _ = validate(model, context_loader)
-        print("test_acc", test_acc)
-        print("context_acc", context_acc)
-        pth_path = convert_and_save_results(
-            ARGS,
-            cluster_label_path=cluster_label_path,
-            results=classify_dataset(ARGS, model, datasets.context),
-            context_acc=context_acc,
-            test_acc=test_acc,
-        )
-        return model, pth_path
+    #     val_loader = DataLoader(
+    #         datasets.test,
+    #         shuffle=False,
+    #         batch_size=ARGS.test_batch_size,
+    #         num_workers=ARGS.num_workers,
+    #         pin_memory=True,
+    #     )
 
 
-def train(model: Model, context_data: DataLoader, train_data: DataLoader, epoch: int) -> int:
-    total_loss_meter = AverageMeter()
-    loss_meters: Optional[Dict[str, AverageMeter]] = None
+#         if ARGS.finetune_encoder:
+#             encoder.freeze_initial_layers(
+#                 ARGS.freeze_layers, {"lr": ARGS.finetune_lr, "weight_decay": ARGS.weight_decay}
+#             )
 
-    time_meter = AverageMeter()
-    start_epoch_time = time.time()
-    end = start_epoch_time
-    epoch_len = min(len(context_data), len(train_data))
-    itr = start_itr = (epoch - 1) * epoch_len
-    data_iterator = zip(context_data, train_data)
-    model.train()
-    s_count = ARGS._s_dim if ARGS._s_dim > 1 else 2
+#         # ================================= labeler =================================
+#         pseudo_labeler: PseudoLabeler
+#         if ARGS.pseudo_labeler == "ranking":
+#             pseudo_labeler = RankingStatistics(k_num=ARGS.k_num)
+#         elif ARGS.pseudo_labeler == "cosine":
+#             pseudo_labeler = CosineSimThreshold(
+#                 upper_threshold=ARGS.upper_threshold, lower_threshold=ARGS.lower_threshold
+#             )
 
-    for itr, ((x_c, _, _), (x_t, s_t, y_t)) in enumerate(data_iterator, start=start_itr):
+#         # ================================= method =================================
+#         method: Method
+#         if ARGS.method == "pl_enc":
+#             method = PseudoLabelEnc()
+#         elif ARGS.method == "pl_output":
+#             method = PseudoLabelOutput()
+#         elif ARGS.method == "pl_enc_no_norm":
+#             method = PseudoLabelEncNoNorm()
 
-        x_c, x_t, y_t, s_t = to_device(x_c, x_t, y_t, s_t)
+#         # ================================= classifier =================================
+#         clf_optimizer_kwargs = {"lr": ARGS.lr, "weight_decay": ARGS.weight_decay}
+#         clf_kwargs = {}
+#         clf_fn = fc_net
+#         clf_kwargs["hidden_dims"] = args.cl_hidden_dims
+#         clf_input_shape = (prod(enc_shape),)  # fc_net first flattens the input
 
-        if ARGS.with_supervision and not ARGS.use_multi_head:
-            class_id = get_class_id(s=s_t, y=y_t, s_count=s_count, to_cluster=ARGS.cluster)
-            loss_sup, logging_sup = model.supervised_loss(
-                x_t, class_id, ce_weight=ARGS.sup_ce_weight, bce_weight=ARGS.sup_bce_weight
-            )
-        else:
-            loss_sup = x_t.new_zeros(())
-            logging_sup = {}
-        loss_unsup, logging_unsup = model.unsupervised_loss(x_c)
-        loss = loss_sup + loss_unsup
+#         classifier = build_classifier(
+#             input_shape=clf_input_shape,
+#             target_dim=s_count if ARGS.use_multi_head else num_clusters,
+#             model_fn=clf_fn,
+#             model_kwargs=clf_kwargs,
+#             optimizer_kwargs=clf_optimizer_kwargs,
+#             num_heads=y_count if ARGS.use_multi_head else 1,
+#         )
+#         classifier.to(args._device)
 
-        model.zero_grad()
-        loss.backward()
-        model.step()
+#         model: Union[Model, MultiHeadModel]
+#         if ARGS.use_multi_head:
+#             labeler_kwargs = {}
+#             if args.dataset == "cmnist":
+#                 labeler_fn = mp_32x32_net
+#             elif args.dataset == "celeba":
+#                 labeler_fn = mp_64x64_net
+#             else:
+#                 labeler_fn = fc_net
+#                 labeler_kwargs["hidden_dims"] = args.labeler_hidden_dims
 
-        # Log losses
-        logging_dict = {**logging_unsup, **logging_sup}
-        total_loss_meter.update(loss.item())
-        if loss_meters is None:
-            loss_meters = {name: AverageMeter() for name in logging_dict}
-        for name, value in logging_dict.items():
-            loss_meters[name].update(value)
+#             labeler_optimizer_kwargs = {"lr": ARGS.labeler_lr, "weight_decay": ARGS.labeler_wd}
+#             clf_fn = fc_net
+#             clf_kwargs["hidden_dims"] = args.cl_hidden_dims
+#             labeler: Classifier = build_classifier(
+#                 input_shape=input_shape,
+#                 target_dim=s_count,
+#                 model_fn=labeler_fn,
+#                 model_kwargs=labeler_kwargs,
+#                 optimizer_kwargs=labeler_optimizer_kwargs,
+#             )
+#             assert isinstance(labeler, nn.ModuleList)
+#             labeler.to(args._device)
+#             LOGGER.info("Fitting the labeler to the labeled data.")
+#             labeler.fit(
+#                 train_loader,
+#                 epochs=ARGS.labeler_epochs,
+#                 device=ARGS._device,
+#                 use_wandb=ARGS.labeler_wandb,
+#             )
+#             labeler.eval()
+#             model = MultiHeadModel(
+#                 encoder=encoder,
+#                 classifiers=classifier,
+#                 method=method,
+#                 pseudo_labeler=pseudo_labeler,
+#                 labeler=labeler,
+#                 train_encoder=ARGS.finetune_encoder,
+#             )
+#         else:
+#             model = Model(
+#                 encoder=encoder,
+#                 classifier=classifier,
+#                 method=method,
+#                 pseudo_labeler=pseudo_labeler,
+#                 train_encoder=ARGS.finetune_encoder,
+#             )
 
-        time_for_batch = time.time() - end
-        time_meter.update(time_for_batch)
+#         start_epoch = 1  # start at 1 so that the val_freq works correctly
+#         # Resume from checkpoint
+#         if ARGS.resume is not None:
+#             LOGGER.info("Restoring generator from checkpoint")
+#             model, start_epoch = restore_model(ARGS, Path(ARGS.resume), model)
+#             if ARGS.evaluate:
+#                 pth_path = convert_and_save_results(
+#                     ARGS,
+#                     cluster_label_path,
+#                     classify_dataset(ARGS, model, datasets.context),
+#                     context_acc=float("nan"),  # TODO: compute this
+#                 )
+#                 return model, pth_path
 
-        wandb_log(ARGS, logging_dict, step=itr)
-        end = time.time()
+#         # Logging
+#         # wandb.set_model_graph(str(generator))
+#         num_parameters = count_parameters(model)
+#         LOGGER.info("Number of trainable parameters: {}", num_parameters)
 
-    time_for_epoch = time.time() - start_epoch_time
-    assert loss_meters is not None
-    log_string = " | ".join(f"{name}: {meter.avg:.5g}" for name, meter in loss_meters.items())
-    LOGGER.info(
-        "[TRN] Epoch {:04d} | Duration: {} | Batches/s: {:.4g} | {} ({:.5g})",
-        epoch,
-        readable_duration(time_for_epoch),
-        1 / time_meter.avg,
-        log_string,
-        total_loss_meter.avg,
-    )
-    return itr
+#         # best_loss = float("inf")
+#         best_acc = 0.0
+#         n_vals_without_improvement = 0
+#         # super_val_freq = ARGS.super_val_freq or ARGS.val_freq
+
+#         itr = 0
+#         # Train generator for N epochs
+#         for epoch in range(start_epoch, start_epoch + ARGS.epochs):
+#             if n_vals_without_improvement > ARGS.early_stopping > 0:
+#                 break
+
+#             itr = train(
+#                 model=model, context_data=context_loader, train_data=train_loader, epoch=epoch
+#             )
+
+#             if epoch % ARGS.val_freq == 0:
+#                 val_acc, val_log = validate(model, val_loader)
+
+#                 if val_acc > best_acc:
+#                     best_acc = val_acc
+#                     save_model(args, save_dir, model, epoch=epoch, sha=sha, best=True)
+#                     n_vals_without_improvement = 0
+#                 else:
+#                     n_vals_without_improvement += 1
+
+#                 prepare = (
+#                     f"{k}: {v:.5g}" if isinstance(v, float) else f"{k}: {v}"
+#                     for k, v in val_log.items()
+#                 )
+#                 LOGGER.info(
+#                     "[VAL] Epoch {:04d} | {} | " "No improvement during validation: {:02d}",
+#                     epoch,
+#                     " | ".join(prepare),
+#                     n_vals_without_improvement,
+#                 )
+#                 wandb_log(ARGS, val_log, step=itr)
+#             # if ARGS.super_val and epoch % super_val_freq == 0:
+#             #     log_metrics(ARGS, model=model.bundle, data=datasets, step=itr)
+#             #     save_model(args, save_dir, model=model.bundle, epoch=epoch, sha=sha)
+
+#         LOGGER.info("Training has finished.")
+#         # path = save_model(args, save_dir, model=model, epoch=epoch, sha=sha)
+#         # model, _ = restore_model(args, path, model=model)
+#         test_acc, _ = validate(model, val_loader)
+#         context_acc, _ = validate(model, context_loader)
+#         print("test_acc", test_acc)
+#         print("context_acc", context_acc)
+#         pth_path = convert_and_save_results(
+#             ARGS,
+#             cluster_label_path=cluster_label_path,
+#             results=classify_dataset(ARGS, model, datasets.context),
+#             context_acc=context_acc,
+#             test_acc=test_acc,
+#         )
+#         return model, pth_path
 
 
-def validate(model: Model, val_data: DataLoader) -> Tuple[float, Dict[str, Union[float, str]]]:
-    model.eval()
-    to_cluster = ARGS.cluster
-    y_count = ARGS._y_dim if ARGS._y_dim > 1 else 2
-    s_count = ARGS._s_dim if ARGS._s_dim > 1 else 2
-    if to_cluster == "s":
-        num_clusters = s_count
-    elif to_cluster == "y":
-        num_clusters = y_count
-    else:
-        num_clusters = s_count * y_count
-    counts = np.zeros((num_clusters, num_clusters), dtype=np.int64)
-    num_total = 0
-    cluster_ids: List[np.ndarray] = []
-    class_ids: List[Tensor] = []
+# def train(model: Model, context_data: DataLoader, train_data: DataLoader, epoch: int) -> int:
+#     total_loss_meter = AverageMeter()
+#     loss_meters: Optional[Dict[str, AverageMeter]] = None
 
-    with torch.set_grad_enabled(False):
-        for (x_v, s_v, y_v) in val_data:
-            x_v = to_device(x_v)
-            logits = model(x_v)
-            preds = logits.argmax(dim=-1).detach().cpu().numpy()
-            counts, class_id = count_occurances(counts, preds, s_v, y_v, s_count, to_cluster)
-            num_total += y_v.size(0)
-            cluster_ids.append(preds)
-            class_ids.append(class_id)
+#     time_meter = AverageMeter()
+#     start_epoch_time = time.time()
+#     end = start_epoch_time
+#     epoch_len = min(len(context_data), len(train_data))
+#     itr = start_itr = (epoch - 1) * epoch_len
+#     data_iterator = zip(context_data, train_data)
+#     model.train()
+#     s_count = ARGS._s_dim if ARGS._s_dim > 1 else 2
 
-    # find best assignment for cluster to classes
-    best_acc, best_ass, logging_dict = find_assignment(counts, num_total)
-    cluster_ids_np = np.concatenate(cluster_ids, axis=0)
-    pred_class_ids = best_ass[cluster_ids_np]  # use the best assignment to get the class IDs
-    true_class_ids = torch.cat(class_ids).numpy()
-    conf_mat = confusion_matrix(true_class_ids, pred_class_ids, normalize="all")
-    logging_dict["confusion matrix"] = f"\n{conf_mat}\n"
-    return best_acc, logging_dict
+#     for itr, ((x_c, _, _), (x_t, s_t, y_t)) in enumerate(data_iterator, start=start_itr):
+
+#         x_c, x_t, y_t, s_t = to_device(x_c, x_t, y_t, s_t)
+
+#         if ARGS.with_supervision and not ARGS.use_multi_head:
+#             class_id = get_class_id(s=s_t, y=y_t, s_count=s_count, to_cluster=ARGS.cluster)
+#             loss_sup, logging_sup = model.supervised_loss(
+#                 x_t, class_id, ce_weight=ARGS.sup_ce_weight, bce_weight=ARGS.sup_bce_weight
+#             )
+#         else:
+#             loss_sup = x_t.new_zeros(())
+#             logging_sup = {}
+#         loss_unsup, logging_unsup = model.unsupervised_loss(x_c)
+#         loss = loss_sup + loss_unsup
+
+#         model.zero_grad()
+#         loss.backward()
+#         model.step()
+
+#         # Log losses
+#         logging_dict = {**logging_unsup, **logging_sup}
+#         total_loss_meter.update(loss.item())
+#         if loss_meters is None:
+#             loss_meters = {name: AverageMeter() for name in logging_dict}
+#         for name, value in logging_dict.items():
+#             loss_meters[name].update(value)
+
+#         time_for_batch = time.time() - end
+#         time_meter.update(time_for_batch)
+
+#         wandb_log(ARGS, logging_dict, step=itr)
+#         end = time.time()
+
+#     time_for_epoch = time.time() - start_epoch_time
+#     assert loss_meters is not None
+#     log_string = " | ".join(f"{name}: {meter.avg:.5g}" for name, meter in loss_meters.items())
+#     LOGGER.info(
+#         "[TRN] Epoch {:04d} | Duration: {} | Batches/s: {:.4g} | {} ({:.5g})",
+#         epoch,
+#         readable_duration(time_for_epoch),
+#         1 / time_meter.avg,
+#         log_string,
+#         total_loss_meter.avg,
+#     )
+#     return itr
+
+
+# def validate(model: Model, val_data: DataLoader) -> Tuple[float, Dict[str, Union[float, str]]]:
+#     model.eval()
+#     to_cluster = ARGS.cluster
+#     y_count = ARGS._y_dim if ARGS._y_dim > 1 else 2
+#     s_count = ARGS._s_dim if ARGS._s_dim > 1 else 2
+#     if to_cluster == "s":
+#         num_clusters = s_count
+#     elif to_cluster == "y":
+#         num_clusters = y_count
+#     else:
+#         num_clusters = s_count * y_count
+#     counts = np.zeros((num_clusters, num_clusters), dtype=np.int64)
+#     num_total = 0
+#     cluster_ids: List[np.ndarray] = []
+#     class_ids: List[Tensor] = []
+
+#     with torch.set_grad_enabled(False):
+#         for (x_v, s_v, y_v) in val_data:
+#             x_v = to_device(x_v)
+#             logits = model(x_v)
+#             preds = logits.argmax(dim=-1).detach().cpu().numpy()
+#             counts, class_id = count_occurances(counts, preds, s_v, y_v, s_count, to_cluster)
+#             num_total += y_v.size(0)
+#             cluster_ids.append(preds)
+#             class_ids.append(class_id)
+
+#     # find best assignment for cluster to classes
+#     best_acc, best_ass, logging_dict = find_assignment(counts, num_total)
+#     cluster_ids_np = np.concatenate(cluster_ids, axis=0)
+#     pred_class_ids = best_ass[cluster_ids_np]  # use the best assignment to get the class IDs
+#     true_class_ids = torch.cat(class_ids).numpy()
+#     conf_mat = confusion_matrix(true_class_ids, pred_class_ids, normalize="all")
+#     logging_dict["confusion matrix"] = f"\n{conf_mat}\n"
+#     return best_acc, logging_dict
 
 
 def to_device(*tensors: Tensor) -> Union[Tensor, Tuple[Tensor, ...]]:

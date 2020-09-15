@@ -1,6 +1,7 @@
 from __future__ import annotations
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Tuple, Literal, Union, Dict
+from typing import Any, Optional, Tuple, Literal, Union, Dict
 
 from lapjv import lapjv  # pylint: disable=no-name-in-module
 import numpy as np
@@ -9,12 +10,12 @@ import torchvision
 from torch import Tensor
 import wandb
 
-from topocluster.utils import wandb_log, save_results, ClusterResults
+from topocluster.utils import wandb_log
 from topocluster.models import Model
 from topocluster.configs import ClusterArgs
 
 __all__ = [
-    "convert_and_save_results",
+    "ClusterResults",
     "count_occurances",
     "find_assignment",
     "get_class_id",
@@ -25,9 +26,37 @@ __all__ = [
 ]
 
 
+@dataclass
+class ClusterResults:
+    """Information that the fcm code passes on to fdm."""
+
+    args: Dict[str, Any]
+    cluster_ids: torch.Tensor
+    class_ids: torch.Tensor
+    context_ari: float = float("nan")
+    context_nmi: float = float("nan")
+    context_acc: float = float("nan")
+    test_acc: float = float("nan")
+
+    def save(self, save_path: Path) -> Path:
+        save_dict = asdict(self)
+        torch.save(save_dict, save_path)
+        print(
+            f"To make use of the generated cluster labels:\n--cluster-label-file {save_path.resolve()}"
+        )
+        return save_path
+
+
 def log_images(
-    args: ClusterArgs, image_batch, name, step, nsamples=64, nrows=8, monochrome=False, prefix=None
-):
+    args: ClusterArgs,
+    image_batch: Tensor,
+    name: str,
+    step: int,
+    nsamples: int = 64,
+    nrows: int = 8,
+    monochrome: bool = False,
+    prefix: Optional[str] = None,
+) -> None:
     """Make a grid of the given images, save them in a file and log them with W&B"""
     prefix = "train_" if prefix is None else f"{prefix}_"
     images = image_batch[:nsamples]
@@ -135,21 +164,21 @@ def get_cluster_label_path(args: ClusterArgs, save_dir: Path) -> Path:
         return save_dir / "cluster_results.pth"
 
 
-def convert_and_save_results(
-    args: ClusterArgs,
-    cluster_label_path: Path,
-    results: Tuple[Tensor, Tensor, Tensor],
-    context_acc: float,
-    test_acc: float = float("nan"),
-) -> Path:
-    clusters, s, y = results
-    s_count = args._s_dim if args._s_dim > 1 else 2
-    class_ids = get_class_id(s=s, y=y, s_count=s_count, to_cluster=args.cluster)
-    cluster_results = ClusterResults(
-        flags=args.as_dict(),
-        cluster_ids=clusters,
-        class_ids=class_ids,
-        context_acc=context_acc,
-        test_acc=test_acc,
-    )
-    return save_results(save_path=cluster_label_path, cluster_results=cluster_results)
+# def convert_and_save_results(
+#     args: ClusterArgs,
+#     cluster_label_path: Path,
+#     results: Tuple[Tensor, Tensor, Tensor],
+#     context_acc: float,
+#     test_acc: float = float("nan"),
+# ) -> Path:
+#     clusters, s, y = results
+#     s_count = args._s_dim if args._s_dim > 1 else 2
+#     class_ids = get_class_id(s=s, y=y, s_count=s_count, to_cluster=args.cluster)
+#     cluster_results = ClusterResults(
+#         flags=args.as_dict(),
+#         cluster_ids=clusters,
+#         class_ids=class_ids,
+#         context_acc=context_acc,
+#         test_acc=test_acc,
+#     )
+#     return save_results(save_path=cluster_label_path, cluster_results=cluster_results)

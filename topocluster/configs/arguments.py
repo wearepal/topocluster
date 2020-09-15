@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import torch
 from ethicml.data import CelebAttrs
@@ -81,10 +81,14 @@ class BaseArgs(TypedFlags):
     tc_scale: float = 0.5
     tc_k_kde: int = 200
     tc_k_vrc: int = 15
-    tc_threshold: float = 1.0
+    tc_thresholds: List[float] = [1]
     tc_umap_kwargs: Optional[Dict[str, int]] = {}
 
     def process_args(self) -> None:
+        if not all([(0 <= thresh <= 1) for thresh in self.tc_thresholds]):
+            raise ValueError(
+                "All threshhold values for topological clustering must be in the range [0, 1]"
+            )
         if not 0 < self.data_pcnt <= 1:
             raise ValueError("data_pcnt has to be between 0 and 1")
         if self.tc_umap_kwargs is not None:
