@@ -26,8 +26,7 @@ __all__ = [
 ]
 
 T = TypeVar("T")
-
-
+ 
 def get_data_dim(data_loader: DataLoader) -> Tuple[int, ...]:
     x = next(iter(data_loader))[0]
     x_dim = x.shape[1:]
@@ -44,18 +43,19 @@ def wandb_log(
 
 
 class BraceString(str):
-    def __mod__(self, other):
+    def __mod__(self, other: str) -> str:
         return self.format(*other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self
 
 
 class StyleAdapter(logging.LoggerAdapter):
     def __init__(self, logger, extra=None):
         super(StyleAdapter, self).__init__(logger, extra)
-
-    def process(self, msg, kwargs):
+    
+    @staticmethod
+    def process(msg: str, kwargs: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         # if kwargs.pop('style', "%") == "{":  # optional
         msg = BraceString(msg)
         return msg, kwargs
