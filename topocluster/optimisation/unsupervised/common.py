@@ -76,14 +76,14 @@ def cluster(
 
         def _plot_clusters(_preds: np.ndarray[np.float32], _suffix: str = "") -> None:
             _cluster_viz, _ax = plt.subplots(dpi=100)
-            cmap = matplotlib.cm.get_cmap('tab10')  # type: ignore[attr-defined]
+            cmap = matplotlib.cm.get_cmap("tab10")  # type: ignore[attr-defined]
             for c in np.unique(_preds):
                 indexes = _preds == c
                 _ax.scatter(
                     reduced[:, 0][indexes],
                     reduced[:, 1][indexes],
-                    label=c,    # type: ignore[arg-type]
-                    c=np.array(cmap(c))[None]   # type: ignore[arg-type]
+                    label=c,  # type: ignore[arg-type]
+                    c=np.array(cmap(c))[None],  # type: ignore[arg-type]
                 )
             _ax.set_title(f"UMAP-reduced Clusters, {_suffix}")
             _ax.legend()
