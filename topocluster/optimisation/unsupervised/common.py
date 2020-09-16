@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib
 import umap
 import wandb
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
@@ -39,7 +40,7 @@ def cluster(
     n_samples = ground_truth.shape[0]
     logging_dict: Dict[str, Any] = {}
 
-    def _compute_purity(
+    def _measure_purity(
         _preds: Union[Tensor, np.ndarray[np.float32]], _suffix: str = ""
     ) -> Tuple[float, float, float]:
         if isinstance(_preds, Tensor):
@@ -75,10 +76,17 @@ def cluster(
 
         def _plot_clusters(_preds: np.ndarray[np.float32], _suffix: str = "") -> None:
             _cluster_viz, _ax = plt.subplots(dpi=100)
-            _ax.scatter(
-                reduced[:, 0], reduced[:, 1], c=_preds, cmap="tab10"  # type: ignore[arg-type]
-            )
+            cmap = matplotlib.cm.get_cmap('tab10')  # type: ignore[attr-defined]
+            for c in np.unique(_preds):
+                indexes = _preds == c
+                _ax.scatter(
+                    reduced[:, 0][indexes],
+                    reduced[:, 1][indexes],
+                    label=c,    # type: ignore[arg-type]
+                    c=np.array(cmap(c))[None]   # type: ignore[arg-type]
+                )
             _ax.set_title(f"UMAP-reduced Clusters, {_suffix}")
+            _ax.legend()
             key = "cluster_viz"
             if _suffix:
                 key += f"_{_suffix}"
@@ -99,7 +107,7 @@ def cluster(
         if args.visualize_clusters:
             _plot_clusters(_preds=preds_np, _suffix="")  #  type: ignore
 
-        acc, ari, nmi = _compute_purity(_preds=preds, _suffix="")
+        acc, ari, nmi = _measure_purity(_preds=preds, _suffix="")
         results = ClusterResults(
             args=args.as_dict(),
             cluster_ids=Tensor(),
@@ -142,7 +150,7 @@ def cluster(
             if args.visualize_clusters:
                 _plot_clusters(_preds=preds_np, _suffix=suffix)
 
-            acc, ari, nmi = _compute_purity(_preds=preds_np, _suffix=suffix)
+            acc, ari, nmi = _measure_purity(_preds=preds_np, _suffix=suffix)
             if acc != float("nan"):
                 all_acc.append(acc)
             all_ari.append(ari)

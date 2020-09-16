@@ -64,11 +64,7 @@ class TopoCluster:
             _x: np.ndarray,
         ) -> Tuple[Dict[int, np.ndarray[np.int]], np.ndarray[np.float]]:
             return compute_barcode(
-                pc=_x,
-                k_kde=self.k_kde,
-                k_vrc=self.k_vrc,
-                scale=self.scale,
-                threshold=threshold,
+                pc=_x, k_kde=self.k_kde, k_vrc=self.k_vrc, scale=self.scale, threshold=threshold,
             )
 
         clusters: Mapping[int, Union[List[np.int], np.array[np.int]]]
