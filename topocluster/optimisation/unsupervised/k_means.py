@@ -23,7 +23,7 @@ def run_kmeans_torch(
     # - cl is the vector of class labels
     # - c  is the cloud of cluster centroids
     start = time.time()
-    c = x[:k, :].clone()  # Simplistic random initialization
+    c = x[:k, :].clPtone()  # Simplistic random initialization
     x_i = LazyTensor(x[:, None, :])  # (Npoints, 1, D)
 
     print("Finding K means...", flush=True)  # flush to avoid conflict with tqdm

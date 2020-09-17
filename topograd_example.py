@@ -1,6 +1,8 @@
 import time
+from topocluster.optimisation.unsupervised.topograd.topograd import topograd
 
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 
 from topocluster.optimisation.unsupervised import TopoCluster
@@ -23,12 +25,9 @@ final[:, 1] = finaly
 mean = [0, 0]
 cov = [[0.7, 0], [0, 0.7]]
 
-start = time.time()
 X = final
 
-clusterer = TopoCluster(
-    k_vrc=30, k_kde=10, scale=0.1, umap_kwargs=dict(n_components=2), batch_size=None
-)
+clusterer = TopoCluster(k_vrc=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
 cluster_labels, barcode = clusterer.fit(X, threshold=1)
 # dddd is cluster label, but when you set thresh to be 1 , ALL the candidate clusters are merged, for this dataset there is only one cluster
 # left after merging. pd is the overall persistence diagram. For this dataset we can see there is only 1 salient candidate cluster. If we set
@@ -38,7 +37,7 @@ print(torch.sort(barcode[:, 0] - barcode[:, 1]))
 # we can see 0.35791 is so much bigger than the rest (0.0744). So if we set a number between 0.35791 and 0.0744. The corresponding candidate
 # cluster will be kept.
 
-# print(cluster_labels)
-# print(time.time() - start)
-pd = clusterer.plot_pd(barcode)
-print(cluster_labels[:10])
+pd_plot = clusterer.plot_pd(barcode)
+
+res, pd = topograd(X,30,10,0.1,2,0.01,500)
+
