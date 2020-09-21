@@ -39,5 +39,5 @@ print(torch.sort(barcode[:, 0] - barcode[:, 1]))
 
 pd_plot = clusterer.plot_pd(barcode)
 
-res, pd = topograd(X,30,10,0.1,2,0.01,500)
+res, pd = topograd(X, 30, 10,0.1,2,0.01,500)
 
