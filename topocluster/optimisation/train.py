@@ -206,26 +206,22 @@ def main(
         results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
         path_to_preds = results.save(save_path=cluster_label_path)
         return results, path_to_preds
-    else:
-        raise ValueError("Invalid method.")
+#     else:
+#         train_loader = DataLoader(
+#             datasets.train,
+#             shuffle=True,
+#             batch_size=ARGS.batch_size,
+#             num_workers=ARGS.num_workers,
+#             pin_memory=True,
+#         )
 
-    # else:
-    #     train_loader = DataLoader(
-    #         datasets.train,
-    #         shuffle=True,
-    #         batch_size=ARGS.batch_size,
-    #         num_workers=ARGS.num_workers,
-    #         pin_memory=True,
-    #     )
-
-    #     val_loader = DataLoader(
-    #         datasets.test,
-    #         shuffle=False,
-    #         batch_size=ARGS.test_batch_size,
-    #         num_workers=ARGS.num_workers,
-    #         pin_memory=True,
-    #     )
-
+#         val_loader = DataLoader(
+#             datasets.test,
+#             shuffle=False,
+#             batch_size=ARGS.test_batch_size,
+#             num_workers=ARGS.num_workers,
+#             pin_memory=True,
+#         )
 
 #         if ARGS.finetune_encoder:
 #             encoder.freeze_initial_layers(
@@ -233,7 +229,8 @@ def main(
 #             )
 
 #         # ================================= labeler =================================
-#         pseudo_labeler: PseudoLabeler
+#         if args.method == "ranking":
+#             pseudo_labeler: PseudoLabeler
 #         if ARGS.pseudo_labeler == "ranking":
 #             pseudo_labeler = RankingStatistics(k_num=ARGS.k_num)
 #         elif ARGS.pseudo_labeler == "cosine":
@@ -381,14 +378,14 @@ def main(
 #         context_acc, _ = validate(model, context_loader)
 #         print("test_acc", test_acc)
 #         print("context_acc", context_acc)
-#         pth_path = convert_and_save_results(
-#             ARGS,
-#             cluster_label_path=cluster_label_path,
-#             results=classify_dataset(ARGS, model, datasets.context),
-#             context_acc=context_acc,
-#             test_acc=test_acc,
-#         )
-#         return model, pth_path
+#         # pth_path = convert_and_save_results(
+#         #     ARGS,
+#         #     cluster_label_path=cluster_label_path,
+#         #     results=classify_dataset(ARGS, model, datasets.context),
+#         #     context_acc=context_acc,
+#         #     test_acc=test_acc,
+#         # )
+#         # return model, pth_path
 
 
 # def train(model: Model, context_data: DataLoader, train_data: DataLoader, epoch: int) -> int:
