@@ -27,7 +27,7 @@ cov = [[0.7, 0], [0, 0.7]]
 
 X = final
 
-clusterer = TopoCluster(k_vrc=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
+clusterer = TopoCluster(k_rips=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
 cluster_labels, barcode = clusterer.fit(X, threshold=1)
 # dddd is cluster label, but when you set thresh to be 1 , ALL the candidate clusters are merged, for this dataset there is only one cluster
 # left after merging. pd is the overall persistence diagram. For this dataset we can see there is only 1 salient candidate cluster. If we set

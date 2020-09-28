@@ -119,7 +119,7 @@ def cluster(
     else:
         clusterer = TopoCluster(
             k_kde=args.tc_k_kde,
-            k_vrc=args.tc_k_vrc,
+            k_rips=args.tc_k_rips,
             scale=args.tc_scale,
             batch_size=args.tc_batch_size,
             umap_kwargs=args.tc_umap_kwargs,

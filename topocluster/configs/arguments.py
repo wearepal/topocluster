@@ -80,7 +80,7 @@ class BaseArgs(TypedFlags):
     tc_batch_size: Optional[int] = None
     tc_scale: float = 0.5
     tc_k_kde: int = 200
-    tc_k_vrc: int = 15
+    tc_k_rips: int = 15
     tc_thresholds: List[float] = [1]
     tc_umap_kwargs: Optional[Dict[str, int]] = {}
 
@@ -93,7 +93,7 @@ class BaseArgs(TypedFlags):
             raise ValueError("data_pcnt has to be between 0 and 1")
         if self.tc_umap_kwargs is not None:
             self.tc_umap_kwargs.setdefault("n_components", 10)
-            self.tc_umap_kwargs.setdefault("n_neighbors", self.tc_k_vrc)
+            self.tc_umap_kwargs.setdefault("n_neighbors", self.tc_k_rips)
 
 
 class ClusterArgs(BaseArgs):
