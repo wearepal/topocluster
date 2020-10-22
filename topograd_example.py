@@ -27,6 +27,18 @@ X = final
 
 clusterer = TopoCluster(k_rips=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
 cluster_labels, lifespans = clusterer.fit(X, threshold=1)
+
+import time
+
+start = time.time()
+
+repeats = 1000
+for i in range(repeats):
+    cluster_labels, lifespans = clusterer.fit(X, threshold=1)
+
+avg_time = (time.time() - start) / repeats
+print(f"Average execution time over {repeats} repeats: {avg_time}")
+
 # dddd is cluster label, but when you set thresh to be 1 , ALL the candidate clusters are merged, for this dataset there is only one cluster
 # left after merging. pd is the overall persistence diagram. For this dataset we can see there is only 1 salient candidate cluster. If we set
 # the thresh between the persistence of most salient and the rest. We can see 2 cluster shown in next. To find this thresh we just need to use

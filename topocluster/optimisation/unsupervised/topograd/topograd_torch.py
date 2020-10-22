@@ -43,36 +43,40 @@ def find_entry_idx_by_point(entries: Dict[int, List[int]], point_idx: int) -> in
     return point_idx
 
 
+@torch.jit.script
 def merge(
     density_map: Tensor,
     entries: Dict[int, List[int]],
     ref_idx: int,
     upper_star_idxs: Tensor,
     threshold: float,
+    # entry_indexes: Tensor,
 ) -> Tuple[Dict[int, List[int]], List[List[int]]]:
-    ggg = [[-1, -1]]
+    lifespans = [[-1, -1]]
 
     # find entries of U intersecting S whose roots are less than τ -prominent; Merge those into e_i
     e_up = find_entry_idx_by_point(entries, upper_star_idxs[0])
+    # e_up = entry_indexes[upper_star_idxs[0]]
     for j in range(1, len(upper_star_idxs)):
+        # star_idx = entry_indexes[upper_star_idxs[j]]
         star_idx = find_entry_idx_by_point(entries, upper_star_idxs[j])
         # Let e_j be the entry of U containing j;
         if density_map[star_idx] > density_map[e_up]:
             e_up = star_idx
     # find entry ¯e of U intersecting S whose root is highest
     for j in upper_star_idxs:
+        # entry_idx = entry_indexes[j]
         entry_idx = find_entry_idx_by_point(entries, j)
-        # merge e_i into ¯e if the prominence of the root of e_i is less than τ}
+        # merge e_i into ¯e if the prominence of the root of e_i is less than τ
         if (e_up != entry_idx) and ((density_map[entry_idx] - density_map[ref_idx]) < threshold):
-            ggg.append([entry_idx, ref_idx])
+            lifespans.append([entry_idx, ref_idx])
             # Remove entry ej from U and attach it to ei;
             entries[e_up].extend(entries[entry_idx])
             entries.pop(entry_idx)
 
-    return entries, ggg
+    return entries, lifespans
 
 
-@torch.jit.script
 def topocluster(
     density_map: Tensor, rips_indexes: Tensor, threshold: float
 ) -> Tuple[Tensor, Tensor]:
@@ -83,10 +87,10 @@ def topocluster(
 
     N = density_map.size(0)
     # initialise the union-find data-structure
-    entries: Dict[int, List[int]] = {N - 1: [N - 1]}
+    entries: Dict[int, List[int]] = {}
     lifespans = [[-1, -1]]
     # iterate in reverse order, from largest f_i to smallest f_i
-    inds = range(N - 2, -1, -1)
+    inds = range(N - 1, -1, -1)
 
     for i in inds:
         nbr_idxs = rips_indexes[i]
@@ -95,15 +99,14 @@ def topocluster(
         # check whether vertex i is a local maximum of f within R_δ
         if len(us_idxs) == 1:
             entries[i] = [i]
-        # vertex i is not a local maximum of f within R_δ
         else:
             # approximate the gradient of the underlying probability density function by connecting
             # i to its neighbour in the graph with the highest function value
             grad_i = torch.max(us_idxs)
             # Attach vertex i to the tree t containing g(i)
+            # entry_index = merge_trees[grad_i]
             entry_index = find_entry_idx_by_point(entries=entries, point_idx=grad_i)
             entries[entry_index].append(i)
-            # Check for merges and update the union-find data-structure
             entries, lifespans_i = merge(
                 density_map=density_map,
                 entries=entries,
