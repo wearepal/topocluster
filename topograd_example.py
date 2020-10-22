@@ -1,9 +1,7 @@
 import time
-from topocluster.optimisation.unsupervised.topograd.topograd_np import topograd
 
-import numpy as np
 import matplotlib.pyplot as plt
-import torch
+import numpy as np
 
 from topocluster.optimisation.unsupervised import TopoCluster
 
@@ -28,15 +26,14 @@ cov = [[0.7, 0], [0, 0.7]]
 X = final
 
 clusterer = TopoCluster(k_rips=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
-cluster_labels, barcode = clusterer.fit(X, threshold=1)
+cluster_labels, lifespans = clusterer.fit(X, threshold=1)
 # dddd is cluster label, but when you set thresh to be 1 , ALL the candidate clusters are merged, for this dataset there is only one cluster
 # left after merging. pd is the overall persistence diagram. For this dataset we can see there is only 1 salient candidate cluster. If we set
 # the thresh between the persistence of most salient and the rest. We can see 2 cluster shown in next. To find this thresh we just need to use
 # birth time minus death time to get the persistence time of candidate clusters.
-print(torch.sort(barcode[:, 0] - barcode[:, 1]))
 # we can see 0.35791 is so much bigger than the rest (0.0744). So if we set a number between 0.35791 and 0.0744. The corresponding candidate
 # cluster will be kept.
 
-pd_plot = clusterer.plot_pd(barcode)
+# pd_plot = clusterer.plot_pd(lifespans)
 
 # res, pd = topograd(X, 30, 10,0.1,2,0.01,500)
