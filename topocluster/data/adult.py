@@ -39,7 +39,10 @@ def _random_split(data: DataTuple, first_pcnt: float, seed: int) -> Tuple[DataTu
 
 
 def get_invisible_demographics(
-    data: DataTuple, unbiased_pcnt: float, seed: int, missing_s: List[int],
+    data: DataTuple,
+    unbiased_pcnt: float,
+    seed: int,
+    missing_s: List[int],
 ) -> Tuple[DataTuple, DataTuple]:
     """Split the given data into a biased subset and a normal subset.
 

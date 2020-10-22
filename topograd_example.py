@@ -26,7 +26,7 @@ cov = [[0.7, 0], [0, 0.7]]
 X = final
 
 clusterer = TopoCluster(k_rips=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
-cluster_labels, lifespans = clusterer.fit(X, threshold=1)
+cluster_labels, lifespans = clusterer(X, threshold=1)
 
 import time
 
@@ -34,7 +34,7 @@ start = time.time()
 
 repeats = 1000
 for i in range(repeats):
-    cluster_labels, lifespans = clusterer.fit(X, threshold=1)
+    cluster_labels, lifespans = clusterer(X, threshold=1)
 
 avg_time = (time.time() - start) / repeats
 print(f"Average execution time over {repeats} repeats: {avg_time}")

@@ -78,7 +78,12 @@ def log_images(
 
 
 def save_model(
-    args: ClusterArgs, save_dir: Path, model: Model, epoch: int, sha: str, best: bool = False,
+    args: ClusterArgs,
+    save_dir: Path,
+    model: Model,
+    epoch: int,
+    sha: str,
+    best: bool = False,
 ) -> Path:
     if best:
         filename = save_dir / "checkpt_best.pth"
