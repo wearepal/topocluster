@@ -28,9 +28,7 @@ setup(
         "wandb == 0.8.27",
         "umap-learn",
     ],
-    extras_require={
-        "dev": ["black", "data-science-types", "mypy", "pylint", "pytest"],
-    },
+    extras_require={"dev": ["black", "data-science-types", "mypy", "pylint", "pytest"],},
 )
 
 try:
