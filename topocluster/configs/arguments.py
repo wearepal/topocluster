@@ -1,4 +1,5 @@
 from typing import Dict, List, Literal, Optional
+from dataclasses import dataclass
 
 import torch
 from ethicml.data import CelebAttrs
@@ -6,6 +7,11 @@ from ethicml.data.tabular_data.adult import AdultSplits
 from typed_flags import TypedFlags
 
 __all__ = ["BaseArgs", "ClusterArgs"]
+
+
+
+@dataclass
+class DataConfig:
 
 
 class BaseArgs(TypedFlags):

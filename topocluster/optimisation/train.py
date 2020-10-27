@@ -4,34 +4,25 @@ from __future__ import annotations
 import time
 from logging import Logger
 from pathlib import Path
-
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from torch.utils.data.dataset import Dataset
-import wandb
 from torch import Tensor
 from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.data.dataset import Dataset
 from torchvision.models import resnet18, resnet50
 
+import wandb
 from topocluster.configs import ClusterArgs
 from topocluster.data.data_loading import DatasetTriplet, load_dataset
-from topocluster.models import (
-    Encoder,
-    SelfSupervised,
-)
-from topocluster.utils import (
-    get_data_dim,
-    get_logger,
-    random_seed,
-)
+from topocluster.models import Encoder, SelfSupervised
+from topocluster.utils import get_data_dim, get_logger, random_seed
 
 from .build import build_ae
 from .evaluation import encode_dataset
 from .unsupervised import cluster as u_cluster
 from .utils import ClusterResults, get_class_id, get_cluster_label_path
-
 
 __all__ = ["main"]
 

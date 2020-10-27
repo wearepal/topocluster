@@ -3,9 +3,13 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from topocluster.optimisation.unsupervised import ToMATo
 from topocluster.optimisation.unsupervised.topograd import topograd_np as tg
+
+import gudhi as gd
+import torch
+from gudhi.clustering.tomato import Tomato
+from gudhi.wasserstein import wasserstein_distance
 
 np.random.seed(47)
 rng = np.random.RandomState(47)
@@ -30,18 +34,22 @@ X = final
 # clusterer = ToMATo(k_rips=30, k_kde=10, scale=0.1, umap_kwargs=None, batch_size=None)
 # cluster_labels, lifespans = clusterer(X, threshold=1)
 
-kde_dists, kde_inds = tg.compute_density_map(x=X, k=10, scale=0.1)
-sorted_idxs = kde_dists.argsort()
-kde_inds = kde_inds[sorted_idxs]
-kde_dists = kde_dists[sorted_idxs]
-X = X[sorted_idxs]
-dists_rips, rips_inds = tg.compute_rips(X, k=30)
 
-# entries, lifespans = tg.cluster(density_map=kde_dists, rips_idxs=rips_inds, threshold=0.3)
-entries2, lifespans2 = tg.cluster2(density_map=kde_dists, rips_idxs=rips_inds, threshold=0.3)
-import pdb
+t = Tomato(graph_type="knn", density_type="DTM", k=30, k_DTM=10, n_clusters=2)
+t.fit(X)
 
-pdb.set_trace()
+wasserstein_distance(torch.tensor([[0.5, 0.2]]), torch.tensor([[0.2, 0.3]]), enable_autodiff=True)
+print(t.labels_)
+
+# kde_dists, kde_inds = tg.compute_density_map(x=X, k=10, scale=0.1)
+# sorted_idxs = kde_dists.argsort()
+# kde_inds = kde_inds[sorted_idxs]
+# kde_dists = kde_dists[sorted_idxs]
+# X = X[sorted_idxs]
+# dists_rips, rips_inds = tg.compute_rips(X, k=30)
+
+# # entries, lifespans = tg.cluster(density_map=kde_dists, rips_idxs=rips_inds, threshold=0.3)
+# entries2, lifespans2 = tg.cluster2(density_map=kde_dists, rips_idxs=rips_inds, threshold=0.3)
 # import time
 
 # start = time.time()
