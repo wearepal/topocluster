@@ -1,202 +1,238 @@
-"""Main training file"""
-from __future__ import annotations
+# """Main training file"""
+# from __future__ import annotations
 
-import time
-from logging import Logger
-from pathlib import Path
-from typing import List, Optional, Tuple, Union
+# import time
+# from logging import Logger
+# from pathlib import Path
 
-import numpy as np
-import torch
-from torch import Tensor
-from torch.utils.data import ConcatDataset, DataLoader
-from torch.utils.data.dataset import Dataset
-from torchvision.models import resnet18, resnet50
+# from omegaconf.omegaconf import MISSING
+# from topocluster.configs.arguments import DataConfig, PbcConfig
 
-import wandb
-from topocluster.configs import ClusterArgs
-from topocluster.data.data_loading import DatasetTriplet, load_dataset
-from topocluster.models import Encoder, SelfSupervised
-from topocluster.utils import get_data_dim, get_logger, random_seed
+# from typing import List, Optional, Tuple, Union
 
-from .build import build_ae
-from .evaluation import encode_dataset
-from .unsupervised import cluster as u_cluster
-from .utils import ClusterResults, get_class_id, get_cluster_label_path
+# import numpy as np
+# import torch
+# from torch.utils.data.dataset import Dataset
+# import wandb
+# from torch import Tensor
+# from torch.utils.data import ConcatDataset, DataLoader
+# from torchvision.models import resnet18, resnet50
+
+# from topocluster.configs import ClusterArgs
+# from topocluster.data.data_loading import DatasetTriplet, load_dataset
+# from topocluster.models import (
+#     Encoder,
+#     SelfSupervised,
+# )
+# from topocluster.utils import (
+#     get_data_dim,
+#     get_logger,
+#     random_seed,
+# )
+
+# from .build import build_ae
+# from .evaluation import encode_dataset
+# from .unsupervised import cluster as u_cluster
+# from .utils import ClusterResults, get_class_id, get_cluster_label_path
+
+from omegaconf.omegaconf import MISSING
+from topocluster.configs.arguments import PbcConfig
+import hydra
+from hydra.core.config_store import ConfigStore
+from hydra.utils import instantiate
+from omegaconf import OmegaConf
+
+from dataclasses import dataclass
 
 __all__ = ["main"]
 
-ARGS: ClusterArgs = None  # type: ignore[assignment]
-LOGGER: Logger = None  # type: ignore[assignment]
+
+@dataclass
+class Config:
+    # data: DataConfig
+    clusterer: PbcConfig = MISSING
 
 
-def main(
-    raw_args: Optional[List[str]] = None, known_only: bool = False
-) -> Tuple[Optional[ClusterResults], Optional[Path]]:
-    """Main function
+# ConfigStore enables type validation
+cs = ConfigStore.instance()
+# If you don't do fancy stuff, only the root needs to be registered
+cs.store(name="primary", node=Config)
 
-    Args:
-        raw_args: commandline arguments
 
-    Returns:
-        the trained generator
-    """
-    args = ClusterArgs(fromfile_prefix_chars="@")
+@hydra.main(config_path="conf", config_name="primary")
+def main(cfg: Config) -> None:
+    cfg_ = OmegaConf.to_yaml(cfg)
+    clusterer = instantiate(cfg.clusterer)
+    print(cfg_)
 
-    if known_only:
-        args.parse_args(raw_args, known_only=True)
-        remaining = args.extra_args
-        for arg in remaining:
-            if arg.startswith("--") and not arg.startswith("--d-"):
-                raise ValueError(f"unknown commandline argument: {arg}")
-    else:
-        args.parse_args(raw_args)
-    use_gpu = torch.cuda.is_available() and args.gpu >= 0
-    random_seed(args.seed, use_gpu)
-    datasets: DatasetTriplet = load_dataset(args)
-    # ==== initialize globals ====
-    global ARGS, LOGGER
-    ARGS = args
 
-    if ARGS.use_wandb:
-        wandb.init(entity="predictive-analytics-lab", project="topocluster", config=args.as_dict())
+# def main(
+#     raw_args: Optional[List[str]] = None, known_only: bool = False
+# ) -> Tuple[Optional[ClusterResults], Optional[Path]]:
+#     """Main function
 
-    save_dir = Path(ARGS.save_dir) / str(time.time())
-    save_dir.mkdir(parents=True, exist_ok=True)
+#     Args:
+#         raw_args: commandline arguments
 
-    LOGGER = get_logger(logpath=save_dir / "logs", filepath=Path(__file__).resolve())
-    LOGGER.info(str(args))
-    LOGGER.info("Save directory: {}", save_dir.resolve())
-    # ==== check GPU ====
-    ARGS._device = torch.device(
-        f"cuda:{ARGS.gpu}" if (torch.cuda.is_available() and ARGS.gpu >= 0) else "cpu"
-    )
-    LOGGER.info("{} GPUs available. Using device '{}'", torch.cuda.device_count(), ARGS._device)
+#     Returns:
+#         the trained generator
+#     """
+#     args = ClusterArgs(fromfile_prefix_chars="@")
 
-    # ==== construct dataset ====
-    LOGGER.info(
-        "Size of context-set: {}, training-set: {}, test-set: {}",
-        len(datasets.context),
-        len(datasets.train),
-        len(datasets.test),
-    )
-    ARGS.test_batch_size = ARGS.test_batch_size if ARGS.test_batch_size else ARGS.batch_size
-    context_batch_size = round(ARGS.batch_size * len(datasets.context) / len(datasets.train))
+#     if known_only:
+#         args.parse_args(raw_args, known_only=True)
+#         remaining = args.extra_args
+#         for arg in remaining:
+#             if arg.startswith("--") and not arg.startswith("--d-"):
+#                 raise ValueError(f"unknown commandline argument: {arg}")
+#     else:
+#         args.parse_args(raw_args)
+#     use_gpu = torch.cuda.is_available() and args.gpu >= 0
+#     random_seed(args.seed, use_gpu)
+#     datasets: DatasetTriplet = load_dataset(args)
+#     # ==== initialize globals ====
+#     global ARGS, LOGGER
+#     ARGS = args
 
-    context_loader = DataLoader(
-        datasets.context,
-        shuffle=True,
-        batch_size=context_batch_size,
-        num_workers=ARGS.num_workers,
-        pin_memory=True,
-    )
+#     if ARGS.use_wandb:
+#         wandb.init(entity="predictive-analytics-lab", project="topocluster", config=args.as_dict())
 
-    enc_train_data: ConcatDataset = ConcatDataset([datasets.context, datasets.train])
-    enc_train_loader = DataLoader(
-        enc_train_data,
-        shuffle=True,
-        batch_size=ARGS.batch_size,
-        num_workers=ARGS.num_workers,
-        pin_memory=True,
-    )
+#     save_dir = Path(ARGS.save_dir) / str(time.time())
+#     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # ==== construct networks ====
-    input_shape = get_data_dim(context_loader)
-    s_count = max(datasets.s_dim, 2)
-    y_count = max(datasets.y_dim, 2)
+#     LOGGER = get_logger(logpath=save_dir / "logs", filepath=Path(__file__).resolve())
+#     LOGGER.info(str(args))
+#     LOGGER.info("Save directory: {}", save_dir.resolve())
+#     # ==== check GPU ====
+#     ARGS._device = torch.device(
+#         f"cuda:{ARGS.gpu}" if (torch.cuda.is_available() and ARGS.gpu >= 0) else "cpu"
+#     )
+#     LOGGER.info("{} GPUs available. Using device '{}'", torch.cuda.device_count(), ARGS._device)
 
-    if ARGS.cluster == "s":
-        num_clusters = s_count
-    elif ARGS.cluster == "y":
-        num_clusters = y_count
-    else:
-        num_clusters = s_count * y_count
-    LOGGER.info(
-        "Number of clusters: {}, accuracy computed with respect to {}", num_clusters, ARGS.cluster
-    )
-    mappings: List[str] = []
-    for i in range(num_clusters):
-        if ARGS.cluster == "s":
-            mappings.append(f"{i}: s = {i}")
-        elif ARGS.cluster == "y":
-            mappings.append(f"{i}: y = {i}")
-        else:
-            # class_id = y * s_count + s
-            mappings.append(f"{i}: (y = {i // s_count}, s = {i % s_count})")
-    LOGGER.info("class IDs:\n\t" + "\n\t".join(mappings))
-    feature_group_slices = getattr(datasets.context, "feature_group_slices", None)
+#     # ==== construct dataset ====
+#     LOGGER.info(
+#         "Size of context-set: {}, training-set: {}, test-set: {}",
+#         len(datasets.context),
+#         len(datasets.train),
+#         len(datasets.test),
+#     )
+#     ARGS.test_batch_size = ARGS.test_batch_size if ARGS.test_batch_size else ARGS.batch_size
+#     context_batch_size = round(ARGS.batch_size * len(datasets.context) / len(datasets.train))
 
-    # ================================= encoder =================================
-    encoder: Encoder
-    enc_shape: Tuple[int, ...]
-    if ARGS.encoder in ("ae", "vae"):
-        encoder, enc_shape = build_ae(
-            args=ARGS, input_shape=input_shape, feature_group_slices=feature_group_slices
-        )
-    else:
-        if len(input_shape) < 2:
-            raise ValueError("RotNet can only be applied to image data.")
-        enc_optimizer_kwargs = {"lr": args.enc_lr, "weight_decay": args.enc_wd}
-        enc_kwargs = {"pretrained": False, "num_classes": 4, "zero_init_residual": True}
-        net = resnet18(**enc_kwargs) if args.dataset == "cmnist" else resnet50(**enc_kwargs)
+#     context_loader = DataLoader(
+#         datasets.context,
+#         shuffle=True,
+#         batch_size=context_batch_size,
+#         num_workers=ARGS.num_workers,
+#         pin_memory=True,
+#     )
 
-        encoder = SelfSupervised(model=net, num_classes=4, optimizer_kwargs=enc_optimizer_kwargs)
-        enc_shape = (512,)
-        encoder.to(args._device)
+#     enc_train_data: ConcatDataset = ConcatDataset([datasets.context, datasets.train])
+#     enc_train_loader = DataLoader(
+#         enc_train_data,
+#         shuffle=True,
+#         batch_size=ARGS.batch_size,
+#         num_workers=ARGS.num_workers,
+#         pin_memory=True,
+#     )
 
-    LOGGER.info("Encoding shape: {}", enc_shape)
+#     # ==== construct networks ====
+#     input_shape = get_data_dim(context_loader)
+#     s_count = max(datasets.s_dim, 2)
+#     y_count = max(datasets.y_dim, 2)
 
-    if args.enc_path:
-        if args.encoder == "rotnet":
-            assert isinstance(encoder, SelfSupervised)
-            encoder_net = encoder.get_encoder()
-        else:
-            encoder_net = encoder
-        save_dict = torch.load(args.enc_path, map_location=lambda storage, loc: storage)
-        encoder_net.load_state_dict(save_dict["encoder"])
-        if "args" in save_dict:
-            args_encoder = save_dict["args"]
-            assert args.encoder == args_encoder["encoder_type"]
-            assert args.enc_levels == args_encoder["levels"]
-    else:
-        encoder.fit(
-            enc_train_loader, epochs=args.enc_epochs, device=args._device, use_wandb=ARGS.enc_wandb
-        )
-        if args.encoder == "rotnet":
-            assert isinstance(encoder, SelfSupervised)
-            encoder_net = encoder.get_encoder()
-        else:
-            encoder_net = encoder
-        # the args names follow the convention of the standalone VAE commandline args
-        args_encoder = {"encoder_type": args.encoder, "levels": args.enc_levels}
-        torch.save(
-            {"encoder": encoder_net.state_dict(), "args": args_encoder}, save_dir / "encoder"
-        )
-        LOGGER.info("To make use of this encoder:\n--enc-path {}", save_dir.resolve() / "encoder")
-        if ARGS.enc_wandb:
-            LOGGER.info("Stopping here because W&B will be messed up...")
-            return None, None
+#     if ARGS.cluster == "s":
+#         num_clusters = s_count
+#     elif ARGS.cluster == "y":
+#         num_clusters = y_count
+#     else:
+#         num_clusters = s_count * y_count
+#     LOGGER.info(
+#         "Number of clusters: {}, accuracy computed with respect to {}", num_clusters, ARGS.cluster
+#     )
+#     mappings: List[str] = []
+#     for i in range(num_clusters):
+#         if ARGS.cluster == "s":
+#             mappings.append(f"{i}: s = {i}")
+#         elif ARGS.cluster == "y":
+#             mappings.append(f"{i}: y = {i}")
+#         else:
+#             # class_id = y * s_count + s
+#             mappings.append(f"{i}: (y = {i // s_count}, s = {i % s_count})")
+#     LOGGER.info("class IDs:\n\t" + "\n\t".join(mappings))
+#     feature_group_slices = getattr(datasets.context, "feature_group_slices", None)
 
-    if ARGS.save_encodings:
-        LOGGER.info("Encoding all datasets.")
+#     # ================================= encoder =================================
+#     encoder: Encoder
+#     enc_shape: Tuple[int, ...]
+#     if ARGS.encoder in ("ae", "vae"):
+#         encoder, enc_shape = build_ae(
+#             args=ARGS, input_shape=input_shape, feature_group_slices=feature_group_slices
+#         )
+#     else:
+#         if len(input_shape) < 2:
+#             raise ValueError("RotNet can only be applied to image data.")
+#         enc_optimizer_kwargs = {"lr": args.enc_lr, "weight_decay": args.enc_wd}
+#         enc_kwargs = {"pretrained": False, "num_classes": 4, "zero_init_residual": True}
+#         net = resnet18(**enc_kwargs) if args.dataset == "cmnist" else resnet50(**enc_kwargs)
 
-        def _encode_and_save_dataset(_dataset: Dataset, _name: str) -> None:
-            _encoded_dataset = encode_dataset(ARGS, data=_dataset, generator=encoder)
-            _x, _s, _y = (tensor.numpy() for tensor in _encoded_dataset.tensors)
-            _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both").numpy()
-            np.savez(save_dir / _name, x=_x, class_id=_class_id)
+#         encoder = SelfSupervised(model=net, num_classes=4, optimizer_kwargs=enc_optimizer_kwargs)
+#         enc_shape = (512,)
+#         encoder.to(args._device)
 
-        _encode_and_save_dataset(datasets.context, _name="context_data_encoded")
-        _encode_and_save_dataset(datasets.train, _name="train_data_encoded")
-        _encode_and_save_dataset(datasets.test, _name="test_data_encoded")
+#     LOGGER.info("Encoding shape: {}", enc_shape)
 
-        LOGGER.info(f"Datasets have been encoded and saved to {save_dir.resolve()}.")
+#     if args.enc_path:
+#         if args.encoder == "rotnet":
+#             assert isinstance(encoder, SelfSupervised)
+#             encoder_net = encoder.get_encoder()
+#         else:
+#             encoder_net = encoder
+#         save_dict = torch.load(args.enc_path, map_location=lambda storage, loc: storage)
+#         encoder_net.load_state_dict(save_dict["encoder"])
+#         if "args" in save_dict:
+#             args_encoder = save_dict["args"]
+#             assert args.encoder == args_encoder["encoder_type"]
+#             assert args.enc_levels == args_encoder["levels"]
+#     else:
+#         encoder.fit(
+#             enc_train_loader, epochs=args.enc_epochs, device=args._device, use_wandb=ARGS.enc_wandb
+#         )
+#         if args.encoder == "rotnet":
+#             assert isinstance(encoder, SelfSupervised)
+#             encoder_net = encoder.get_encoder()
+#         else:
+#             encoder_net = encoder
+#         # the args names follow the convention of the standalone VAE commandline args
+#         args_encoder = {"encoder_type": args.encoder, "levels": args.enc_levels}
+#         torch.save(
+#             {"encoder": encoder_net.state_dict(), "args": args_encoder}, save_dir / "encoder"
+#         )
+#         LOGGER.info("To make use of this encoder:\n--enc-path {}", save_dir.resolve() / "encoder")
+#         if ARGS.enc_wandb:
+#             LOGGER.info("Stopping here because W&B will be messed up...")
+#             return None, None
 
-    cluster_label_path = get_cluster_label_path(ARGS, save_dir)
-    if ARGS.method in ("kmeans", "topocluster"):
-        results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
-        path_to_preds = results.save(save_path=cluster_label_path)
-        return results, path_to_preds
+#     if ARGS.save_encodings:
+#         LOGGER.info("Encoding all datasets.")
+
+#         def _encode_and_save_dataset(_dataset: Dataset, _name: str) -> None:
+#             _encoded_dataset = encode_dataset(ARGS, data=_dataset, generator=encoder)
+#             _x, _s, _y = (tensor.numpy() for tensor in _encoded_dataset.tensors)
+#             _class_id = get_class_id(s=_s, y=_y, s_count=s_count, to_cluster="both").numpy()
+#             np.savez(save_dir / _name, x=_x, class_id=_class_id)
+
+#         _encode_and_save_dataset(datasets.context, _name="context_data_encoded")
+#         _encode_and_save_dataset(datasets.train, _name="train_data_encoded")
+#         _encode_and_save_dataset(datasets.test, _name="test_data_encoded")
+
+#         LOGGER.info(f"Datasets have been encoded and saved to {save_dir.resolve()}.")
+
+#     cluster_label_path = get_cluster_label_path(ARGS, save_dir)
+#     if ARGS.method in ("kmeans", "topocluster"):
+#         results = u_cluster(ARGS, encoder, datasets.context, num_clusters, s_count)
+#         path_to_preds = results.save(save_path=cluster_label_path)
+#         return results, path_to_preds
 
 
 #     else:
@@ -477,10 +513,10 @@ def main(
 #     return best_acc, logging_dict
 
 
-def to_device(*tensors: Tensor) -> Union[Tensor, Tuple[Tensor, ...]]:
-    """Place tensors on the correct device and set type to float32"""
-    moved = [tensor.to(ARGS._device, non_blocking=True) for tensor in tensors]
-    return moved[0] if len(moved) == 1 else tuple(moved)
+# def to_device(*tensors: Tensor) -> Union[Tensor, Tuple[Tensor, ...]]:
+#     """Place tensors on the correct device and set type to float32"""
+#     moved = [tensor.to(ARGS._device, non_blocking=True) for tensor in tensors]
+#     return moved[0] if len(moved) == 1 else tuple(moved)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,3 @@
 from .common import *
-from .k_means import *
+from .kmeans import *
 from .topograd import *

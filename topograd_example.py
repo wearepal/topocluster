@@ -3,13 +3,15 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from topocluster.optimisation.unsupervised import ToMATo
+from topocluster.optimisation.unsupervised import Tomato
 from topocluster.optimisation.unsupervised.topograd import topograd_np as tg
 
 import gudhi as gd
 import torch
 from gudhi.clustering.tomato import Tomato
 from gudhi.wasserstein import wasserstein_distance
+import torch.nn as nn
+
 
 np.random.seed(47)
 rng = np.random.RandomState(47)

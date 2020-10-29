@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 from topocluster.configs import ClusterArgs
 from topocluster.models import Encoder
 from topocluster.optimisation.evaluation import encode_dataset
-from topocluster.optimisation.unsupervised.topograd import ToMATo
+from topocluster.optimisation.unsupervised.topograd import Tomato
 from topocluster.optimisation.utils import (
     ClusterResults,
     count_occurances,
@@ -23,7 +23,7 @@ from topocluster.optimisation.utils import (
 )
 from topocluster.utils import wandb_log
 
-from .k_means import run_kmeans_faiss
+from .kmeans import run_kmeans_faiss
 
 __all__ = ["cluster"]
 
@@ -117,7 +117,7 @@ def cluster(
             context_acc=acc,
         )
     else:
-        clusterer = ToMATo(
+        clusterer = Tomato(
             k_kde=args.tc_k_kde,
             k_rips=args.tc_k_rips,
             scale=args.tc_scale,
@@ -140,9 +140,9 @@ def cluster(
         best_score = float("-inf")
         for thresh in thresholds:
             suffix = f"threshold={thresh:.2f}"
-            preds, barcode = clusterer(encoded, threshold=thresh)
+            preds = clusterer.fit_transform(encoded, threshold=thresh)
             if thresh == 1:
-                pd = clusterer.plot_pd(barcode, dpi=100)
+                pd = clusterer.plot()
                 logging_dict[f"persistence_diagram_{suffix}"] = wandb.Image(pd)
                 plt.close(pd)
 
