@@ -14,10 +14,10 @@ configen:
   # list of modules to generate configs for
   modules:
     # - name: topocluster.clustering.tomato
-    - name: gudhi.clustering.tomato
-      # for each module, a list of classes
-      classes:
-        - Tomato
+    # - name: gudhi.clustering.tomato
+    # for each module, a list of classes
+    # classes:
+    #   - Tomato
     - name: topocluster.clustering.kmeans
       classes:
         - Kmeans
