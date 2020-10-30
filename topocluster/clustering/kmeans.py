@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum, auto
 import time
 from typing import Literal, Optional, Tuple, Union
 
@@ -13,13 +14,18 @@ from tqdm import tqdm
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
 
+class Backends(Enum):
+    FAISS = auto()
+    TORCH = auto()
+
+
 class Kmeans:
     def __init__(
         self,
         k: int,
         n_iter: int,
         cuda: bool = False,
-        backend: str = "faiss",
+        backend: Backends = Backends.FAISS,
         verbose: bool = False,
     ):
         self.k = k

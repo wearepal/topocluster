@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from typing import Any, Dict, List, Literal, Optional
 
 from ethicml.data import CelebAttrs
 from ethicml.data.tabular_data.adult import AdultSplits
 from omegaconf import MISSING
 import torch
-from typed_flags import TypedFlags
 
 __all__ = ["BaseArgs", "ClusterArgs"]
 
@@ -18,7 +17,10 @@ class DataConf:
     _y_dim: int
 
 
-QuantLevel = Enum("QuantLevel", "three five eight")
+class QuantLevel(Enum):
+    THREE = auto()
+    FIVE = auto()
+    EIGHT = auto()
 
 
 class ImageDataConf(DataConf):
@@ -39,7 +41,7 @@ class ImageDataConf(DataConf):
     shift_data: bool = False
     color_correlation: float = 1.0
     padding: int = 2  # by how many pixels to pad the cmnist images by
-    quant_level: QuantLevel = QuantLevel.eight  # number of bits that encode color
+    quant_level: QuantLevel = QuantLevel.EIGHT  # number of bits that encode color
     # the subsample flags work like this: you give it a class id and a fraction in the form of a
     # float. the class id is given by class_id = y * s_count + s, so for binary s and y, the
     # correspondance is like this:
