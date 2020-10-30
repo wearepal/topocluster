@@ -1,20 +1,28 @@
+from abc import abstractmethod
+
+import pytorch_lightning as pl
+import torch
 from torch import Tensor, nn
 
-from .base import Encoder
-from .classifier import Classifier
 
 __all__ = ["SelfSupervised"]
 
 
-class SelfSupervised(Classifier, Encoder):
+class SelfSupervised(pl.LightningModule):
     """Encoder trained with self-supervision."""
 
-    def encode(self, x: Tensor, stochastic: bool = False) -> Tensor:
-        return self.__call__(x)
+    def __init__(self, encoder: nn.Module, classifier: nn.Module, lr: float = 1.0e-3):
+        self.save_hyperparameters()
+        self.encoder = encoder
+        self.classifier = classifier
 
-    def get_encoder(self) -> nn.Module:
-        encoder = self.model
-        encoder.fc = nn.Identity()
-        for param in encoder.parameters():
-            param.requires_grad_(False)
-        return encoder
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        return optimizer
+
+    def forward(self, inputs: Tensor) -> Tensor:
+        return self.encoder(inputs)
+
+    @abstractmethod
+    def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
+        ...

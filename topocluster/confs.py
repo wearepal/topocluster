@@ -66,7 +66,7 @@ class ImageDataConf(DataConf):
 
 
 @dataclass
-class TrainConf:
+class ExperimentConf:
     # data: DataConf
     clusterer: Any = MISSING
 

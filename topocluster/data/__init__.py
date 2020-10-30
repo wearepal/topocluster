@@ -1,5 +1,3 @@
-from .adult import *
-from .data_loading import *
-from .dataset_wrappers import *
-from .misc import *
+from .data_modules import *
 from .transforms import *
+from .utils import *

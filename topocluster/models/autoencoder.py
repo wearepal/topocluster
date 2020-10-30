@@ -76,7 +76,6 @@ def build_conv_autoencoder(
     init_hidden_dims: int,
     levels: int,
     latent_dim,
-    variational: bool,
 ) -> Tuple[nn.Sequential, nn.Sequential]:
     encoder_ls: List[nn.Module] = []
     decoder_ls: List[nn.Module] = []
@@ -106,14 +105,12 @@ def build_conv_autoencoder(
         height //= 2
         width //= 2
 
-    encoder_out_dim = 2 * latent_dim if variational else latent_dim
-
     flattened_size = c_out * height * width
     encoder_ls += [nn.Flatten()]
-    encoder_ls += [nn.Linear(flattened_size, encoder_out_dim)]
+    encoder_ls += [nn.Linear(flattened_size, latent_dim)]
 
     decoder_ls += [View((c_out, height, width))]
-    decoder_ls += [nn.Linear(encoder_out_dim, flattened_size)]
+    decoder_ls += [nn.Linear(latent_dim, flattened_size)]
     decoder_ls = decoder_ls[::-1]
     decoder_ls += [nn.Conv2d(input_shape[0], input_shape[0], kernel_size=1, stride=1, padding=0)]
 

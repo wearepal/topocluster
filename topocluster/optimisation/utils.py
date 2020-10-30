@@ -20,7 +20,6 @@ __all__ = [
     "get_class_id",
     "get_data_dim",
     "inf_generator",
-    "random_seed",
     "restore_model",
     "save_model",
 ]
@@ -149,14 +148,3 @@ def inf_generator(iterable: Iterable[T]) -> Iterator[T]:
 def count_parameters(model: nn.Module) -> int:
     """Count all parameters (that have a gradient) in the given model"""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-def random_seed(seed_value: int, use_cuda: bool) -> None:
-    np.random.seed(seed_value)  # cpu vars
-    torch.manual_seed(seed_value)  # cpu  vars
-    random.seed(seed_value)  # Python
-    if use_cuda:
-        torch.cuda.manual_seed(seed_value)
-        torch.cuda.manual_seed_all(seed_value)  # gpu vars
-        torch.backends.cudnn.deterministic = True  # needed
-        torch.backends.cudnn.benchmark = False
