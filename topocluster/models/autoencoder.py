@@ -1,183 +1,154 @@
-# """Autoencoders"""
-# from typing import Any, Dict, List, Literal, Optional, Tuple, Callable
+"""Autoencoders"""
+from collections import OrderedDict
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-# import torch
-# import torch.distributions as td
-# import torch.nn as nn
-# import torch.nn.functional as F
-# from torch.utils.data import DataLoader
-# from torch import Tensor
-# from tqdm import tqdm
+import pytorch_lightning as pl
+import torch
+from torch import Tensor
+import torch.nn as nn
+import torch.nn.functional as F
 
-# from topocluster.utils import to_discrete, wandb_log
-
-# from .base import ModelBase, Encoder
-
-# __all__ = ["AutoEncoder", "VAE"]
+from topocluster.layers.misc import View
 
 
-# class AutoEncoder(Encoder):
-#     """Classical AutoEncoder."""
-
-#     def __init__(
-#         self,
-#         encoder: nn.Sequential,
-#         decoder: nn.Sequential,
-#         recon_loss_fn: Callable[[Tensor, Tensor], Tensor],
-#         feature_group_slices: Optional[Dict[str, List[slice]]] = None,
-#         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-#     ) -> None:
-#         super().__init__()
-
-#         self.encoder: ModelBase = ModelBase(encoder, optimizer_kwargs=optimizer_kwargs)
-#         self.decoder: ModelBase = ModelBase(decoder, optimizer_kwargs=optimizer_kwargs)
-#         self.recon_loss_fn = recon_loss_fn
-#         self.feature_group_slices = feature_group_slices
-
-#     def encode(self, x: Tensor, stochastic: bool = False) -> Tensor:
-#         del stochastic
-#         return self.encoder(x)
-
-#     def decode(self, z: Tensor, discretize: bool = False) -> Tensor:
-#         decoding = self.decoder(z)
-#         if decoding.dim() == 4:
-#             # if decoding.size(1) <= 3:
-#             #     decoding = decoding.sigmoid()
-#             # else:
-#             if decoding.size(1) > 3:  # if we use CE losss, we have more than 3 channels
-#                 # conversion for cross-entropy loss
-#                 num_classes = 256
-#                 decoding = decoding.view(decoding.size(0), num_classes, -1, *decoding.shape[-2:])
-#         else:
-#             if discretize and self.feature_group_slices:
-#                 for group_slice in self.feature_group_slices["discrete"]:
-#                     one_hot = to_discrete(decoding[:, group_slice])
-#                     decoding[:, group_slice] = one_hot
-
-#         return decoding
-
-#     def forward(self, inputs: Tensor, reverse: bool = False) -> Tensor:
-#         if reverse:
-#             return self.decode(inputs)
-#         else:
-#             return self.encode(inputs)
-
-#     def zero_grad(self) -> None:
-#         self.encoder.zero_grad()
-#         self.decoder.zero_grad()
-
-#     def step(self, grads: Optional[Tensor] = None) -> None:
-#         self.encoder.step(grads)
-#         self.decoder.step(grads)
-
-#     def fit(
-#         self, train_data: DataLoader, epochs: int, device: torch.device, use_wandb: bool
-#     ) -> None:
-#         self.train()
-
-#         step = 0
-#         use_wandb_ = use_wandb
-
-#         class _Namespace:
-#             use_wandb: bool = use_wandb_
-
-#         args = _Namespace()
-#         with tqdm(total=epochs * len(train_data)) as pbar:
-#             for _ in range(epochs):
-
-#                 for x, _, _ in train_data:
-
-#                     x = x.to(device)
-
-#                     self.zero_grad()
-#                     _, loss, _ = self.routine(x)
-
-#                     loss.backward()
-#                     self.step()
-
-#                     enc_loss = loss.detach().cpu().numpy()
-#                     pbar.update()
-#                     pbar.set_postfix(AE_loss=enc_loss)
-#                     step += 1
-#                     wandb_log(args, {"enc_loss": enc_loss}, step)
-
-#     def routine(self, x: Tensor) -> Tuple[Tensor, Tensor, Dict[str, float]]:
-#         encoding = self.encode(x)
-
-#         recon_all = self.decode(encoding)
-#         recon_loss = self.recon_loss_fn(recon_all, x)
-#         recon_loss /= x.nelement()
-#         return encoding, recon_loss, {"Loss reconstruction": recon_loss.item()}
-
-#     def freeze_initial_layers(self, num_layers: int, optimizer_kwargs: Dict[str, Any]) -> None:
-#         self.encoder.freeze_initial_layers(num_layers=num_layers, optimizer_kwargs=optimizer_kwargs)
+__all__ = ["AutoEncoder", "build_conv_autoencoder", "build_fc_autoencoder"]
 
 
-# class VAE(AutoEncoder):
-#     """Variational AutoEncoder."""
+class AutoEncoder(pl.LightningModule):
+    """Classical AutoEncoder."""
 
-#     def __init__(
-#         self,
-#         encoder: nn.Sequential,
-#         decoder: nn.Sequential,
-#         recon_loss_fn: Callable[[Tensor, Tensor], Tensor],
-#         kl_weight: float,
-#         std_transform: Literal["softplus", "exp"],
-#         feature_group_slices: Optional[Dict[str, List[slice]]] = None,
-#         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-#     ):
-#         super().__init__(
-#             encoder=encoder,
-#             decoder=decoder,
-#             recon_loss_fn=recon_loss_fn,
-#             feature_group_slices=feature_group_slices,
-#             optimizer_kwargs=optimizer_kwargs,
-#         )
-#         self.encoder: ModelBase = ModelBase(encoder, optimizer_kwargs=optimizer_kwargs)
-#         self.decoder: ModelBase = ModelBase(decoder, optimizer_kwargs=optimizer_kwargs)
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        lr: float = 1.0e-3,
+        recon_loss_fn: Callable[[Tensor, Tensor], Tensor] = F.mse_loss,
+    ) -> None:
+        super().__init__()
+        self.save_hyperparameters()
+        self.encoder: nn.Module = encoder
+        self.decoder: nn.Module = decoder
+        self.recon_loss_fn = recon_loss_fn
 
-#         self.prior = td.Normal(0, 1)
-#         self.posterior_fn = td.Normal
-#         self.std_transform = std_transform
-#         self.kl_weight = kl_weight
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        return optimizer
 
-#     def compute_divergence(self, sample: Tensor, posterior: td.Distribution) -> Tensor:
-#         log_p = self.prior.log_prob(sample)
-#         log_q = posterior.log_prob(sample)
+    def forward(self, inputs: Tensor) -> Tensor:
+        return self.encoder(inputs)
 
-#         kl_div = (log_q - log_p).sum()
+    def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
+        x = batch[0] if isinstance(batch, Sequence) else batch
+        z = self.encoder(x)
+        x_hat = self.decoder(z)
+        loss = self.recon_loss_fn(x_hat, x)
+        self.log("train_loss", loss)
+        tqdm_dict = {"loss": loss}
+        output = OrderedDict({"loss": loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
+        return output
 
-#         return kl_div
 
-#     def encode_with_posterior(self, x: Tensor) -> Tuple[Tensor, td.Distribution]:
-#         loc, scale = self.encoder(x).chunk(2, dim=1)
+def gated_conv(in_channels, out_channels, kernel_size, stride, padding):
+    return nn.Sequential(
+        nn.Conv2d(
+            in_channels, out_channels * 2, kernel_size=kernel_size, stride=stride, padding=padding
+        ),
+        nn.GLU(dim=1),
+    )
 
-#         if self.std_transform == "softplus":
-#             scale = F.softplus(scale)
-#         else:
-#             scale = torch.exp(0.5 * scale).clamp(min=0.005, max=3.0)
-#         posterior = self.posterior_fn(loc, scale)
-#         sample = posterior.rsample()
 
-#         return sample, posterior
+def gated_up_conv(in_channels, out_channels, kernel_size, stride, padding, output_padding):
+    return nn.Sequential(
+        nn.ConvTranspose2d(
+            in_channels,
+            out_channels * 2,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            output_padding=output_padding,
+        ),
+        nn.GLU(dim=1),
+    )
 
-#     def encode(self, x: Tensor, stochastic: bool = False) -> Tensor:
-#         if stochastic:
-#             sample, _ = self.encode_with_posterior(x)
-#         else:
-#             loc, _ = self.encoder(x).chunk(2, dim=1)
-#             sample = loc
-#         return sample
 
-#     def routine(self, x: Tensor) -> Tuple[Tensor, Tensor, Dict[str, float]]:
-#         encoding, posterior = self.encode_with_posterior(x)
-#         kl_div = self.compute_divergence(encoding, posterior)
-#         kl_div /= x.size(0)
-#         kl_div *= self.kl_weight
+def build_conv_autoencoder(
+    input_shape: Sequence[int],
+    init_hidden_dims: int,
+    levels: int,
+    latent_dim,
+    variational: bool,
+) -> Tuple[nn.Sequential, nn.Sequential]:
+    encoder_ls: List[nn.Module] = []
+    decoder_ls: List[nn.Module] = []
+    c_in, height, width = input_shape
+    c_out = init_hidden_dims
 
-#         recon_all = self.decode(encoding)
-#         recon_loss = self.recon_loss_fn(recon_all, x)
-#         recon_loss /= x.size(0)
-#         elbo = recon_loss + kl_div
-#         logging_dict = {"Loss Reconstruction": recon_loss.item(), "KL divergence": kl_div}
-#         return encoding, elbo, logging_dict
+    for level in range(levels):
+        if level != 0:
+            c_in = c_out
+            c_out *= 2
+
+        encoder_ls.append(
+            nn.Sequential(
+                gated_conv(c_in, c_out, kernel_size=3, stride=1, padding=1),
+                gated_conv(c_out, c_out, kernel_size=4, stride=2, padding=1),
+            )
+        )
+
+        decoder_ls.append(
+            nn.Sequential(
+                # inverted order
+                gated_up_conv(c_out, c_out, kernel_size=4, stride=2, padding=1, output_padding=0),
+                gated_conv(c_out, c_in, kernel_size=3, stride=1, padding=1),
+            )
+        )
+
+        height //= 2
+        width //= 2
+
+    encoder_out_dim = 2 * latent_dim if variational else latent_dim
+
+    flattened_size = c_out * height * width
+    encoder_ls += [nn.Flatten()]
+    encoder_ls += [nn.Linear(flattened_size, encoder_out_dim)]
+
+    decoder_ls += [View((c_out, height, width))]
+    decoder_ls += [nn.Linear(encoder_out_dim, flattened_size)]
+    decoder_ls = decoder_ls[::-1]
+    decoder_ls += [nn.Conv2d(input_shape[0], input_shape[0], kernel_size=1, stride=1, padding=0)]
+
+    encoder = nn.Sequential(*encoder_ls)
+    decoder = nn.Sequential(*decoder_ls)
+
+    return encoder, decoder
+
+
+def _linear_block(in_channels: int, out_channels: int) -> nn.Sequential:
+    return nn.Sequential(nn.SELU(), nn.Linear(in_channels, out_channels))
+
+
+def build_fc_autoencoder(
+    input_dims: int,
+    init_hidden_dims: int,
+    levels: int,
+    latent_dim: int,
+) -> Tuple[nn.Sequential, nn.Sequential]:
+    encoder = []
+    decoder = []
+
+    c_in = input_dims
+    c_out = init_hidden_dims
+
+    for _ in range(levels):
+        encoder += [_linear_block(c_in, c_out)]
+        decoder += [_linear_block(c_out, c_in)]
+        c_in = c_out
+
+    encoder += [_linear_block(c_in, latent_dim)]
+    decoder += [_linear_block(latent_dim, c_in)]
+    decoder = decoder[::-1]
+
+    encoder = nn.Sequential(*encoder)
+    decoder = nn.Sequential(*decoder)
+
+    return encoder, decoder

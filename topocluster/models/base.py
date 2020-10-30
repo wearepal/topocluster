@@ -1,13 +1,12 @@
 from __future__ import annotations
-
 from abc import abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import torch
 from torch import Tensor
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from torch.optim import Adam
+from torch.utils.data import DataLoader
 
 
 __all__ = ["ModelBase", "Encoder"]
@@ -28,7 +27,8 @@ class ModelBase(nn.Module):
 
     def _reset_optimizer(self, optimizer_kwargs: Dict[str, float]) -> None:
         self.optimizer = Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()), **optimizer_kwargs,
+            filter(lambda p: p.requires_grad, self.model.parameters()),
+            **optimizer_kwargs,
         )
 
     def reset_parameters(self) -> None:
@@ -48,16 +48,6 @@ class ModelBase(nn.Module):
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.model(inputs)
-
-    def freeze_initial_layers(
-        self, num_layers: int, optimizer_kwargs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        assert isinstance(self.model, nn.Sequential), "model isn't indexable"
-        print(f"Freezing {num_layers} out of {len(self.model)} layers.")
-        for block in self.model[:num_layers]:
-            for parameter in block.parameters():
-                parameter.requires_grad_(False)
-        self._reset_optimizer(optimizer_kwargs or self.optimizer_kwargs)
 
 
 class Encoder(nn.Module):

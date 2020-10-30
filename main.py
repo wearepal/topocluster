@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.topocluster.clustering.kmeans.conf import KmeansConf
 from topocluster.confs import TrainConf
-from topocluster.optimisation.train import main
+from topocluster.experiment import main
 
 __all__ = ["main"]
 
