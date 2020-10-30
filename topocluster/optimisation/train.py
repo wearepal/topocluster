@@ -1,69 +1,39 @@
 # """Main training file"""
 # from __future__ import annotations
-
-# import time
+# from dataclasses import dataclass
 # from logging import Logger
 # from pathlib import Path
-
-# from omegaconf.omegaconf import MISSING
-# from topocluster.configs.arguments import DataConfig, PbcConfig
-
+# import time
 # from typing import List, Optional, Tuple, Union
 
+# import hydra
+# from hydra.core.config_store import ConfigStore
+# from hydra.utils import instantiate
 # import numpy as np
+# from omegaconf import OmegaConf
 # import torch
-# from torch.utils.data.dataset import Dataset
-# import wandb
 # from torch import Tensor
 # from torch.utils.data import ConcatDataset, DataLoader
+# from torch.utils.data.dataset import Dataset
 # from torchvision.models import resnet18, resnet50
 
 # from topocluster.configs import ClusterArgs
+# from topocluster.configs.arguments import DataConfig, PcbConfig
 # from topocluster.data.data_loading import DatasetTriplet, load_dataset
-# from topocluster.models import (
-#     Encoder,
-#     SelfSupervised,
-# )
-# from topocluster.utils import (
-#     get_data_dim,
-#     get_logger,
-#     random_seed,
-# )
+# from topocluster.models import Encoder, SelfSupervised
+# from topocluster.utils import get_data_dim, get_logger, random_seed
+# import wandb
 
 # from .build import build_ae
 # from .evaluation import encode_dataset
 # from .unsupervised import cluster as u_cluster
 # from .utils import ClusterResults, get_class_id, get_cluster_label_path
 
-from omegaconf.omegaconf import MISSING
-from topocluster.configs.arguments import PbcConfig
-import hydra
-from hydra.core.config_store import ConfigStore
-from hydra.utils import instantiate
-from omegaconf import OmegaConf
-
-from dataclasses import dataclass
-
 __all__ = ["main"]
 
 
-@dataclass
-class Config:
-    # data: DataConfig
-    clusterer: PbcConfig = MISSING
-
-
-# ConfigStore enables type validation
-cs = ConfigStore.instance()
-# If you don't do fancy stuff, only the root needs to be registered
-cs.store(name="primary", node=Config)
-
-
-@hydra.main(config_path="conf", config_name="primary")
-def main(cfg: Config) -> None:
-    cfg_ = OmegaConf.to_yaml(cfg)
-    clusterer = instantiate(cfg.clusterer)
-    print(cfg_)
+def main():
+    ...
 
 
 # def main(

@@ -1,26 +1,26 @@
 from __future__ import annotations
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional, Tuple, Literal, Union, Dict
+import random
+from typing import Any, Dict, Iterable, Iterator, Literal, Tuple, TypeVar, Union
 
-from lapjv import lapjv  # pylint: disable=no-name-in-module
+from lapjv import lapjv
 import numpy as np
 import torch
-import torchvision
 from torch import Tensor
-import wandb
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
-from topocluster.utils import wandb_log
-from topocluster.models import Model
-from topocluster.configs import ClusterArgs
 
 __all__ = [
     "ClusterResults",
     "count_occurances",
+    "count_parameters",
     "find_assignment",
     "get_class_id",
-    "get_cluster_label_path",
-    "log_images",
+    "get_data_dim",
+    "inf_generator",
+    "random_seed",
     "restore_model",
     "save_model",
 ]
@@ -28,7 +28,6 @@ __all__ = [
 
 @dataclass
 class ClusterResults:
-    """Information that the fcm code passes on to fdm."""
 
     args: Dict[str, Any]
     cluster_ids: torch.Tensor
@@ -47,45 +46,18 @@ class ClusterResults:
         return save_path
 
 
-def log_images(
-    args: ClusterArgs,
-    image_batch: Tensor,
-    name: str,
-    step: int,
-    nsamples: int = 64,
-    nrows: int = 8,
-    monochrome: bool = False,
-    prefix: Optional[str] = None,
-) -> None:
-    """Make a grid of the given images, save them in a file and log them with W&B"""
-    prefix = "train_" if prefix is None else f"{prefix}_"
-    images = image_batch[:nsamples]
-
-    if args.recon_loss == "ce":
-        images = images.argmax(dim=1).float() / 255
-    else:
-        if args.dataset == "celeba":
-            images = 0.5 * images + 0.5
-
-    if monochrome:
-        images = images.mean(dim=1, keepdim=True)
-    shw = torchvision.utils.make_grid(images, nrow=nrows).clamp(0, 1).cpu()
-    wandb_log(
-        args,
-        {prefix + name: [wandb.Image(torchvision.transforms.functional.to_pil_image(shw))]},
-        step=step,
-    )
-
-
 def save_model(
-    args: ClusterArgs, save_dir: Path, model: Model, epoch: int, sha: str, best: bool = False,
+    save_dir: Path,
+    model: nn.Module,
+    epoch: int,
+    sha: str,
+    best: bool = False,
 ) -> Path:
     if best:
         filename = save_dir / "checkpt_best.pth"
     else:
         filename = save_dir / f"checkpt_epoch{epoch}.pth"
     save_dict = {
-        "args": args.as_dict(),
         "sha": sha,
         "model": model.state_dict(),
         "epoch": epoch,
@@ -96,10 +68,9 @@ def save_model(
     return filename
 
 
-def restore_model(args: ClusterArgs, filename: Path, model: Model) -> Tuple[Model, int]:
+def restore_model(filename: Path, model: Model) -> Tuple[Model, int]:
     chkpt = torch.load(filename, map_location=lambda storage, loc: storage)
     args_chkpt = chkpt["args"]
-    assert args.enc_levels == args_chkpt["enc_levels"]
     model.load_state_dict(chkpt["model"])
     return model, chkpt["epoch"]
 
@@ -152,28 +123,40 @@ def get_class_id(
     return class_id.squeeze()
 
 
-def get_cluster_label_path(args: ClusterArgs, save_dir: Path) -> Path:
-    if args.cluster_label_file:
-        return Path(args.cluster_label_file)
-    else:
-        return save_dir / "cluster_results.pth"
+def get_data_dim(data_loader: DataLoader) -> Tuple[int, ...]:
+    x = next(iter(data_loader))[0]
+    x_dim = x.shape[1:]
+
+    return tuple(x_dim)
 
 
-# def convert_and_save_results(
-#     args: ClusterArgs,
-#     cluster_label_path: Path,
-#     results: Tuple[Tensor, Tensor, Tensor],
-#     context_acc: float,
-#     test_acc: float = float("nan"),
-# ) -> Path:
-#     clusters, s, y = results
-#     s_count = args._s_dim if args._s_dim > 1 else 2
-#     class_ids = get_class_id(s=s, y=y, s_count=s_count, to_cluster=args.cluster)
-#     cluster_results = ClusterResults(
-#         flags=args.as_dict(),
-#         cluster_ids=clusters,
-#         class_ids=class_ids,
-#         context_acc=context_acc,
-#         test_acc=test_acc,
-#     )
-#     return save_results(save_path=cluster_label_path, cluster_results=cluster_results)
+T = TypeVar("T")
+
+
+def inf_generator(iterable: Iterable[T]) -> Iterator[T]:
+    """Get DataLoaders in a single infinite loop.
+
+    for i, (x, y) in enumerate(inf_generator(train_loader))
+    """
+    iterator = iter(iterable)
+    while True:
+        try:
+            yield next(iterator)
+        except StopIteration:
+            iterator = iter(iterable)
+
+
+def count_parameters(model: nn.Module) -> int:
+    """Count all parameters (that have a gradient) in the given model"""
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def random_seed(seed_value: int, use_cuda: bool) -> None:
+    np.random.seed(seed_value)  # cpu vars
+    torch.manual_seed(seed_value)  # cpu  vars
+    random.seed(seed_value)  # Python
+    if use_cuda:
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value)  # gpu vars
+        torch.backends.cudnn.deterministic = True  # needed
+        torch.backends.cudnn.benchmark = False
