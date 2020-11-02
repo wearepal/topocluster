@@ -1,8 +1,7 @@
 # """Main training file"""
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Sequence
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Sequence
 
-from omegaconf.omegaconf import MISSING
 import pytorch_lightning as pl
 from torch.optim import Adam, Optimizer
 from torch.tensor import Tensor
@@ -11,7 +10,7 @@ from topocluster.clustering.common import Clusterer
 from topocluster.models.autoencoder import AutoEncoder
 import wandb
 
-__all__ = ["main"]
+__all__ = ["Experiment"]
 
 
 class Experiment(pl.LightningModule):
@@ -23,7 +22,7 @@ class Experiment(pl.LightningModule):
         epochs: int,
         pretrain_epochs: int,
         lr: float = 1.0e-3,
-        use_wandb: bool = True,
+        use_wandb: bool = False,
         seed: Optional[int] = 42,
     ):
         super().__init__()
@@ -31,7 +30,6 @@ class Experiment(pl.LightningModule):
         self.datamodule = datamodule
         self.encoder = encoder
         self.clusterer = clusterer
-        self.pretrain_epochs = pretrain_epochs
 
         self.trainer = pl.Trainer(max_epochs=epochs)
         self.pt_trainer = pl.Trainer(max_epochs=pretrain_epochs)
@@ -45,9 +43,10 @@ class Experiment(pl.LightningModule):
         _ = self.clusterer.fit_transform(encoding)
         return encoding.sum()
 
-    def start(self):
+    def start(self, raw_config: Optional[Dict[str, Any]]):
         self.datamodule.setup()
-        # wandb.init(entity="predictive-analytics-lab", project="topocluster", config=None)
+        if self.hparams.use_wandb:
+            wandb.init(entity="predictive-analytics-lab", project="topocluster", config=raw_config)
         pl.seed_everything(seed=self.hparams.seed)
         self.encoder.build(self.datamodule.dims)
         self.pt_trainer.fit(self.encoder, datamodule=self.datamodule)

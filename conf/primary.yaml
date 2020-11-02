@@ -8,5 +8,6 @@ defaults:
   - schema/encoder: gconv_ae
   - encoder: gconv_ae
 
+use_wandb: False
 epochs: 0
 pretrain_epochs: 0

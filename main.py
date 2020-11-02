@@ -8,9 +8,6 @@ from gen.topocluster.clustering.kmeans.conf import KmeansConf
 from gen.topocluster.data.data_modules.conf import MNISTDataModuleConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.autoencoder.conf import GatedConvAutoEncoderConf
-from topocluster.experiment import Experiment
-
-__all__ = ["main"]
 
 
 # ConfigStore enables type validation
@@ -24,13 +21,12 @@ cs.store(group="schema/clusterer", name="kmeans", node=KmeansConf, package="clus
 
 @hydra.main(config_path="conf", config_name="primary")
 def launcher(cfg: ExperimentConf) -> None:
-    OmegaConf.to_yaml(cfg)
 
     exp = instantiate(cfg)
     exp.datamodule = instantiate(exp.datamodule)
     exp.encoder = instantiate(exp.encoder)
     exp.clusterer = instantiate(exp.clusterer)
-    exp.start()
+    exp.start(raw_config=OmegaConf.to_container(cfg))
 
 
 if __name__ == "__main__":
