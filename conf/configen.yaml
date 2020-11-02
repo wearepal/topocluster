@@ -35,6 +35,7 @@ configen:
     - name: torch.nn
       classes:
         - ReLU
-    - name: pytorch_lightning
-      classes:
-        - LightningDataModule
+    # - name: pytorch_lightning
+    # classes:
+    #   - LightningDataModule
+    # - Trainer

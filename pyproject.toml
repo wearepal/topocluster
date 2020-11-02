@@ -19,12 +19,12 @@ ethicml = "^0.1.0-alpha.10"
 faiss-cpu = "^1.6.4"
 eagerpy = "^0.29.0"
 POT = "^0.7.0"
-hydra-core = "^1.0.3"
 torch = "^1.7.0"
 torchvision = "^0.8.1"
-hydra-configen = "^0.9.0-alpha.4"
 pytorch-lightning = "^1.0.4"
 omegaconf = {git = "https://github.com/omry/omegaconf.git"}
+hydra-core = {git = "https://github.com/facebookresearch/hydra.git"}
+hydra-configen = {git = "https://github.com/thomkeh/configen.git"}
 
 [tool.poetry.scripts]
 main = "run"
