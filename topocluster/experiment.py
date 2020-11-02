@@ -32,9 +32,9 @@ class Experiment(pl.LightningModule):
         self.encoder = encoder
         self.clusterer = clusterer
         self.pretrain_epochs = pretrain_epochs
-        self.epochs = epochs
-        self.use_wandb = use_wandb
-        self.seed = seed
+
+        self.trainer = pl.Trainer(max_epochs=epochs)
+        self.pt_trainer = pl.Trainer(max_epochs=pretrain_epochs)
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=self.hparams.lr)
@@ -48,10 +48,7 @@ class Experiment(pl.LightningModule):
     def start(self):
         self.datamodule.setup()
         # wandb.init(entity="predictive-analytics-lab", project="topocluster", config=None)
-        pl.seed_everything(seed=self.seed)
+        pl.seed_everything(seed=self.hparams.seed)
         self.encoder.build(self.datamodule.dims)
-        trainer_pt = pl.Trainer(max_epochs=self.pretrain_epochs)
-        trainer_pt.fit(self.encoder, datamodule=self.datamodule)
-
-        trainer = pl.Trainer(max_epochs=self.epochs)
-        trainer.fit(self, datamodule=self.datamodule)
+        self.pt_trainer.fit(self.encoder, datamodule=self.datamodule)
+        self.trainer.fit(self, datamodule=self.datamodule)
