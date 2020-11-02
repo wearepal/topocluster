@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 import time
@@ -11,6 +12,8 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
+from topocluster.clustering.common import Clusterer
+
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
 
@@ -19,7 +22,7 @@ class Backends(Enum):
     TORCH = auto()
 
 
-class Kmeans:
+class Kmeans(Clusterer):
     def __init__(
         self,
         k: int,
@@ -35,7 +38,7 @@ class Kmeans:
         self.verbose = verbose
         self._labels: Optional[Tensor] = None
 
-    def fit(self, x: Tensor) -> "Kmeans":
+    def fit(self, x: Tensor) -> Kmeans:
         if self.backend == "torch":
             self._labels = run_kmeans_torch(
                 x,

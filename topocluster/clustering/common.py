@@ -1,3 +1,24 @@
+from abc import ABC, abstractmethod
+from typing import Any
+
+from torch import Tensor
+import torch.nn as nn
+
+__all__ = ["Clusterer"]
+
+
+class Clusterer(ABC):
+    _labels: Tensor
+
+    @abstractmethod
+    def fit(self, x: Tensor) -> Tensor:
+        ...
+
+    @abstractmethod
+    def fit_transform(self, x: Tensor, **kwargs: Any) -> Tensor:
+        ...
+
+
 # from __future__ import annotations
 # from typing import Any, Dict, List, Tuple, Union
 

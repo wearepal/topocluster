@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 import warnings
@@ -12,8 +13,10 @@ import umap
 
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
 
+from .common import Clusterer
 
-class Tomato(nn.Module):
+
+class Tomato(Clusterer):
     def __init__(
         self,
         k_kde: int = 100,
@@ -48,7 +51,7 @@ class Tomato(nn.Module):
 
         return fig
 
-    def fit(self, x: Union["np.ndarray[np.float32]", Tensor], threshold: float = 1) -> "Tomato":
+    def fit(self, x: Union[np.ndarray[np.float32], Tensor], threshold: float = 1) -> Tomato:
         if isinstance(x, Tensor):
             x = x.cpu().detach().numpy()
         assert isinstance(x, np.ndarray)

@@ -1,4 +1,12 @@
 defaults:
-  # choose which config *file* you want
   - schema/clusterer: kmeans
   - clusterer: kmeans
+
+  - schema/datamodule: mnist
+  - datamodule: mnist
+
+  - schema/encoder: gconv_ae
+  - encoder: gconv_ae
+
+epochs: 0
+pretrain_epochs: 0

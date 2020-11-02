@@ -13,14 +13,28 @@ configen:
 
   # list of modules to generate configs for
   modules:
-    # - name: topocluster.clustering.tomato
-    # - name: gudhi.clustering.tomato
-    # for each module, a list of classes
-    # classes:
-    #   - Tomato
+    - name: topocluster.experiment
+      classes:
+        - Experiment
+    - name: topocluster.models.autoencoder
+      classes:
+        - AutoEncoder
+        - GatedConvAutoEncoder
+    - name: topocluster.data.data_modules
+      classes:
+        - MNISTDataModule
+    - name: gudhi.clustering.tomato
+      classes:
+        - Tomato
+    - name: topocluster.clustering.tomato
+      classes:
+        - Tomato
     - name: topocluster.clustering.kmeans
       classes:
         - Kmeans
     - name: torch.nn
       classes:
         - ReLU
+    - name: pytorch_lightning
+      classes:
+        - LightningDataModule
