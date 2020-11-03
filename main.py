@@ -31,8 +31,8 @@ cs.store(group="schema/datamodule", name="svhn", node=SVHNDataModuleConf, packag
 cs.store(group="schema/encoder", name="gconv_ae", node=GatedConvAutoEncoderConf, package="encoder")
 cs.store(group="schema/clusterer", name="tomato", node=TomatoConf, package="clusterer")
 cs.store(group="schema/clusterer", name="kmeans", node=KmeansConf, package="clusterer")
-# cs.store(group="schema/trainer", name="trainer", node=TrainerConf, package="trainer")
-# cs.store(group="schema/trainer", name="pt_trainer", node=TrainerConf, package="trainer")
+cs.store(group="schema/trainer", name="trainer", node=TrainerConf, package="trainer")
+cs.store(group="schema/pretrainer", name="pretrainer", node=TrainerConf, package="pretrainer")
 
 
 @hydra.main(config_path="conf", config_name="experiment")

@@ -20,7 +20,7 @@ class Experiment(pl.LightningModule):
         encoder: AutoEncoder,
         clusterer: Clusterer,
         trainer: pl.Trainer,
-        pt_trainer: pl.Trainer,
+        pretrainer: pl.Trainer,
         lr: float = 1.0e-3,
         use_wandb: bool = False,
         seed: Optional[int] = 42,
@@ -31,7 +31,7 @@ class Experiment(pl.LightningModule):
         self.encoder = encoder
         self.clusterer = clusterer
         self.trainer = trainer
-        self.pt_trainer = pt_trainer
+        self.pretrainer = pretrainer
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.encoder.parameters(), lr=self.hparams.lr)
@@ -48,9 +48,9 @@ class Experiment(pl.LightningModule):
         self.datamodule.setup()
         if self.hparams.use_wandb:
             wandb.init(entity="predictive-analytics-lab", project="topocluster", config=raw_config)
-            self.pt_trainer.logger = WandbLogger()
+            self.pretrainer.logger = WandbLogger()
             self.trainer.logger = WandbLogger()
         pl.seed_everything(seed=self.hparams.seed)
         self.encoder.build(self.datamodule.dims)
-        self.pt_trainer.fit(self.encoder, datamodule=self.datamodule)
+        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self.encoder, datamodule=self.datamodule)
