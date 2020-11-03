@@ -1,6 +1,4 @@
 # """Main training file"""
-from collections import OrderedDict
-from dataclasses import dataclass
 from typing import Any, Dict, Optional, Sequence
 
 import pytorch_lightning as pl
@@ -43,10 +41,8 @@ class Experiment(pl.LightningModule):
         encoding = self.encoder(x)
         _ = self.clusterer.fit_transform(encoding)
         loss = encoding.sum()
-        self.log("train_loss", loss)
-        tqdm_dict = {"loss": loss}
-        output = OrderedDict({"loss": loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-        return output
+        self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
+        return loss
 
     def start(self, raw_config: Optional[Dict[str, Any]] = None):
         self.datamodule.setup()

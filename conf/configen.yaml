@@ -23,6 +23,9 @@ configen:
     - name: topocluster.data.data_modules
       classes:
         - MNISTDataModule
+        - CIFAR10DataModule
+        - CIFAR100DataModule
+        - SVHNDataModule
     - name: gudhi.clustering.tomato
       classes:
         - Tomato

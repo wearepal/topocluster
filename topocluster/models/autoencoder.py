@@ -1,15 +1,11 @@
 """Autoencoders"""
 from __future__ import annotations
 from abc import abstractmethod
-from collections import OrderedDict
-from dataclasses import dataclass
-from typing import Any, Callable, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
-from omegaconf.omegaconf import MISSING
 import pytorch_lightning as pl
 from torch import Tensor
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import Adam, Optimizer
 
 from topocluster.layers.misc import View
@@ -50,10 +46,8 @@ class AutoEncoder(pl.LightningModule):
         z = self.encoder(x)
         x_hat = self.decoder(z)
         loss = self.loss_fn(x_hat, x)
-        self.log("train_loss", loss)
-        tqdm_dict = {"loss": loss}
-        output = OrderedDict({"loss": loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-        return output
+        self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
+        return loss
 
 
 class GatedConvAutoEncoder(AutoEncoder):

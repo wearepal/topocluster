@@ -1,5 +1,6 @@
-from typing import Any, List, Set, Tuple
+from typing import Any, List, Sequence, Set, Tuple
 
+import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset, Sampler, Subset, random_split
@@ -8,12 +9,17 @@ from torch.utils.data._utils.collate import (
     np_str_obj_array_pattern,
 )
 
-__all__ = ["RandomSampler", "adaptive_collate", "filter_by_labels", "train_test_split"]
+__all__ = ["RandomSampler", "adaptive_collate", "filter_by_labels", "prop_random_split"]
 
 
-def train_test_split(dataset: Dataset, train_pcnt: float) -> List[Subset]:
-    train_len = round(train_pcnt * len(dataset))
-    return random_split(dataset, lengths=[train_len, 1 - train_len])
+def prop_random_split(dataset: Dataset, props: Sequence[float]) -> List[Subset]:
+    len_ = len(dataset)
+    if (sum_ := (np.sum(props)) > 1.0) or any(prop < 0 for prop in props):
+        raise ValueError("Values for 'props` must be positive and sum to 1 or less.")
+    section_sizes = [round(prop * len_) for prop in props]
+    if sum_ < 1:
+        section_sizes.append(len_ - sum(section_sizes))
+    return random_split(dataset, section_sizes)
 
 
 def filter_by_labels(

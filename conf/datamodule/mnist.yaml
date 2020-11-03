@@ -3,3 +3,4 @@ data_dir: "/Users/mb715/Code/topocluster/data"
 train_batch_size: 256
 test_batch_size: 1000
 num_workers: 4
+val_pcnt: 0.2

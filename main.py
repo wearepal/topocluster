@@ -6,7 +6,12 @@ from omegaconf import OmegaConf
 from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.pytorch_lightning.conf import TrainerConf
 from gen.topocluster.clustering.kmeans.conf import KmeansConf
-from gen.topocluster.data.data_modules.conf import MNISTDataModuleConf
+from gen.topocluster.data.data_modules.conf import (
+    CIFAR100DataModuleConf,
+    CIFAR10DataModuleConf,
+    MNISTDataModuleConf,
+    SVHNDataModuleConf,
+)
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.autoencoder.conf import GatedConvAutoEncoderConf
 
@@ -15,6 +20,14 @@ from gen.topocluster.models.autoencoder.conf import GatedConvAutoEncoderConf
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConf)
 cs.store(group="schema/datamodule", name="mnist", node=MNISTDataModuleConf, package="datamodule")
+cs.store(
+    group="schema/datamodule", name="cifar10", node=CIFAR10DataModuleConf, package="datamodule"
+)
+cs.store(
+    group="schema/datamodule", name="cifar100", node=CIFAR100DataModuleConf, package="datamodule"
+)
+cs.store(group="schema/datamodule", name="svhn", node=SVHNDataModuleConf, package="datamodule")
+
 cs.store(group="schema/encoder", name="gconv_ae", node=GatedConvAutoEncoderConf, package="encoder")
 cs.store(group="schema/clusterer", name="tomato", node=TomatoConf, package="clusterer")
 cs.store(group="schema/clusterer", name="kmeans", node=KmeansConf, package="clusterer")

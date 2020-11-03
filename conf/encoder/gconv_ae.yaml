@@ -1,4 +1,4 @@
 # @package encoder
 init_hidden_dims: 32
-levels: 3
+levels: 2
 latent_dim: 100
