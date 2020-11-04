@@ -15,7 +15,14 @@ from torchvision.datasets.svhn import SVHN
 from topocluster.data.utils import prop_random_split
 
 
-__all__ = ["MNISTDataModule"]
+__all__ = [
+    "DataModule",
+    "MNISTDataModule",
+    "CIFAR10DataModule",
+    "CIFAR100DataModule",
+    "SVHNDataModule",
+    "OmniglotDataModule",
+]
 
 
 MASK_VALUE: Final = -1
@@ -36,7 +43,7 @@ class MaskedLabelDataset(Dataset):
         return x, y
 
 
-class _DataModule(pl.LightningDataModule):
+class DataModule(pl.LightningDataModule):
 
     train_data: Dataset
     val_data: Dataset
@@ -87,7 +94,7 @@ class _DataModule(pl.LightningDataModule):
         )
 
 
-class MNISTDataModule(_DataModule):
+class MNISTDataModule(DataModule):
 
     num_classes: ClassVar[int] = 10
 
@@ -133,7 +140,7 @@ class MNISTDataModule(_DataModule):
             self.dims = getattr(self, "dims", self.test_data[0][0].shape)
 
 
-class CIFAR10DataModule(_DataModule):
+class CIFAR10DataModule(DataModule):
 
     num_classes: ClassVar[int] = 10
 
@@ -181,7 +188,7 @@ class CIFAR10DataModule(_DataModule):
             )
 
 
-class CIFAR100DataModule(_DataModule):
+class CIFAR100DataModule(DataModule):
 
     num_classes: ClassVar[int] = 100
 
@@ -229,7 +236,7 @@ class CIFAR100DataModule(_DataModule):
             )
 
 
-class SVHNDataModule(_DataModule):
+class SVHNDataModule(DataModule):
 
     num_classes: ClassVar[int] = 10
 
@@ -274,7 +281,7 @@ class SVHNDataModule(_DataModule):
             )
 
 
-class OmniglotDataModule(_DataModule):
+class OmniglotDataModule(DataModule):
 
     num_classes: ClassVar[int] = 50
 

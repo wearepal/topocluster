@@ -1,15 +1,17 @@
 # """Main training file"""
 from typing import Any, Dict, Optional
 
+import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
+import torch.nn.functional as F
 from torch.optim import Adam, Optimizer
 from torch.tensor import Tensor
 
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.dac import PseudoLabelLoss
-from topocluster.clustering.loss import l2_centroidal_distance
+from topocluster.data.data_modules import DataModule
 from topocluster.models.autoencoder import AutoEncoder
+from topocluster.optimisation.utils import count_occurances
 import wandb
 
 __all__ = ["Experiment"]
@@ -18,7 +20,7 @@ __all__ = ["Experiment"]
 class Experiment(pl.LightningModule):
     def __init__(
         self,
-        datamodule: pl.LightningDataModule,
+        datamodule: DataModule,
         encoder: AutoEncoder,
         clusterer: Clusterer,
         trainer: pl.Trainer,
@@ -38,21 +40,34 @@ class Experiment(pl.LightningModule):
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=self.hparams.lr)
 
+    def validation_step(self, batch: Tensor, batch_idx: int) -> None:
+        x, y = batch
+        encoding = self.encoder(x)
+        preds = self.clusterer(encoding)
+
+        try:
+            _counts = np.zeros((self.datamodule.num_classes,) * 2, dtype=np.int64)
+            _counts, _ = count_occurances(_counts, preds.cpu().numpy(), s, y, s_count, args.cluster)
+            _acc, _, _logging_dict_t = find_assignment(_counts, preds.size(0))
+        except IndexError:
+            _acc = float("nan")
+
+        _ari = adjusted_rand_score(labels_true=ground_truth, labels_pred=_preds)
+        _nmi = normalized_mutual_info_score(labels_true=ground_truth, labels_pred=_preds)
+
     def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
         x, y = batch
         labeled = y != -1
 
         encoding = self.encoder(x)
-        self.clusterer.fit(encoding).labels
+        recon_loss = self.encoder.get_loss(encoding)
 
-        # purity_loss = l2_centroidal_distance(
-        #     encoding[labeled], self.clusterer.centroids, y[labeled]
-        # )
-        purity_loss = encoding.sum()
+        purity_loss = F.cross_entropy(self.clusterer.soft_labels[labeled], y[labeled])
 
+        self.log("recon_loss", recon_loss, on_step=True, prog_bar=True, logger=True)
         self.log("purity_loss", purity_loss, on_step=True, prog_bar=True, logger=True)
 
-        return purity_loss
+        return recon_loss + purity_loss
 
     def start(self, raw_config: Optional[Dict[str, Any]] = None):
         self.datamodule.setup()

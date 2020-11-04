@@ -8,16 +8,16 @@ from numba import jit
 import numpy as np
 import torch
 from torch import Tensor
-import torch.nn as nn
 import umap
 
+from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
 
 from .common import Clusterer
 
 
 class Tomato(Clusterer):
-    labels: Tensor
+
     pers_pairs: Tensor
 
     def __init__(
@@ -100,9 +100,9 @@ class Tomato(Clusterer):
         pers_pairs = torch.as_tensor(pers_pairs, dtype=torch.float32)
         centroids = torch.as_tensor(x, dtype=torch.float32)[list[clusters.keys()]]
 
-        self.labels = cluster_labels
+        self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
+        self.hard_labels = cluster_labels
         self.pers_pairs = pers_pairs
-        self.centroids = centroids
 
         return self
 

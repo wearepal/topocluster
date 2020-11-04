@@ -19,8 +19,8 @@ class PlClusterer(Clusterer, nn.Module):
     classifier: nn.Linear
 
     def fit(self, x: Tensor) -> PlClusterer:
-        self.logits = self.classifier(x)
-        self.labels = self.logits.argmax(dim=-1)
+        self.soft_labels = self.classifier(x)
+        self.hard_labels = self.soft_labels.argmax(dim=-1)
         return self
 
     def build(self, input_dim: int, num_classes: int) -> None:

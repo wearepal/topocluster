@@ -10,7 +10,8 @@ __all__ = ["Clusterer"]
 
 class Clusterer:
 
-    labels: Tensor
+    hard_labels: Tensor
+    soft_labels: Tensor
 
     @abstractmethod
     def fit(self, x: Tensor) -> Clusterer:
@@ -22,7 +23,7 @@ class Clusterer:
 
     def __call__(self, x: Tensor) -> Tensor:
         self.fit(x)
-        return self.labels
+        return self.hard_labels
 
 
 # from __future__ import annotations

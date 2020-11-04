@@ -13,6 +13,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from topocluster.clustering.common import Clusterer
+from topocluster.clustering.loss import l2_centroidal_distance
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -48,7 +49,7 @@ class Kmeans(Clusterer):
         if self.k is None:
             raise ValueError("Value for k not yet set.")
         if self.backend == "torch":
-            self._labels = run_kmeans_torch(
+            self.hard_labels, centroids = run_kmeans_torch(
                 x,
                 k=self.k,
                 device=torch.device("cuda") if self.cuda else torch.device("cpu"),
@@ -56,9 +57,12 @@ class Kmeans(Clusterer):
                 verbose=self.verbose,
             )
         else:
-            self._labels, self._centroids = run_kmeans_faiss(
+            self.hard_labels, centroids = run_kmeans_faiss(
                 x=x, nmb_clusters=self.k, n_iter=self.n_iter, cuda=self.cuda, verbose=self.verbose
             )
+
+        self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
+
         return self
 
 

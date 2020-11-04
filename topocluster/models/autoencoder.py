@@ -39,13 +39,16 @@ class AutoEncoder(pl.LightningModule):
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
 
+    def get_loss(self, encoding: Tensor) -> Tensor:
+        return self.loss_fn(self.decoder(encoding))
+
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=self.hparams.lr)
 
     def training_step(self, batch: Tensor, batch_idx: int) -> OrderedDict:
         x = batch[0] if isinstance(batch, Sequence) else batch
         z = self.encoder(x)
-        x_hat = self.decoder(z)
+        loss = self.get_loss(z)
         loss = self.loss_fn(x_hat, x)
         self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
         return loss
