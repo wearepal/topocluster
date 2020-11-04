@@ -17,6 +17,9 @@ from .common import Clusterer
 
 
 class Tomato(Clusterer):
+    labels: Tensor
+    pers_pairs: Tensor
+
     def __init__(
         self,
         k_kde: int = 100,
@@ -32,8 +35,6 @@ class Tomato(Clusterer):
         self.batch_size = batch_size
         self._set_umap_defaults(umap_kwargs)
         self.reducer = umap.UMAP(**umap_kwargs) if umap_kwargs is not None else None
-        self._labels: Tensor
-        self._pers_pairs: Tensor
 
     def _set_umap_defaults(self, umap_kwargs: Optional[Dict[str, Any]]) -> None:
         if umap_kwargs is not None:
@@ -51,10 +52,12 @@ class Tomato(Clusterer):
 
         return fig
 
-    def fit(self, x: Union[np.ndarray[np.float32], Tensor], threshold: float = 1) -> Tomato:
+    def build(self, input_dim: int, num_classes: int) -> None:
+        return None
+
+    def fit(self, x: Union[np.ndarray[np.float32], Tensor], threshold: float = 1) -> None:
         if isinstance(x, Tensor):
-            x = x.cpu().detach().numpy()
-        assert isinstance(x, np.ndarray)
+            x = x.detach().cpu().numpy()
         x = x.reshape(num_samples := x.shape[0], -1)
         #  Reduce the dimensionality of the data first with UMAP
         if self.reducer is not None:
@@ -95,17 +98,13 @@ class Tomato(Clusterer):
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.int32)
         pers_pairs = torch.as_tensor(pers_pairs, dtype=torch.float32)
+        centroids = torch.as_tensor(x, dtype=torch.float32)[list[clusters.keys()]]
 
-        self._labels = cluster_labels
-        self._pers_pairs = pers_pairs
+        self.labels = cluster_labels
+        self.pers_pairs = pers_pairs
+        self.centroids = centroids
 
         return self
-
-    def fit_transform(
-        self, x: Union["np.ndarray[np.float32]", Tensor], threshold: float = 1
-    ) -> Tensor:
-        self.fit(x=x, threshold=threshold)
-        return self._labels
 
 
 def tomato(

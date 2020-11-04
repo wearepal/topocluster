@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Final, Optional, Tuple, Union
+from typing import Any, ClassVar, Final, Optional, Tuple, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -18,6 +18,9 @@ from topocluster.data.utils import prop_random_split
 __all__ = ["MNISTDataModule"]
 
 
+MASK_VALUE: Final = -1
+
+
 class MaskedLabelDataset(Dataset):
     def __init__(self, dataset: Dataset, threshold: Optional[int] = None) -> None:
         self.dataset = dataset
@@ -29,7 +32,7 @@ class MaskedLabelDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[Any, int]:
         x, y = self.dataset[index]
         if self.threshold is None or y >= self.threshold:
-            y = -1
+            y = MASK_VALUE
         return x, y
 
 
@@ -39,6 +42,7 @@ class _DataModule(pl.LightningDataModule):
     val_data: Dataset
     test_data: Dataset
     dims: Tuple[int, int, int]
+    num_classes: ClassVar[int]
 
     def __init__(
         self,
@@ -84,7 +88,8 @@ class _DataModule(pl.LightningDataModule):
 
 
 class MNISTDataModule(_DataModule):
-    dims: Tuple[int, int, int]
+
+    num_classes: ClassVar[int] = 10
 
     def __init__(
         self,
@@ -129,6 +134,9 @@ class MNISTDataModule(_DataModule):
 
 
 class CIFAR10DataModule(_DataModule):
+
+    num_classes: ClassVar[int] = 10
+
     def __init__(
         self,
         data_dir: str = "./",
@@ -174,6 +182,9 @@ class CIFAR10DataModule(_DataModule):
 
 
 class CIFAR100DataModule(_DataModule):
+
+    num_classes: ClassVar[int] = 100
+
     def __init__(
         self,
         data_dir: str = "./",
@@ -219,6 +230,9 @@ class CIFAR100DataModule(_DataModule):
 
 
 class SVHNDataModule(_DataModule):
+
+    num_classes: ClassVar[int] = 10
+
     def __init__(
         self,
         data_dir: str = "./",
@@ -261,6 +275,9 @@ class SVHNDataModule(_DataModule):
 
 
 class OmniglotDataModule(_DataModule):
+
+    num_classes: ClassVar[int] = 50
+
     def __init__(
         self,
         data_dir: str = "./",

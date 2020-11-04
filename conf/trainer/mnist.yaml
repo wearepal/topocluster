@@ -1,2 +1,2 @@
 # @package trainer
-max_epochs: 0
+max_epochs: 1

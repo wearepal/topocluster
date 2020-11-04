@@ -14,13 +14,5 @@ defaults:
   - schema/pretrainer: pretrainer
   - pretrainer: mnist
 
-# pretrainer:
-#   _target_: "pytorch_lightning.Trainer"
-#   max_epochs: 1
-
-# trainer:
-#   _target_: "pytorch_lightning.Trainer"
-#   max_epochs: 0
-
 use_wandb: False
 seed: 42

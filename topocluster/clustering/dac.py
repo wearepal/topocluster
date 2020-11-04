@@ -1,76 +1,78 @@
 """Model that contains all."""
-from typing import Iterator, Optional, Tuple, final
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Callable, Iterator, Optional, Tuple, final
 
 from torch import Tensor
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-from topocluster.clustering.pseudo_labelers import PseudoLabeler
-from topocluster.clustering.pseudo_labeling import PlMethod
+from topocluster.clustering.common import Clusterer
+from topocluster.data.data_modules import MASK_VALUE
+from topocluster.utils.torch_ops import dot_product, normalized_softmax
 
-__all__ = ["DeepClustering"]
+__all__ = ["PlClusterer"]
 
 
-@final
-class DeepClustering(nn.Module):
-    """This class brings everything together into one model object."""
+class PlClusterer(Clusterer, nn.Module):
+    classifier: nn.Linear
 
-    def __init__(
-        self,
-        encoder: nn.Module,
-        classifier: nn.Module,
-        method: PlMethod,
-        pseudo_labeler: PseudoLabeler,
-        train_encoder: bool,
-    ):
-        super().__init__()
+    def fit(self, x: Tensor) -> PlClusterer:
+        self.logits = self.classifier(x)
+        self.labels = self.logits.argmax(dim=-1)
+        return self
 
-        self.encoder = encoder
-        self.classifier = classifier
-        self.method = method
-        self.pseudo_labeler = pseudo_labeler
-        self.train_encoder = train_encoder
-
-    def supervised_loss(
-        self, x: Tensor, class_id: Tensor, ce_weight: float = 1.0, bce_weight: float = 1.0
-    ) -> Tuple[Tensor, LoggingDict]:
-        return self.method.supervised_loss(
-            encoder=self.encoder,
-            classifier=self.classifier,
-            x=x,
-            class_id=class_id,
-            ce_weight=ce_weight,
-            bce_weight=bce_weight,
-        )
-
-    def unsupervised_loss(self, x: Tensor) -> Tuple[Tensor, LoggingDict]:
-        return self.method.unsupervised_loss(
-            encoder=self.encoder,
-            pseudo_labeler=self.pseudo_labeler,
-            classifier=self.classifier,
-            x=x,
-        )
-
-    def step(self, grads: Optional[Tensor] = None) -> None:
-        self.classifier.step(grads)
-        if self.train_encoder:
-            self.encoder.step(grads)
-
-    def zero_grad(self) -> None:
-        self.classifier.zero_grad()
-        if self.train_encoder:
-            self.encoder.zero_grad()
-
-    def train(self) -> None:
-        self.classifier.train()
-        if self.train_encoder:
-            self.encoder.train()
-        else:
-            self.encoder.eval()
-
-    def eval(self) -> None:
-        self.encoder.eval()
-        self.classifier.eval()
+    def build(self, input_dim: int, num_classes: int) -> None:
+        self.classifier = nn.Linear(input_dim, num_classes)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.classifier(self.encoder(x))
+        return Clusterer.__call__(self, x)
+
+
+def cosine_and_bce(probs: Tensor, labels: Tensor) -> Tensor:
+    """Cosine similarity and then binary cross entropy."""
+    # cosine similarity
+    mask = labels == MASK_VALUE
+    probs = probs[mask]
+    labels = labels[mask]
+
+    cosine_sim = dot_product(probs[:, None, :], probs).clamp(min=0, max=1)
+    # binary cross entropy
+    unreduced_loss = F.binary_cross_entropy(cosine_sim, labels, reduction="none")
+    return torch.mean(unreduced_loss * mask)
+
+
+class PseudoLabelLoss(nn.Module, ABC):
+    def __init__(self, pseudo_labeler: Callable[[Tensor], Tensor]) -> None:
+        self.pseudo_labeler = pseudo_labeler
+
+    @abstractmethod
+    def forward(self, encodings: Tensor, logits: Tensor) -> Tensor:
+        ...
+
+
+class PlCrossEntropy(PseudoLabelLoss):
+    def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:
+        pseudo_labels = self.pseudo_labeler(encoding)
+        return F.cross_entropy(logits, pseudo_labels)
+
+
+class PlCosineBCE(PseudoLabelLoss):
+    """Cosine-BCE loss."""
+
+    def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:
+        # only do softmax but no real normalization
+        probs = logits.softmax(dim=-1)
+        pseudo_labels = self.pseudo_labeler(encoding)  # base the pseudo labels on the encoding
+        return cosine_and_bce(probs, pseudo_labels)
+
+
+class PlNormalizedCosineBCE(PseudoLabelLoss):
+    """Normalize the probabilities by the l2 norm before computing the Cosine-BCE loss."""
+
+    def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:
+        # only do softmax but no real normalization
+        probs = normalized_softmax(logits)
+        pseudo_labels = self.pseudo_labeler(encoding)  # base the pseudo labels on the encoding
+        return cosine_and_bce(probs, pseudo_labels)

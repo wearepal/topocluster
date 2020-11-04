@@ -23,9 +23,10 @@ class AutoEncoder(pl.LightningModule):
     encoder: nn.Module
     decoder: nn.Module
 
-    def __init__(self, lr: float = 1.0e-3) -> None:
+    def __init__(self, latent_dim: int, lr: float = 1.0e-3) -> None:
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters("lr")
+        self.latent_dim = latent_dim
         self.loss_fn = nn.MSELoss()
 
     @abstractmethod
@@ -58,10 +59,9 @@ class GatedConvAutoEncoder(AutoEncoder):
         latent_dim: int,
         lr: float = 1.0e-3,
     ):
-        super().__init__(lr=lr)
+        super().__init__(latent_dim=latent_dim, lr=lr)
         self.init_hidden_dims = init_hidden_dims
         self.levels = levels
-        self.latent_dim = latent_dim
 
     @staticmethod
     def _gated_down_conv(

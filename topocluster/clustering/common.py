@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -7,16 +8,21 @@ import torch.nn as nn
 __all__ = ["Clusterer"]
 
 
-class Clusterer(ABC):
-    _labels: Tensor
+class Clusterer:
+
+    labels: Tensor
 
     @abstractmethod
-    def fit(self, x: Tensor) -> Tensor:
+    def fit(self, x: Tensor) -> Clusterer:
         ...
 
     @abstractmethod
-    def fit_transform(self, x: Tensor, **kwargs: Any) -> Tensor:
+    def build(self, input_dim: int, num_classes: int) -> None:
         ...
+
+    def __call__(self, x: Tensor) -> Tensor:
+        self.fit(x)
+        return self.labels
 
 
 # from __future__ import annotations

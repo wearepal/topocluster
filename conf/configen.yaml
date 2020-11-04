@@ -16,6 +16,7 @@ configen:
     - name: topocluster.experiment
       classes:
         - Experiment
+        - DeepCluster
     - name: topocluster.models.autoencoder
       classes:
         - AutoEncoder
@@ -32,6 +33,9 @@ configen:
     - name: topocluster.clustering.tomato
       classes:
         - Tomato
+    - name: topocluster.clustering.dac
+      classes:
+        - PlClusterer
     - name: topocluster.clustering.kmeans
       classes:
         - Kmeans
