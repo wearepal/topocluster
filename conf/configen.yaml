@@ -16,7 +16,6 @@ configen:
     - name: topocluster.experiment
       classes:
         - Experiment
-        - DeepCluster
     - name: topocluster.models.autoencoder
       classes:
         - AutoEncoder
