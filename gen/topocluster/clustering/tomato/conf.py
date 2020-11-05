@@ -5,9 +5,6 @@
 # flake8: noqa
 
 from dataclasses import dataclass, field
-from typing import Any
-from typing import Dict
-from typing import Optional
 
 
 @dataclass
@@ -16,5 +13,4 @@ class TomatoConf:
     k_kde: int = 100
     k_rips: int = 15
     scale: float = 0.5
-    batch_size: Optional[int] = None
-    umap_kwargs: Optional[Dict[str, Any]] = None
+    threshold: float = 1.0

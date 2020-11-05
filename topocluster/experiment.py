@@ -1,17 +1,13 @@
 # """Main training file"""
 from typing import Any, Dict, Optional
 
-import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
-import pytorch_lightning.metrics.functional as FM
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
-import torch.nn.functional as F
 from torch.optim import Adam, Optimizer
 from torch.tensor import Tensor
 
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.utils import count_occurances, find_optimal_assignments
 from topocluster.data.data_modules import DataModule
 from topocluster.models.autoencoder import AutoEncoder
 import wandb
@@ -57,23 +53,14 @@ class Experiment(pl.LightningModule):
 
     def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
         x, y = batch
-        labeled = y != -1
 
         encoding = self.encoder(x)
-        recon_loss = self.encoder.get_loss(encoding, x)
-        cluster_loss = self.clusterer.get_loss(encoding)
+        self.clusterer.fit(encoding)
+        loss_dict = self.clusterer.get_loss(encoding, y)
 
-        purity_loss = F.cross_entropy(self.clusterer.soft_labels[labeled], y[labeled])
+        self.log_dict(loss_dict)
 
-        self.log_dict(
-            {"recon_loss": recon_loss, "cluster_loss": cluster_loss, "purity_loss": purity_loss}
-        )
-
-        loss = recon_loss + purity_loss
-        if cluster_loss is not None:
-            loss += cluster_loss
-
-        return loss
+        return sum(loss_dict.values())
 
     def start(self, raw_config: Optional[Dict[str, Any]] = None):
         self.datamodule.setup()
@@ -86,5 +73,5 @@ class Experiment(pl.LightningModule):
         self.encoder.build(self.datamodule.dims)
         self.clusterer.build(self.encoder.latent_dim, self.datamodule.num_classes)
 
-        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self, datamodule=self.datamodule)

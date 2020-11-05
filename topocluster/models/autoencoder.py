@@ -1,7 +1,7 @@
 """Autoencoders"""
 from __future__ import annotations
 from abc import abstractmethod
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 import pytorch_lightning as pl
 from torch import Tensor
@@ -39,18 +39,18 @@ class AutoEncoder(pl.LightningModule):
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
 
-    def get_loss(self, encoding: Tensor, x: Tensor) -> Tensor:
-        return self.loss_fn(self.decoder(encoding), x)
+    def get_loss(self, encoding: Tensor, x: Tensor) -> Dict[str, Tensor]:
+        return {"recon_loss": self.loss_fn(self.decoder(encoding), x)}
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.parameters(), lr=self.hparams.lr)
 
-    def training_step(self, batch: Tensor, batch_idx: int) -> OrderedDict:
+    def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
         x = batch[0] if isinstance(batch, Sequence) else batch
         encoding = self.encoder(x)
-        loss = self.get_loss(encoding, x)
-        self.log("train_loss", loss, on_step=True, prog_bar=True, logger=True)
-        return loss
+        loss_dict = self.get_loss(encoding, x)
+        self.log_dict(loss_dict)
+        return sum(loss_dict.values())
 
 
 class GatedConvAutoEncoder(AutoEncoder):

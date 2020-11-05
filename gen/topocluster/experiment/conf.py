@@ -13,25 +13,11 @@ from typing import Optional
 @dataclass
 class ExperimentConf:
     _target_: str = "topocluster.experiment.Experiment"
-    datamodule: Any = MISSING  # LightningDataModule
+    datamodule: Any = MISSING  # DataModule
     encoder: Any = MISSING  # AutoEncoder
     clusterer: Any = MISSING  # Clusterer
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
-    lr: float = 0.001
-    use_wandb: bool = False
-    seed: Optional[int] = 42
-
-
-@dataclass
-class DeepClusterConf:
-    _target_: str = "topocluster.experiment.DeepCluster"
-    datamodule: Any = MISSING  # LightningDataModule
-    encoder: Any = MISSING  # AutoEncoder
-    clusterer: Any = MISSING  # Clusterer
-    trainer: Any = MISSING  # Trainer
-    pretrainer: Any = MISSING  # Trainer
-    pl_loss: Any = MISSING  # PseudoLabelLoss
     lr: float = 0.001
     use_wandb: bool = False
     seed: Optional[int] = 42

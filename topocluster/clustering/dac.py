@@ -1,7 +1,7 @@
 """Model that contains all."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Callable, Iterator, Optional, Tuple, final
+from typing import Callable, Dict, Iterator, Optional, Tuple, final
 
 from torch import Tensor
 import torch
@@ -19,15 +19,18 @@ class PlClusterer(Clusterer, nn.Module):
     classifier: nn.Linear
 
     def __init__(self, pl_loss: PlLoss) -> None:
-        self.pl_loss = pl_loss
+        self.pl_loss_fn = pl_loss
 
     def fit(self, x: Tensor) -> PlClusterer:
         self.soft_labels = self.classifier(x)
         self.hard_labels = self.soft_labels.argmax(dim=-1)
         return self
 
-    def get_loss(self, x: Tensor) -> Tensor:
-        return self.pl_loss(x, self.soft_labels)
+    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
+        y_labeled = y != -1
+        pl_loss = self.pl_loss_fn(x, self.soft_labels)
+        purity_loss = F.cross_entropy(self.soft_labels[y_labeled], y[y_labeled])
+        return {"pl_loss": pl_loss, "purity_loss": purity_loss}
 
     def build(self, input_dim: int, num_classes: int) -> None:
         self.classifier = nn.Linear(input_dim, num_classes)

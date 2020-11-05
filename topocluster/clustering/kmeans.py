@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 import time
-from typing import Literal, Optional, Tuple, Union
+from typing import Dict, Literal, Optional, Tuple, Union
 
 import faiss
 import numpy as np
@@ -10,10 +10,14 @@ from omegaconf import MISSING
 from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
+import torch.nn.functional as F
 from tqdm import tqdm
 
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.utils import l2_centroidal_distance
+from topocluster.clustering.utils import (
+    compute_optimal_assignments,
+    l2_centroidal_distance,
+)
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -44,6 +48,18 @@ class Kmeans(Clusterer):
 
     def build(self, input_dim: int, num_classes: int) -> None:
         self.k = num_classes
+
+    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
+        labeled = y != -1
+        _, cluster_map = compute_optimal_assignments(
+            labels_pred=self.hard_labels[labeled].cpu().detach().numpy(),
+            labels_true=y[labeled].cpu().detach().numpy(),
+            encode=True,
+        )
+        permute_inds = list(cluster_map.values())
+        soft_labels_permuted = self.soft_labels[labeled][:, permute_inds]
+        purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
+        return {"purity_loss": purity_loss}
 
     def fit(self, x: Tensor) -> Kmeans:
         if self.k is None:
@@ -143,6 +159,6 @@ def run_kmeans_faiss(
         D, I = kmeans.index.search(x, 1)
 
     I = torch.as_tensor(I, dtype=torch.long).squeeze()
-    centroids = torch.as_tensor(centroids)
+    centroids = torch.as_tensor(kmeans.centroids)
 
     return I, centroids

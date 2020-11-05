@@ -1,9 +1,8 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import Any
+from abc import abstractmethod
+from typing import Dict
 
 from torch import Tensor
-import torch.nn as nn
 
 __all__ = ["Clusterer"]
 
@@ -18,7 +17,7 @@ class Clusterer:
         ...
 
     @abstractmethod
-    def get_loss(self, x: Tensor) -> Optional[Tensor]:
+    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
         ...
 
     @abstractmethod

@@ -11,6 +11,7 @@ from omegaconf import MISSING
 @dataclass
 class AutoEncoderConf:
     _target_: str = "topocluster.models.autoencoder.AutoEncoder"
+    latent_dim: int = MISSING
     lr: float = 0.001
 
 
