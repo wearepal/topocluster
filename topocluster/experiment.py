@@ -56,7 +56,9 @@ class Experiment(pl.LightningModule):
 
         encoding = self.encoder(x)
         self.clusterer.fit(encoding)
-        loss_dict = self.clusterer.get_loss(encoding, y)
+
+        loss_dict = self.encoder.get_loss(encoding, x)
+        loss_dict.update(self.clusterer.get_loss(encoding, y))
 
         self.log_dict(loss_dict)
 
@@ -73,5 +75,5 @@ class Experiment(pl.LightningModule):
         self.encoder.build(self.datamodule.dims)
         self.clusterer.build(self.encoder.latent_dim, self.datamodule.num_classes)
 
-        # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self, datamodule=self.datamodule)
