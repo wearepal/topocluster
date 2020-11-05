@@ -43,7 +43,7 @@ class Experiment(pl.LightningModule):
         x, y = batch
         y_np = y.cpu().numpy()
 
-        encoding = self.encoder(x).cpu()
+        encoding = self.encoder(x)
         preds = self.clusterer(encoding).cpu().detach().numpy()
 
         metrics = {}
