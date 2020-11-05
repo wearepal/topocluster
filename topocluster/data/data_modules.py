@@ -300,8 +300,6 @@ class OmniglotDataModule(DataModule):
             num_workers=num_workers,
             label_threshold=label_threshold,
         )
-        self.val_pcnt = val_pcnt
-        self.test_pcnt = test_pcnt
         self.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
         )

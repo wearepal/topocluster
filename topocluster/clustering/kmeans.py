@@ -13,7 +13,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.loss import l2_centroidal_distance
+from topocluster.clustering.utils import l2_centroidal_distance
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 

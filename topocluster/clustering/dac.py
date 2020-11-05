@@ -18,10 +18,16 @@ __all__ = ["PlClusterer"]
 class PlClusterer(Clusterer, nn.Module):
     classifier: nn.Linear
 
+    def __init__(self, pl_loss: PlLoss) -> None:
+        self.pl_loss = pl_loss
+
     def fit(self, x: Tensor) -> PlClusterer:
         self.soft_labels = self.classifier(x)
         self.hard_labels = self.soft_labels.argmax(dim=-1)
         return self
+
+    def get_loss(self, x: Tensor) -> Tensor:
+        return self.pl_loss(x, self.soft_labels)
 
     def build(self, input_dim: int, num_classes: int) -> None:
         self.classifier = nn.Linear(input_dim, num_classes)
@@ -43,7 +49,7 @@ def cosine_and_bce(probs: Tensor, labels: Tensor) -> Tensor:
     return torch.mean(unreduced_loss * mask)
 
 
-class PseudoLabelLoss(nn.Module, ABC):
+class PlLoss(nn.Module, ABC):
     def __init__(self, pseudo_labeler: Callable[[Tensor], Tensor]) -> None:
         self.pseudo_labeler = pseudo_labeler
 
@@ -52,13 +58,13 @@ class PseudoLabelLoss(nn.Module, ABC):
         ...
 
 
-class PlCrossEntropy(PseudoLabelLoss):
+class PlCrossEntropy(PlLoss):
     def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:
         pseudo_labels = self.pseudo_labeler(encoding)
         return F.cross_entropy(logits, pseudo_labels)
 
 
-class PlCosineBCE(PseudoLabelLoss):
+class PlCosineBCE(PlLoss):
     """Cosine-BCE loss."""
 
     def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:
@@ -68,7 +74,7 @@ class PlCosineBCE(PseudoLabelLoss):
         return cosine_and_bce(probs, pseudo_labels)
 
 
-class PlNormalizedCosineBCE(PseudoLabelLoss):
+class PlNormalizedCosineBCE(PlLoss):
     """Normalize the probabilities by the l2 norm before computing the Cosine-BCE loss."""
 
     def forward(self, encoding: Tensor, logits: Tensor) -> Tensor:

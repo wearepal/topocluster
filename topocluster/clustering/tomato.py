@@ -8,7 +8,6 @@ from numba import jit
 import numpy as np
 import torch
 from torch import Tensor
-import umap
 
 from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
@@ -21,26 +20,12 @@ class Tomato(Clusterer):
     pers_pairs: Tensor
 
     def __init__(
-        self,
-        k_kde: int = 100,
-        k_rips: int = 15,
-        scale: float = 0.5,
-        batch_size: Optional[int] = None,
-        umap_kwargs: Optional[Dict[str, Any]] = None,
+        self, k_kde: int = 100, k_rips: int = 15, scale: float = 0.5, destnum: Optional[int] = None
     ):
         super().__init__()
         self.k_kde = k_kde
         self.k_rips = k_rips
         self.scale = scale
-        self.batch_size = batch_size
-        self._set_umap_defaults(umap_kwargs)
-        self.reducer = umap.UMAP(**umap_kwargs) if umap_kwargs is not None else None
-
-    def _set_umap_defaults(self, umap_kwargs: Optional[Dict[str, Any]]) -> None:
-        if umap_kwargs is not None:
-            umap_kwargs.setdefault("n_components", 10)
-            umap_kwargs.setdefault("n_neighbors", self.k_rips)
-            umap_kwargs.setdefault("random_state", 42)
 
     def plot(self) -> plt.Figure:
         fig, ax = plt.subplots(dpi=100)
@@ -52,45 +37,23 @@ class Tomato(Clusterer):
 
         return fig
 
+    def get_loss(x: Tensor) -> Optional[Tensor]:
+        return None
+
     def build(self, input_dim: int, num_classes: int) -> None:
         return None
 
-    def fit(self, x: Union[np.ndarray[np.float32], Tensor], threshold: float = 1) -> None:
+    def fit(self, x: Union[np.ndarray[np.float32], Tensor], threshold: float = 1) -> Tomato:
         if isinstance(x, Tensor):
             x = x.detach().cpu().numpy()
         x = x.reshape(num_samples := x.shape[0], -1)
         #  Reduce the dimensionality of the data first with UMAP
         if self.reducer is not None:
             x = self.reducer.fit_transform(x)
-        batch_size = self.batch_size or num_samples
 
-        def _partialled(
-            _x: np.ndarray,
-        ) -> Tuple[Dict[int, "np.ndarray[np.int64]"], "np.ndarray[np.float32]"]:
-            return tomato(
-                _x,
-                self.k_kde,
-                self.k_rips,
-                self.scale,
-                threshold,
-            )
-
-        clusters: Mapping[int, Union[List[np.int64], "np.array[np.int64]"]]
-        pers_pairs: "np.ndarray[np.float32]"
-
-        if batch_size < num_samples:
-            clusters = defaultdict(list)
-            pers_pairs_ls: List["np.array[np.float32]"] = []
-            batches = np.array_split(x, indices_or_sections=batch_size, axis=0)
-            for batch in batches:
-                clusters_b, pers_pairs_b = _partialled(batch)
-                for key, values in clusters_b.items():
-                    clusters[key].extend(values)
-                pers_pairs_ls.append(pers_pairs_b)
-
-            pers_pairs = np.concatenate(pers_pairs_ls, axis=0)
-        else:
-            clusters, pers_pairs = _partialled(x)
+        clusters, pers_pairs = tomato(
+            x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=self.threshold
+        )
 
         cluster_labels = np.empty(x.shape[0])
         for k, v in enumerate(clusters.values()):
@@ -109,7 +72,7 @@ class Tomato(Clusterer):
 
 def tomato(
     pc: np.ndarray, k_kde: int, k_rips: int, scale: float, threshold: float
-) -> Tuple[Dict[int, "np.ndarray[np.int32]"], "np.ndarray[np.float32]"]:
+) -> Tuple[Dict[int, np.ndarray[np.int32]], np.ndarray[np.float32]]:
     """Topological mode analysis tool (Chazal et al., 2013).
 
     Args:
@@ -210,7 +173,7 @@ def merge(
     e_up: int,
     us_idxs: List[int],
     threshold: float,
-) -> Tuple[Dict[int, List[int]], "np.ndarray[np.int64]"]:
+) -> Tuple[Dict[int, List[int]], np.ndarray[np.int64]]:
     pers_pairs = np.array([[-1, -1]])
 
     for idx in us_idxs:
