@@ -17,7 +17,7 @@ class Clusterer:
         ...
 
     @abstractmethod
-    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
+    def get_loss(self, x: Tensor, y: Tensor, prefix: str = "") -> Dict[str, Tensor]:
         ...
 
     @abstractmethod

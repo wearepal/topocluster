@@ -2,17 +2,17 @@ defaults:
   - schema/clusterer: kmeans
   - clusterer: kmeans
 
-  - schema/datamodule: mnist
-  - datamodule: mnist
+  - schema/datamodule: cifar10
+  - datamodule: cifar10
 
   - schema/encoder: gconv_ae
   - encoder: gconv_ae
 
   - schema/trainer: trainer
-  - trainer: mnist
+  - trainer: cifar10
 
   - schema/pretrainer: pretrainer
-  - pretrainer: mnist
+  - pretrainer: cifar10
 
-use_wandb: False
+use_wandb: True
 seed: 42

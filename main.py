@@ -1,6 +1,6 @@
 import hydra
 from hydra.core.config_store import ConfigStore
-from hydra.utils import instantiate
+from hydra.utils import get_original_cwd, instantiate
 from omegaconf import OmegaConf
 
 from gen.gudhi.clustering.tomato.conf import TomatoConf
@@ -42,6 +42,7 @@ cs.store(group="schema/pretrainer", name="pretrainer", node=TrainerConf, package
 
 @hydra.main(config_path="conf", config_name="experiment")
 def launcher(cfg: ExperimentConf) -> None:
+    get_original_cwd()
     exp = instantiate(cfg, _recursive_=True)
     exp.start(OmegaConf.to_container(cfg))
 

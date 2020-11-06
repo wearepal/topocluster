@@ -41,7 +41,9 @@ class Tomato(Clusterer):
 
         return fig
 
-    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
+    def get_loss(self, x: Tensor, y: Tensor, prefix: str = "") -> Dict[str, Tensor]:
+        if prefix:
+            prefix += "/"
         labeled = y != -1
         _, cluster_map = compute_optimal_assignments(
             labels_pred=self.hard_labels[labeled].cpu().detach().numpy(),
@@ -51,7 +53,7 @@ class Tomato(Clusterer):
         permute_inds = list(cluster_map.values())
         soft_labels_permuted = self.soft_labels[labeled][:, permute_inds]
         purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
-        return {"purity_loss": purity_loss}
+        return {f"{prefix}purity_loss": purity_loss}
 
     def build(self, input_dim: int, num_classes: int) -> None:
         return None
