@@ -61,6 +61,6 @@ known_third_party = [
 line_length = 100
 multi_line_output = 3
 
-[build-system]
-build-backend = "poetry.masonry.api"
-requires = ["poetry>=1.0.10"]
+# [build-system]
+# build-backend = "poetry.masonry.api"
+# requires = ["poetry>=1.0.10"]
