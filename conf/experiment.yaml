@@ -6,7 +6,7 @@ defaults:
   - datamodule: cifar10
 
   - schema/encoder: gconv_ae
-  - encoder: gconv_ae
+  - encoder: cifar10
 
   - schema/trainer: trainer
   - trainer: cifar10
