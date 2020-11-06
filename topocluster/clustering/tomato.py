@@ -58,25 +58,20 @@ class Tomato(Clusterer):
     def build(self, input_dim: int, num_classes: int) -> None:
         return None
 
-    def fit(self, x: Union[np.ndarray[np.float32], Tensor]) -> Tomato:
-        if isinstance(x, Tensor):
-            x = x.detach().cpu().numpy()
-        x = x.reshape(num_samples := x.shape[0], -1)
-        #  Reduce the dimensionality of the data first with UMAP
-        if self.reducer is not None:
-            x = self.reducer.fit_transform(x)
-
+    def fit(self, x: Tensor) -> Tomato:
+        x_np = x.detach().cpu().numpy()
+        x_np = x_np.reshape(num_samples := x_np.shape[0], -1)
         clusters, pers_pairs = tomato(
-            x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=self.threshold
+            x_np, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=self.threshold
         )
 
-        cluster_labels = np.empty(x.shape[0])
+        cluster_labels = np.empty(x_np.shape[0])
         for k, v in enumerate(clusters.values()):
             cluster_labels[v] = k
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.int32)
         pers_pairs = torch.as_tensor(pers_pairs, dtype=torch.float32)
-        centroids = torch.as_tensor(x, dtype=torch.float32)[list[clusters.keys()]]
+        centroids = x[list(clusters.keys())]
 
         self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
         self.hard_labels = cluster_labels
