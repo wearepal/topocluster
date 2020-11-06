@@ -4,20 +4,20 @@ from enum import Enum, auto
 import time
 from typing import Dict, Literal, Optional, Tuple, Union
 
+from tqdm import tqdm
+
 import faiss
 import numpy as np
 from omegaconf import MISSING
 from pykeops.torch import LazyTensor
-import torch
-from torch import Tensor
-import torch.nn.functional as F
-from tqdm import tqdm
-
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import (
     compute_optimal_assignments,
     l2_centroidal_distance,
 )
+import torch
+from torch import Tensor
+import torch.nn.functional as F
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -81,7 +81,6 @@ class Kmeans(Clusterer):
             )
 
         centroids.to(x.device)
-        centroids.device = x.device
         self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
 
         return self
