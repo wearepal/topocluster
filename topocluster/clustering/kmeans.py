@@ -80,7 +80,7 @@ class Kmeans(Clusterer):
                 x=x, nmb_clusters=self.k, n_iter=self.n_iter, cuda=self.cuda, verbose=self.verbose
             )
 
-        centroids.to(x.device)
+        centroids = centroids.to(x.device)
         self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
 
         return self
