@@ -27,7 +27,7 @@ hydra-core = {git = "https://github.com/facebookresearch/hydra.git"}
 hydra-configen = {git = "https://github.com/thomkeh/configen.git"}
 
 [tool.poetry.scripts]
-main = "run"
+main = "main"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
