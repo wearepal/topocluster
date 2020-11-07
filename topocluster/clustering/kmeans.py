@@ -53,14 +53,14 @@ class Kmeans(Clusterer):
         if self.backend == "torch":
             hard_labels, centroids = run_kmeans_torch(
                 x,
-                k=self.k,
+                num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
         else:
             hard_labels, centroids = run_kmeans_faiss(
                 x=x,
-                nmb_clusters=self.k,
+                num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
@@ -88,7 +88,7 @@ class Kmeans(Clusterer):
 
 def run_kmeans_torch(
     x: torch.Tensor,
-    k: int,
+    num_clusters: int,
     n_iter: int = 10,
     verbose: bool = False,
 ) -> Tuple[Tensor, Tensor]:
@@ -101,7 +101,7 @@ def run_kmeans_torch(
     # - cl is the vector of class labels
     # - c  is the cloud of cluster centroids
     start = time.time()
-    c = x[:k, :].clPtone()  # Simplistic random initialization
+    c = x[:num_clusters, :].clPtone()  # Simplistic random initialization
     x_i = LazyTensor(x[:, None, :])  # (Npoints, 1, D)
     cl = None
     print("Finding K means...", flush=True)  # flush to avoid conflict with tqdm
@@ -123,7 +123,7 @@ def run_kmeans_torch(
     end = time.time()
 
     if verbose:
-        print(f"K-means with {N:,} points in dimension {D:,}, K = {k:,}:")
+        print(f"K-means with {N:,} points in dimension {D:,}, K = {num_clusters:,}:")
         print(
             "Timing for {} iterations: {:.5f}s = {} x {:.5f}s\n".format(
                 n_iter, end - start, n_iter, (end - start) / n_iter
@@ -135,7 +135,7 @@ def run_kmeans_torch(
 
 def run_kmeans_faiss(
     x: Tensor,
-    nmb_clusters: int,
+    num_clusters: int,
     n_iter: int,
     verbose: bool = False,
 ) -> Tuple[Tensor, Tensor]:
@@ -145,7 +145,7 @@ def run_kmeans_faiss(
 
     if x.is_cuda:
         # faiss implementation of k-means
-        kmeans = faiss.Clustering(d, nmb_clusters)
+        kmeans = faiss.Clustering(d, num_clusters)
         kmeans.niter = n_iter
         kmeans.max_points_per_centroid = 10000000
         kmeans.verbose = verbose
@@ -159,8 +159,9 @@ def run_kmeans_faiss(
         flat_config.device = 0
         _, cluster_indexes = index.search(x_np, 1)
         centroids = faiss.vector_float_to_array(kmeans.centroids)
+        centroids = centroids.reshape(num_clusters, d)
     else:
-        kmeans = faiss.Kmeans(d=d, k=nmb_clusters, verbose=verbose, niter=20)
+        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=20)
         kmeans.train(x_np)
         _, cluster_indexes = kmeans.index.search(x_np, 1)
         centroids = kmeans.centroids
