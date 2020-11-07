@@ -1,3 +1,8 @@
+import hydra
+from hydra.core.config_store import ConfigStore
+from hydra.utils import instantiate, to_absolute_path
+from omegaconf import OmegaConf
+
 from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.pytorch_lightning.conf import TrainerConf
 from gen.topocluster.clustering.dac.conf import PlClustererConf
@@ -10,10 +15,6 @@ from gen.topocluster.data.data_modules.conf import (
 )
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.autoencoder.conf import GatedConvAutoEncoderConf
-import hydra
-from hydra.core.config_store import ConfigStore
-from hydra.utils import get_original_cwd, instantiate
-from omegaconf import OmegaConf
 
 
 # ConfigStore enables type validation
@@ -41,7 +42,7 @@ cs.store(group="schema/pretrainer", name="pretrainer", node=TrainerConf, package
 
 @hydra.main(config_path="conf", config_name="experiment")
 def launcher(cfg: ExperimentConf) -> None:
-    get_original_cwd()
+    cfg.datamodule.data_dir = to_absolute_path(cfg.datamodule.data_dir)
     exp = instantiate(cfg, _recursive_=True)
     exp.start(OmegaConf.to_container(cfg))
 
