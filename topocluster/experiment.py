@@ -25,7 +25,7 @@ class Experiment(pl.LightningModule):
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
         lr: float = 1.0e-3,
-        use_wandb: bool = False,
+        log_offline: bool = False,
         seed: Optional[int] = 42,
     ):
         super().__init__()
@@ -77,12 +77,15 @@ class Experiment(pl.LightningModule):
 
     def start(self, raw_config: Optional[Dict[str, Any]] = None):
         self.datamodule.setup()
-        if self.hparams.use_wandb:
-            logger = WandbLogger(entity="predictive-analytics-lab", project="topocluster")
-            if raw_config is not None:
-                logger.log_hyperparams(raw_config)
-            self.pretrainer.logger = logger
-            self.trainer.logger = logger
+        logger = WandbLogger(
+            entity="predictive-analytics-lab",
+            project="topocluster",
+            offline=self.hparams.log_offline,
+        )
+        if raw_config is not None:
+            logger.log_hyperparams(raw_config)
+        self.pretrainer.logger = logger
+        self.trainer.logger = logger
 
         pl.seed_everything(seed=self.hparams.seed)
         self.encoder.build(self.datamodule.dims)

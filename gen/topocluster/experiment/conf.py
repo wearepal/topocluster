@@ -19,5 +19,5 @@ class ExperimentConf:
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
     lr: float = 0.001
-    use_wandb: bool = False
+    log_offline: bool = False
     seed: Optional[int] = 42

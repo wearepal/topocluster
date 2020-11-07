@@ -14,5 +14,5 @@ defaults:
   - schema/pretrainer: pretrainer
   - pretrainer: cifar10
 
-use_wandb: True
+log_offline: False
 seed: 42
