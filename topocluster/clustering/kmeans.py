@@ -76,8 +76,8 @@ class Kmeans(Clusterer):
 
         labeled = y != -1
         _, cluster_map = compute_optimal_assignments(
-            labels_pred=hard_labels[labeled].cpu().detach().numpy(),
-            labels_true=y[labeled].cpu().detach().numpy(),
+            labels_pred=hard_labels[labeled].detach().cpu().numpy(),
+            labels_true=y[labeled].detach().cpu().numpy(),
             encode=True,
         )
         permute_inds = list(cluster_map.values())
