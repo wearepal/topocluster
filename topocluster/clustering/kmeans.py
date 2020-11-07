@@ -158,12 +158,14 @@ def run_kmeans_faiss(
         kmeans.train(x_np, index)
         flat_config.device = 0
         _, cluster_indexes = index.search(x_np, 1)
+        centroids = faiss.vector_float_to_array(kmeans.centroids)
     else:
         kmeans = faiss.Kmeans(d=d, k=nmb_clusters, verbose=verbose, niter=20)
         kmeans.train(x_np)
         _, cluster_indexes = kmeans.index.search(x_np, 1)
+        centroids = kmeans.centroids
 
-    cluster_indexes = torch.as_tensor(cluster_indexes, dtype=torch.long).squeeze()
-    centroids = torch.as_tensor(kmeans.centroids, dtype=torch.float32, device=x.device)
+    cluster_indexes = torch.as_tensor(cluster_indexes, dtype=torch.long, device=x.device).squeeze()
+    centroids = torch.as_tensor(centroids, dtype=torch.float32, device=x.device)
 
     return cluster_indexes, centroids
