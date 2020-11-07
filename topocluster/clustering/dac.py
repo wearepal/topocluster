@@ -21,22 +21,23 @@ class PlClusterer(Clusterer, nn.Module):
     def __init__(self, pl_loss: PlLoss) -> None:
         self.pl_loss_fn = pl_loss
 
-    def fit(self, x: Tensor) -> PlClusterer:
-        self.soft_labels = self.classifier(x)
-        self.hard_labels = self.soft_labels.argmax(dim=-1)
-        return self
-
-    def get_loss(self, x: Tensor, y: Tensor) -> Dict[str, Tensor]:
-        y_labeled = y != -1
-        pl_loss = self.pl_loss_fn(x, self.soft_labels)
-        purity_loss = F.cross_entropy(self.soft_labels[y_labeled], y[y_labeled])
-        return {"pl_loss": pl_loss, "purity_loss": purity_loss}
-
     def build(self, input_dim: int, num_classes: int) -> None:
         self.classifier = nn.Linear(input_dim, num_classes)
 
-    def forward(self, x: Tensor) -> Tensor:
-        return Clusterer.__call__(self, x)
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        soft_labels = self.classifier(x)
+        hard_labels = soft_labels.argmax(dim=-1)
+        return hard_labels, soft_labels
+
+    def get_loss(
+        self, x: Tensor, soft_labels: Tensor, hard_labels: Tensor, y: Tensor, prefix: str = ""
+    ) -> Dict[str, Tensor]:
+        if prefix:
+            prefix += "/"
+        y_labeled = y != -1
+        pl_loss = self.pl_loss_fn(x, soft_labels)
+        purity_loss = F.cross_entropy(soft_labels[y_labeled], y[y_labeled])
+        return {f"{prefix}pl_loss": pl_loss, f"{prefix}purity_loss": purity_loss}
 
 
 def cosine_and_bce(probs: Tensor, labels: Tensor) -> Tensor:

@@ -10,7 +10,6 @@ from torch.tensor import Tensor
 from topocluster.clustering.common import Clusterer
 from topocluster.data.data_modules import DataModule
 from topocluster.models.autoencoder import AutoEncoder
-import wandb
 
 
 __all__ = ["Experiment"]
@@ -44,7 +43,7 @@ class Experiment(pl.LightningModule):
         y_np = y.cpu().numpy()
 
         encoding = self.encoder(x)
-        preds = self.clusterer(encoding).cpu().detach().numpy()
+        preds = self.clusterer(encoding)[0].cpu().detach().numpy()
 
         metrics = {
             "val/ARI": adjusted_rand_score(labels_true=y_np, labels_pred=preds),
@@ -59,10 +58,8 @@ class Experiment(pl.LightningModule):
         x, y = batch
 
         encoding = self.encoder(x)
-        self.clusterer.fit(encoding)
-
         loss_dict = self.encoder.get_loss(encoding, x, prefix="train")
-        loss_dict.update(self.clusterer.get_loss(encoding, y, prefix="train"))
+        loss_dict.update(self.clusterer.routine(x=encoding, y=y, prefix="train"))
 
         self.logger.experiment.log(loss_dict)
 

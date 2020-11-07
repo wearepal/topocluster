@@ -15,6 +15,5 @@ class KmeansConf:
     _target_: str = "topocluster.clustering.kmeans.Kmeans"
     n_iter: int = MISSING
     k: Optional[int] = None
-    cuda: bool = False
     backend: Backends = Backends.FAISS
     verbose: bool = False
