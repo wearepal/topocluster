@@ -29,7 +29,7 @@ class Experiment(pl.LightningModule):
         seed: Optional[int] = 42,
     ):
         super().__init__()
-        self.save_hyperparameters("lr", "use_wandb", "seed")
+        self.save_hyperparameters("lr", "log_offline", "seed")
         self.datamodule = datamodule
         self.encoder = encoder
         self.clusterer = clusterer
