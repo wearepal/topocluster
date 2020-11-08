@@ -37,7 +37,7 @@ class Kmeans(Clusterer):
         self,
         n_iter: int,
         k: Optional[int] = None,
-        backend: Backends = Backends.FAISS,
+        backend: Backends = Backends.TORCH,
         verbose: bool = False,
     ):
         self.k = k
