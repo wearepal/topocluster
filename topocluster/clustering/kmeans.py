@@ -76,14 +76,14 @@ class Kmeans(Clusterer):
             prefix += "/"
 
         labeled = y != IGNORE_INDEX
-        _, cluster_map = compute_optimal_assignments(
-            labels_pred=hard_labels[labeled].detach().cpu().numpy(),
-            labels_true=y[labeled].detach().cpu().numpy(),
-            encode=True,
-        )
-        permute_inds = list(cluster_map.values())
-        soft_labels_permuted = soft_labels[labeled][:, permute_inds]
-        purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
+        # _, cluster_map = compute_optimal_assignments(
+        #     labels_pred=hard_labels[labeled].detach().cpu().numpy(),
+        #     labels_true=y[labeled].detach().cpu().numpy(),
+        #     encode=True,
+        # )
+        # permute_inds = list(cluster_map.values())
+        # soft_labels_permuted = soft_labels[labeled][:, permute_inds]
+        purity_loss = F.cross_entropy(soft_labels[labeled], y[labeled])
         return {f"{prefix}purity_loss": purity_loss}
 
 
