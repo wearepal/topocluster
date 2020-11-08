@@ -13,6 +13,7 @@ from topocluster.clustering.utils import (
     compute_optimal_assignments,
     l2_centroidal_distance,
 )
+from topocluster.data.data_modules import IGNORE_INDEX
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
 
 from .common import Clusterer
@@ -44,7 +45,7 @@ class Tomato(Clusterer):
     def get_loss(self, x: Tensor, y: Tensor, prefix: str = "") -> Dict[str, Tensor]:
         if prefix:
             prefix += "/"
-        labeled = y != -1
+        labeled = y != IGNORE_INDEX
         _, cluster_map = compute_optimal_assignments(
             labels_pred=self.hard_labels[labeled].cpu().detach().numpy(),
             labels_true=y[labeled].cpu().detach().numpy(),

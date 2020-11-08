@@ -18,6 +18,7 @@ from topocluster.clustering.utils import (
     compute_optimal_assignments,
     l2_centroidal_distance,
 )
+from topocluster.data.data_modules import IGNORE_INDEX
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -74,7 +75,7 @@ class Kmeans(Clusterer):
         if prefix:
             prefix += "/"
 
-        labeled = y != -1
+        labeled = y != IGNORE_INDEX
         _, cluster_map = compute_optimal_assignments(
             labels_pred=hard_labels[labeled].detach().cpu().numpy(),
             labels_true=y[labeled].detach().cpu().numpy(),

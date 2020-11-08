@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-MASK_VALUE: Final = -1
+IGNORE_INDEX: Final = -100
 
 
 class MaskedLabelDataset(Dataset):
@@ -39,7 +39,7 @@ class MaskedLabelDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[Any, int]:
         x, y = self.dataset[index]
         if self.threshold is None or y >= self.threshold:
-            y = MASK_VALUE
+            y = IGNORE_INDEX
         return x, y
 
 

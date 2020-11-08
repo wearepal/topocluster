@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 
-from topocluster.data.data_modules import MASK_VALUE
+from topocluster.data.data_modules import IGNORE_INDEX
 from topocluster.utils import dot_product
 
 __all__ = ["RankingStatistics", "CosineSimThreshold"]
@@ -37,5 +37,5 @@ class CosineSimThreshold(Tensor):
         under = (cosine_sim < self.lower_threshold).float()
         mask = over + under
         labels = over  # this will ensure that the label for all samples in `under` is 0
-        labels[mask] = MASK_VALUE
+        labels[mask] = IGNORE_INDEX
         return labels
