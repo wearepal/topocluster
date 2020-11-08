@@ -1,7 +1,2 @@
 # @package trainer
 max_epochs: 100
-check_val_every_n_epoch: 1
-gpus: -1
-auto_select_gpus: False
-auto_scale_batch_size: False
-distributed_backend: ddp

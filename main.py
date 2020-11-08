@@ -44,6 +44,9 @@ cs.store(group="schema/pretrainer", name="pretrainer", node=TrainerConf, package
 def launcher(cfg: ExperimentConf) -> None:
     cfg.datamodule.data_dir = to_absolute_path(cfg.datamodule.data_dir)
     exp = instantiate(cfg, _recursive_=True)
+    import pdb
+
+    pdb.set_trace()
     exp.start(OmegaConf.to_container(cfg))
 
 

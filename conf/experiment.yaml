@@ -3,15 +3,18 @@ defaults:
   - clusterer: kmeans
 
   - schema/datamodule: cifar10
+  - datamodule/defaults
   - datamodule: cifar10
 
   - schema/encoder: gconv_ae
   - encoder: cifar10
 
   - schema/trainer: trainer
+  - trainer/defaults
   - trainer: cifar10
 
   - schema/pretrainer: pretrainer
+  - pretrainer/defaults
   - pretrainer: cifar10
 
 log_offline: False

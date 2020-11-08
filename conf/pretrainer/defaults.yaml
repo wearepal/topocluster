@@ -1,0 +1,6 @@
+# @package pretrainer
+gpus: -1
+auto_select_gpus: False
+auto_scale_batch_size: False
+accelerator: ddp
+distributed_backend: ddp
