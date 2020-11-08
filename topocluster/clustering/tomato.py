@@ -42,24 +42,26 @@ class Tomato(Clusterer):
 
         return fig
 
-    def get_loss(self, x: Tensor, y: Tensor, prefix: str = "") -> Dict[str, Tensor]:
+    def get_loss(
+        self, x: Tensor, hard_labels: Tensor, soft_labels: Tensor, y: Tensor, prefix: str = ""
+    ) -> Dict[str, Tensor]:
         if prefix:
             prefix += "/"
         labeled = y != IGNORE_INDEX
         _, cluster_map = compute_optimal_assignments(
-            labels_pred=self.hard_labels[labeled].cpu().detach().numpy(),
+            labels_pred=hard_labels[labeled].cpu().detach().numpy(),
             labels_true=y[labeled].cpu().detach().numpy(),
             encode=True,
         )
         permute_inds = list(cluster_map.values())
-        soft_labels_permuted = self.soft_labels[labeled][:, permute_inds]
+        soft_labels_permuted = soft_labels[labeled][:, permute_inds]
         purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
         return {f"{prefix}purity_loss": purity_loss}
 
     def build(self, input_dim: int, num_classes: int) -> None:
         return None
 
-    def fit(self, x: Tensor) -> Tomato:
+    def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         x_np = x.detach().cpu().numpy()
         x_np = x_np.reshape(num_samples := x_np.shape[0], -1)
         clusters, pers_pairs = tomato(
@@ -70,15 +72,14 @@ class Tomato(Clusterer):
         for k, v in enumerate(clusters.values()):
             cluster_labels[v] = k
 
+        self.pers_pairs = torch.as_tensor(pers_pairs, dtype=torch.float32)
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.int32)
-        pers_pairs = torch.as_tensor(pers_pairs, dtype=torch.float32)
         centroids = x[list(clusters.keys())]
 
-        self.soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
-        self.hard_labels = cluster_labels
-        self.pers_pairs = pers_pairs
+        soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
+        hard_labels = cluster_labels
 
-        return self
+        return hard_labels, soft_labels
 
 
 def tomato(

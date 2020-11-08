@@ -22,11 +22,6 @@ class Clusterer:
     ) -> Dict[str, Tensor]:
         ...
 
-    def routine(self, x: Tensor, y: Tensor, prefix: str = "") -> Dict[str, Tensor]:
-        hard_labels, soft_labels = self.forward(x)
-        return self.get_loss(
-            x=x, soft_labels=soft_labels, hard_labels=hard_labels, y=y, prefix=prefix
-        )
-
+    @abstractmethod
     def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
-        return self.forward(x)
+        ...

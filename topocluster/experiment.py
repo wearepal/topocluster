@@ -58,9 +58,13 @@ class Experiment(pl.LightningModule):
         x, y = batch
 
         encoding = self.encoder(x)
+        hard_labels, soft_labels = self.clusterer(encoding)
         loss_dict = self.encoder.get_loss(encoding, x, prefix="train")
-        loss_dict.update(self.clusterer.routine(x=encoding, y=y, prefix="train"))
-
+        loss_dict.update(
+            self.clusterer.get_loss(
+                x=encoding, soft_labels=soft_labels, hard_labels=hard_labels, y=y, prefix="train"
+            )
+        )
         self.logger.experiment.log(loss_dict)
 
         return sum(loss_dict.values())

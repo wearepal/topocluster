@@ -48,10 +48,10 @@ class Kmeans(Clusterer):
     def build(self, input_dim: int, num_classes: int) -> None:
         self.k = num_classes
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         if self.k is None:
             raise ValueError("Value for k not yet set.")
-        if self.backend == "torch":
+        if self.backend == Backends.TORCH:
             hard_labels, centroids = run_kmeans_torch(
                 x,
                 num_clusters=self.k,
@@ -76,15 +76,24 @@ class Kmeans(Clusterer):
             prefix += "/"
 
         labeled = y != IGNORE_INDEX
-        # _, cluster_map = compute_optimal_assignments(
-        #     labels_pred=hard_labels[labeled].detach().cpu().numpy(),
-        #     labels_true=y[labeled].detach().cpu().numpy(),
-        #     encode=True,
-        # )
-        # permute_inds = list(cluster_map.values())
-        # soft_labels_permuted = soft_labels[labeled][:, permute_inds]
-        purity_loss = F.cross_entropy(soft_labels[labeled], y[labeled])
-        return {f"{prefix}purity_loss": purity_loss}
+        y_l = y[labeled]
+        soft_labels_l = soft_labels[labeled]
+        hard_labels_l = hard_labels[labeled]
+
+        _, cluster_map = compute_optimal_assignments(
+            labels_pred=hard_labels_l.detach().cpu().numpy(),
+            labels_true=y_l.detach().cpu().numpy(),
+        )
+
+        mask = torch.zeros_like(y_l, dtype=torch.bool)
+        mapped_inds = torch.empty_like(soft_labels_l, dtype=torch.long)
+        for class_ind, cluster_ind in cluster_map.items():
+            mask_k = (y_l == class_ind) == (hard_labels_l == cluster_ind)
+            mapped_inds[mask_k] = cluster_ind
+            mask |= mask_k
+
+        softmax_xent = -torch.sum(F.log_softmax(soft_labels_l[mask][:, mapped_inds[mask]], dim=-1))
+        return {f"{prefix}purity_loss": softmax_xent}
 
 
 def run_kmeans_torch(
