@@ -2,16 +2,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 import time
-from typing import Dict, Literal, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import faiss
 import numpy as np
-from omegaconf import MISSING
 from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
 import torch.nn.functional as F
-from tqdm import tqdm
 
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import (
@@ -29,10 +27,6 @@ class Backends(Enum):
 
 
 class Kmeans(Clusterer):
-
-    labels: Tensor
-    centroids: Tensor
-
     def __init__(
         self,
         n_iter: int,
@@ -58,6 +52,8 @@ class Kmeans(Clusterer):
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
+            hard_labels = hard_labels.detach()
+            centroids = centroids.detach()
         else:
             hard_labels, centroids = run_kmeans_faiss(
                 x=x,
@@ -93,7 +89,7 @@ class Kmeans(Clusterer):
             mask |= mask_k
 
         softmax_xent = -torch.mean(
-            F.log_softmax(soft_labels_l[mask].gather(1, mapped_inds[mask].view(-1, 1)), dim=-1)
+            F.log_softmax(soft_labels_l[mask], dim=-1).gather(1, mapped_inds[mask].view(-1, 1))
         )
         return {f"{prefix}purity_loss": softmax_xent}
 
@@ -113,12 +109,11 @@ def run_kmeans_torch(
     # - cl is the vector of class labels
     # - c  is the cloud of cluster centroids
     start = time.time()
-    c = x[:num_clusters, :].clPtone()  # Simplistic random initialization
+    c = x[:num_clusters, :].clone()  # Simplistic random initialization
     x_i = LazyTensor(x[:, None, :])  # (Npoints, 1, D)
     cl = None
-    print("Finding K means...", flush=True)  # flush to avoid conflict with tqdm
-    for _ in tqdm(range(n_iter)):
 
+    for _ in range(n_iter):
         c_j = LazyTensor(c[None, :, :])  # (1, Nclusters, D)
         # (Npoints, Nclusters) symbolic matrix of squared distances
         D_ij = ((x_i - c_j) ** 2).sum(-1)
