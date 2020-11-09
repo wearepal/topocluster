@@ -75,7 +75,7 @@ def compute_cost_matrix(
         if num_classes is None:
             cost_matrix = np.zeros((len(np.unique(labels_true)), len(np.unique(labels_pred))))
         else:
-            cost_matrix = np.zeros((num_classes, len(np.unique(labels_pred))))
+            cost_matrix = np.zeros((num_classes, num_classes))
         decodings_true, decodings_pred = None, None
 
     indices, counts = np.unique(np.stack([labels_true, labels_pred]), axis=1, return_counts=True)

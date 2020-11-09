@@ -80,6 +80,7 @@ class Kmeans(Clusterer):
             labels_pred=hard_labels_l.detach().cpu().numpy(),
             labels_true=y_l.detach().cpu().numpy(),
             num_classes=self.k,
+            encode=False,
         )
 
         mask = torch.zeros_like(y_l, dtype=torch.bool)
