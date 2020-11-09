@@ -73,6 +73,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=True,
             pin_memory=True,
             num_workers=self.num_workers,
+            drop_last=True,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -82,6 +83,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             pin_memory=True,
             num_workers=self.num_workers,
+            drop_last=True,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -91,6 +93,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             pin_memory=True,
             num_workers=self.num_workers,
+            drop_last=True,
         )
 
 
