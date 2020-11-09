@@ -8,6 +8,7 @@ from torch.optim import Adam, Optimizer
 from torch.tensor import Tensor
 
 from topocluster.clustering.common import Clusterer
+from topocluster.clustering.utils import compute_optimal_assignments
 from topocluster.data.data_modules import DataModule
 from topocluster.models.autoencoder import AutoEncoder
 
@@ -48,6 +49,9 @@ class Experiment(pl.LightningModule):
         metrics = {
             "val/ARI": adjusted_rand_score(labels_true=y_np, labels_pred=preds),
             "val/NMI": normalized_mutual_info_score(labels_true=y_np, labels_pred=preds),
+            "val/Accuracy": compute_optimal_assignments(
+                labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
+            )[0],
         }
 
         self.logger.experiment.log(metrics)
@@ -71,7 +75,11 @@ class Experiment(pl.LightningModule):
 
     def test_step(self, batch: Tensor, batch_idx: int) -> Dict[str, float]:
         val_metrics = self.validation_step(batch, batch_idx)
-        test_metrics = {"test/ARI": val_metrics["val/ARI"], "test/NMI": val_metrics["val/NMI"]}
+        test_metrics = {
+            "test/ARI": val_metrics["val/ARI"],
+            "test/NMI": val_metrics["val/NMI"],
+            "test/Accuracy": val_metrics["test/Accuracy"],
+        }
         self.logger.experiment.log(test_metrics)
 
         return test_metrics
