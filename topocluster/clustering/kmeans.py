@@ -88,14 +88,13 @@ class Kmeans(Clusterer):
         mask = torch.zeros_like(y_l, dtype=torch.bool)
         mapped_inds = torch.empty_like(y_l, dtype=torch.long)
         for class_ind, cluster_ind in cluster_map.items():
-            mask_k = (y_l == class_ind) == (hard_labels_l == cluster_ind)
+            mask_k = (y_l == class_ind) & (hard_labels_l == cluster_ind)
             mapped_inds[mask_k] = cluster_ind
             mask |= mask_k
 
         softmax_xent = -torch.mean(
             F.log_softmax(soft_labels_l[mask].gather(1, mapped_inds[mask].view(-1, 1)), dim=-1)
         )
-
         return {f"{prefix}purity_loss": softmax_xent}
 
 
