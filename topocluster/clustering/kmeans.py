@@ -79,6 +79,7 @@ class Kmeans(Clusterer):
         _, cluster_map = compute_optimal_assignments(
             labels_pred=hard_labels_l.detach().cpu().numpy(),
             labels_true=y_l.detach().cpu().numpy(),
+            num_classes=self.k,
         )
 
         mask = torch.zeros_like(y_l, dtype=torch.bool)
