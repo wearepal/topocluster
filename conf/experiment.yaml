@@ -1,0 +1,23 @@
+defaults:
+  - experiment_schema
+
+  - schema/clusterer: kmeans_schema
+  - clusterer: kmeans
+
+  - schema/datamodule: cifar10_schema
+  - datamodule/defaults
+  - datamodule: cifar10
+
+  - schema/encoder: conv_ae_schema
+  - encoder: cifar10
+
+  - schema/trainer: trainer_schema
+  - trainer/defaults
+  - trainer: cifar10
+
+  - schema/pretrainer: pretrainer_schema
+  - pretrainer/defaults
+  - pretrainer: cifar10
+
+log_offline: False
+seed: 42

@@ -1,0 +1,6 @@
+# @package clusterer
+pl_loss:
+  _target_: topocluster.clustering.dac.PlCosineBCE
+  pseudo_labeler:
+    _target_: topocluster.clustering.pseudo_labeler.RankingStatistics
+    k: 5

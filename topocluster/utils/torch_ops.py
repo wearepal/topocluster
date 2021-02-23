@@ -1,18 +1,22 @@
-from typing import Any, Type, Union
+from typing import Any, Callable, Tuple, Type, Union
 
 import torch
-import torch.distributions as td
 from torch import Tensor, jit
+import torch.distributions as td
 from torch.nn import functional as F
 
 __all__ = [
     "RoundSTE",
+    "compute_density_map",
+    "compute_rips",
+    "dot_product",
+    "knn",
     "logit",
     "normalized_softmax",
+    "pairwise_L2sqr",
+    "sample_concrete",
     "sum_except_batch",
     "to_discrete",
-    "sample_concrete",
-    "dot_product",
 ]
 
 
@@ -74,3 +78,32 @@ def normalized_softmax(logits: Tensor) -> Tensor:
     max_logits, _ = logits.max(dim=1, keepdim=True)
     unnormalized = torch.exp(logits - max_logits)
     return unnormalized / unnormalized.norm(p=2, dim=-1, keepdim=True)
+
+
+def pairwise_L2sqr(tensor_a: Tensor, tensor_b: Tensor) -> Tensor:
+    return (tensor_a - tensor_b) ** 2
+
+
+def rbf(x: Tensor, y: Tensor, scale: float) -> Tensor:
+    return torch.exp(-torch.norm(x - y, axis=1) ** 2 / scale)
+
+
+def compute_density_map(pc: Tensor, k: int, scale: float) -> Tuple[Tensor, Tensor]:
+    dists, inds = knn(pc, k=k, kernel=pairwise_L2sqr)
+    dists = torch.sum(torch.exp(-dists / scale), dim=1) / (k * scale)
+    return dists / dists.max(), inds
+
+
+def compute_rips(pc: Tensor, k: int) -> Tuple[Tensor, Tensor]:
+    return knn(pc=pc, k=k, kernel=pairwise_L2sqr)
+
+
+def knn(
+    pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
+) -> Tuple[Tensor, Tensor]:
+    X_i = pc[:, None, :]
+    X_j = pc[None, :, :]  # (1, N, 2)
+    D_ij = kernel(X_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of distances
+    indKNN = D_ij.topk(k=k, dim=1, largest=False)[1]
+    # indKNN = soft_rank(D_ij, direction="ASCENDING", regularization_strength=0.01)
+    return D_ij, indKNN

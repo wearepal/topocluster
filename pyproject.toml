@@ -1,0 +1,79 @@
+[tool.poetry]
+name = "topocluster"
+authors = ["Myles Bartlett, Chen Li"]
+description = "Topological Data Analysis for Continual Novel-class Discovery."
+version = "0.0.1"
+
+[tool.poetry.dependencies]
+python = "3.8"
+wandb = "^0.10.8"
+umap-learn = "^0.4.6"
+scipy = "^1.5.3"
+lapjv = "^1.3.1"
+pykeops = "^1.4.1"
+gudhi = "^3.3.0"
+faiss-cpu = "^1.6.4"
+eagerpy = "^0.29.0"
+POT = "^0.7.0"
+torch = "^1.7.0"
+torchvision = "^0.8.1"
+pytorch-lightning = "^1.0.4"
+omegaconf = {git = "https://github.com/omry/omegaconf.git"}
+hydra-core = {git = "https://github.com/facebookresearch/hydra.git"}
+matplotlib = "^3.3.2"
+neoconfigen = {git = "https://github.com/predictive-analytics-lab/neoconfigen.git"}
+
+[tool.poetry.dev-dependencies]
+black = "^20.8b1"
+pylint = "^2.6.0"
+mypy = "^0.790"
+flake8 = "^3.8.4"
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+skip-string-normalization = true
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
+
+[tool.isort]
+include_trailing_comma = "True"
+known_third_party = [
+  "black",
+  "click",
+  "click_option_group",
+  "matplotlib",
+  "mypy",
+  "numpy",
+  "pandas",
+  "pylint",
+  "pytest",
+  "scipy",
+  "setuptools",
+  "sklearn",
+  "torch",
+  "tqdm",
+]
+line_length = 100
+multi_line_output = 3
+
+[build-system]
+build-backend = "poetry.masonry.api"
+requires = ["poetry>=1.0.10"]

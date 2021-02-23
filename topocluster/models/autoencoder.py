@@ -1,183 +1,160 @@
 """Autoencoders"""
-from typing import Any, Dict, List, Literal, Optional, Tuple, Callable
+from __future__ import annotations
+from abc import abstractmethod
+from typing import cast
 
-import torch
-import torch.distributions as td
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
+import pytorch_lightning as pl
 from torch import Tensor
-from tqdm import tqdm
+import torch.nn as nn
+from torch.optim import Adam, Optimizer
 
-from topocluster.utils import to_discrete, wandb_log
-
-from .base import ModelBase, Encoder
-
-__all__ = ["AutoEncoder", "VAE"]
+from topocluster.data.utils import Batch, ImageDims
+from topocluster.layers.misc import View
+from topocluster.utils.interface import implements
 
 
-class AutoEncoder(Encoder):
-    """Classical AutoEncoder."""
+__all__ = ["AutoEncoder", "ConvAutoEncoder"]
 
-    def __init__(
-        self,
-        encoder: nn.Sequential,
-        decoder: nn.Sequential,
-        recon_loss_fn: Callable[[Tensor, Tensor], Tensor],
-        feature_group_slices: Optional[Dict[str, List[slice]]] = None,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> None:
+
+class AutoEncoder(pl.LightningModule):
+    """Base class for AutoEncoder models."""
+
+    encoder: nn.Module
+    decoder: nn.Module
+
+    def __init__(self, latent_dim: int, lr: float = 1.0e-3) -> None:
         super().__init__()
+        self.latent_dim = latent_dim
+        self.loss_fn = nn.MSELoss()
+        self.lr = lr
 
-        self.encoder: ModelBase = ModelBase(encoder, optimizer_kwargs=optimizer_kwargs)
-        self.decoder: ModelBase = ModelBase(decoder, optimizer_kwargs=optimizer_kwargs)
-        self.recon_loss_fn = recon_loss_fn
-        self.feature_group_slices = feature_group_slices
+    @abstractmethod
+    def _build(self, input_shape: int | ImageDims) -> tuple[nn.Module, nn.Module]:
+        ...
 
-    def encode(self, x: Tensor, stochastic: bool = False) -> Tensor:
-        del stochastic
-        return self.encoder(x)
+    def build(self, input_shape: int | ImageDims) -> None:
+        self.encoder, self.decoder = self._build(input_shape)
 
-    def decode(self, z: Tensor, discretize: bool = False) -> Tensor:
-        decoding = self.decoder(z)
-        if decoding.dim() == 4:
-            # if decoding.size(1) <= 3:
-            #     decoding = decoding.sigmoid()
-            # else:
-            if decoding.size(1) > 3:  # if we use CE losss, we have more than 3 channels
-                # conversion for cross-entropy loss
-                num_classes = 256
-                decoding = decoding.view(decoding.size(0), num_classes, -1, *decoding.shape[-2:])
-        else:
-            if discretize and self.feature_group_slices:
-                for group_slice in self.feature_group_slices["discrete"]:
-                    one_hot = to_discrete(decoding[:, group_slice])
-                    decoding[:, group_slice] = one_hot
+    def forward(self, inputs: Tensor) -> Tensor:
+        return self.encoder(inputs)
 
-        return decoding
+    def get_loss(self, encoding: Tensor, x: Tensor, prefix: str = "") -> dict[str, Tensor]:
+        if prefix:
+            prefix += "/"
+        return {f"{prefix}recon_loss": self.loss_fn(self.decoder(encoding), x)}
 
-    def forward(self, inputs: Tensor, reverse: bool = False) -> Tensor:
-        if reverse:
-            return self.decode(inputs)
-        else:
-            return self.encode(inputs)
+    @implements(pl.LightningModule)
+    def configure_optimizers(self) -> Optimizer:
+        return Adam(self.parameters(), lr=self.lr)
 
-    def zero_grad(self) -> None:
-        self.encoder.zero_grad()
-        self.decoder.zero_grad()
+    @implements(pl.LightningModule)
+    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
+        encoding = self.encoder(batch.x)
+        loss_dict = self.get_loss(encoding, batch.x, prefix="train")
+        self.logger.experiment.log(loss_dict)
+        return cast(Tensor, sum(loss_dict.values()))
 
-    def step(self, grads: Optional[Tensor] = None) -> None:
-        self.encoder.step(grads)
-        self.decoder.step(grads)
-
-    def fit(
-        self, train_data: DataLoader, epochs: int, device: torch.device, use_wandb: bool
-    ) -> None:
-        self.train()
-
-        step = 0
-        use_wandb_ = use_wandb
-
-        class _Namespace:
-            use_wandb: bool = use_wandb_
-
-        args = _Namespace()
-        with tqdm(total=epochs * len(train_data)) as pbar:
-            for _ in range(epochs):
-
-                for x, _, _ in train_data:
-
-                    x = x.to(device)
-
-                    self.zero_grad()
-                    _, loss, _ = self.routine(x)
-
-                    loss.backward()
-                    self.step()
-
-                    enc_loss = loss.detach().cpu().numpy()
-                    pbar.update()
-                    pbar.set_postfix(AE_loss=enc_loss)
-                    step += 1
-                    wandb_log(args, {"enc_loss": enc_loss}, step)
-
-    def routine(self, x: Tensor) -> Tuple[Tensor, Tensor, Dict[str, float]]:
-        encoding = self.encode(x)
-
-        recon_all = self.decode(encoding)
-        recon_loss = self.recon_loss_fn(recon_all, x)
-        recon_loss /= x.nelement()
-        return encoding, recon_loss, {"Loss reconstruction": recon_loss.item()}
-
-    def freeze_initial_layers(self, num_layers: int, optimizer_kwargs: Dict[str, Any]) -> None:
-        self.encoder.freeze_initial_layers(num_layers=num_layers, optimizer_kwargs=optimizer_kwargs)
+    @implements(pl.LightningModule)
+    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
+        encoding = self.encoder(batch.x)
+        loss_dict = self.get_loss(encoding, batch.x, prefix="val")
+        self.logger.experiment.log(loss_dict)
+        return cast(Tensor, sum(loss_dict.values()))
 
 
-class VAE(AutoEncoder):
-    """Variational AutoEncoder."""
-
+class ConvAutoEncoder(AutoEncoder):
     def __init__(
         self,
-        encoder: nn.Sequential,
-        decoder: nn.Sequential,
-        recon_loss_fn: Callable[[Tensor, Tensor], Tensor],
-        kl_weight: float,
-        std_transform: Literal["softplus", "exp"],
-        feature_group_slices: Optional[Dict[str, List[slice]]] = None,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        init_hidden_dims: int,
+        num_stages: int,
+        latent_dim: int,
+        lr: float = 1.0e-3,
     ):
-        super().__init__(
-            encoder=encoder,
-            decoder=decoder,
-            recon_loss_fn=recon_loss_fn,
-            feature_group_slices=feature_group_slices,
-            optimizer_kwargs=optimizer_kwargs,
+        super().__init__(latent_dim=latent_dim, lr=lr)
+        self.init_hidden_dims = init_hidden_dims
+        self.num_stages = num_stages
+        self.act = nn.GELU()
+
+    def _down_conv(
+        self, in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int
+    ) -> nn.Sequential:
+        return nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            ),
+            self.act,
         )
-        self.encoder: ModelBase = ModelBase(encoder, optimizer_kwargs=optimizer_kwargs)
-        self.decoder: ModelBase = ModelBase(decoder, optimizer_kwargs=optimizer_kwargs)
 
-        self.prior = td.Normal(0, 1)
-        self.posterior_fn = td.Normal
-        self.std_transform = std_transform
-        self.kl_weight = kl_weight
+    def _up_conv(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        output_padding: int,
+    ) -> nn.Sequential:
+        return nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+            self.act,
+        )
 
-    def compute_divergence(self, sample: Tensor, posterior: td.Distribution) -> Tensor:
-        log_p = self.prior.log_prob(sample)
-        log_q = posterior.log_prob(sample)
+    @implements(AutoEncoder)
+    def _build(self, input_shape: ImageDims) -> tuple[nn.Sequential, nn.Sequential]:
+        c_in, height, width = input_shape
+        c_out = self.init_hidden_dims
 
-        kl_div = (log_q - log_p).sum()
+        encoder_ls: list[nn.Module] = []
+        decoder_ls: list[nn.Module] = []
 
-        return kl_div
+        for level in range(self.num_stages):
+            if level != 0:
+                c_in = c_out
+                c_out *= 2
 
-    def encode_with_posterior(self, x: Tensor) -> Tuple[Tensor, td.Distribution]:
-        loc, scale = self.encoder(x).chunk(2, dim=1)
+            encoder_ls.append(
+                nn.Sequential(
+                    self._down_conv(c_in, c_out, kernel_size=3, stride=1, padding=1),
+                    self._down_conv(c_out, c_out, kernel_size=4, stride=2, padding=1),
+                )
+            )
 
-        if self.std_transform == "softplus":
-            scale = F.softplus(scale)
-        else:
-            scale = torch.exp(0.5 * scale).clamp(min=0.005, max=3.0)
-        posterior = self.posterior_fn(loc, scale)
-        sample = posterior.rsample()
+            decoder_ls.append(
+                nn.Sequential(
+                    # inverted order
+                    self._up_conv(
+                        c_out, c_out, kernel_size=4, stride=2, padding=1, output_padding=0
+                    ),
+                    self._down_conv(c_out, c_in, kernel_size=3, stride=1, padding=1),
+                )
+            )
 
-        return sample, posterior
+            height //= 2
+            width //= 2
 
-    def encode(self, x: Tensor, stochastic: bool = False) -> Tensor:
-        if stochastic:
-            sample, _ = self.encode_with_posterior(x)
-        else:
-            loc, _ = self.encoder(x).chunk(2, dim=1)
-            sample = loc
-        return sample
+        flattened_size = c_out * height * width
+        encoder_ls += [nn.Flatten()]
+        encoder_ls += [nn.Linear(flattened_size, self.latent_dim)]
 
-    def routine(self, x: Tensor) -> Tuple[Tensor, Tensor, Dict[str, float]]:
-        encoding, posterior = self.encode_with_posterior(x)
-        kl_div = self.compute_divergence(encoding, posterior)
-        kl_div /= x.size(0)
-        kl_div *= self.kl_weight
+        decoder_ls += [View((c_out, height, width))]
+        decoder_ls += [nn.Linear(self.latent_dim, flattened_size)]
+        decoder_ls = decoder_ls[::-1]
+        decoder_ls += [
+            nn.Conv2d(input_shape[0], input_shape[0], kernel_size=1, stride=1, padding=0)
+        ]
 
-        recon_all = self.decode(encoding)
-        recon_loss = self.recon_loss_fn(recon_all, x)
-        recon_loss /= x.size(0)
-        elbo = recon_loss + kl_div
-        logging_dict = {"Loss Reconstruction": recon_loss.item(), "KL divergence": kl_div}
-        return encoding, elbo, logging_dict
+        encoder = nn.Sequential(*encoder_ls)
+        decoder = nn.Sequential(*decoder_ls)
+
+        return encoder, decoder
