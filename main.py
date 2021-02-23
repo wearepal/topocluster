@@ -14,30 +14,40 @@ from gen.topocluster.data.data_modules.conf import (
     SVHNDataModuleConf,
 )
 from gen.topocluster.experiment.conf import ExperimentConf
-from gen.topocluster.models.autoencoder.conf import GatedConvAutoEncoderConf
+from gen.topocluster.models.autoencoder.conf import ConvAutoEncoderConf
 
 
 # ConfigStore enables type validation
 cs = ConfigStore.instance()
-cs.store(name="experiment", node=ExperimentConf)
+cs.store(name="experiment_schema", node=ExperimentConf)
 cs.store(group="schema/datamodule", name="mnist", node=MNISTDataModuleConf, package="datamodule")
 cs.store(
-    group="schema/datamodule", name="cifar10", node=CIFAR10DataModuleConf, package="datamodule"
+    group="schema/datamodule",
+    name="cifar10_schema",
+    node=CIFAR10DataModuleConf,
+    package="datamodule",
 )
 cs.store(
-    group="schema/datamodule", name="cifar100", node=CIFAR100DataModuleConf, package="datamodule"
+    group="schema/datamodule",
+    name="cifar100_schema",
+    node=CIFAR100DataModuleConf,
+    package="datamodule",
 )
-cs.store(group="schema/datamodule", name="svhn", node=SVHNDataModuleConf, package="datamodule")
+cs.store(
+    group="schema/datamodule", name="svhn_schema", node=SVHNDataModuleConf, package="datamodule"
+)
 
 
-cs.store(group="schema/encoder", name="gconv_ae", node=GatedConvAutoEncoderConf, package="encoder")
+cs.store(group="schema/encoder", name="conv_ae_schema", node=ConvAutoEncoderConf, package="encoder")
 
-cs.store(group="schema/clusterer", name="tomato", node=TomatoConf, package="clusterer")
-cs.store(group="schema/clusterer", name="kmeans", node=KmeansConf, package="clusterer")
-cs.store(group="schema/clusterer", name="plc", node=PlClustererConf, package="clusterer")
+cs.store(group="schema/clusterer", name="tomato_schema", node=TomatoConf, package="clusterer")
+cs.store(group="schema/clusterer", name="kmeans_schema", node=KmeansConf, package="clusterer")
+cs.store(group="schema/clusterer", name="plc_schema", node=PlClustererConf, package="clusterer")
 
-cs.store(group="schema/trainer", name="trainer", node=TrainerConf, package="trainer")
-cs.store(group="schema/pretrainer", name="pretrainer", node=TrainerConf, package="pretrainer")
+cs.store(group="schema/trainer", name="trainer_schema", node=TrainerConf, package="trainer")
+cs.store(
+    group="schema/pretrainer", name="pretrainer_schema", node=TrainerConf, package="pretrainer"
+)
 
 
 @hydra.main(config_path="conf", config_name="experiment")

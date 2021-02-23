@@ -22,7 +22,7 @@ configen:
     - name: topocluster.models.autoencoder
       classes:
         - AutoEncoder
-        - GatedConvAutoEncoder
+        - ConvAutoEncoder
     - name: topocluster.data.data_modules
       classes:
         - MNISTDataModule

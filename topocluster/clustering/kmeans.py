@@ -1,8 +1,7 @@
 from __future__ import annotations
-from dataclasses import dataclass
 from enum import Enum, auto
 import time
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional
 
 import faiss
 import numpy as np
@@ -16,7 +15,7 @@ from topocluster.clustering.utils import (
     compute_optimal_assignments,
     l2_centroidal_distance,
 )
-from topocluster.data.data_modules import IGNORE_INDEX
+from topocluster.data.utils import IGNORE_INDEX
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -42,7 +41,7 @@ class Kmeans(Clusterer):
     def build(self, input_dim: int, num_classes: int) -> None:
         self.k = num_classes
 
-    def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
         if self.k is None:
             raise ValueError("Value for k not yet set.")
         if self.backend == Backends.TORCH:
@@ -67,7 +66,7 @@ class Kmeans(Clusterer):
 
     def get_loss(
         self, x: Tensor, soft_labels: Tensor, hard_labels: Tensor, y: Tensor, prefix: str = ""
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         if prefix:
             prefix += "/"
 
@@ -101,7 +100,7 @@ def run_kmeans_torch(
     num_clusters: int,
     n_iter: int = 10,
     verbose: bool = False,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     x = x.flatten(start_dim=1)
     N, D = x.shape  # Number of samples, dimension of the ambient space
     dtype = torch.float32 if x.is_cuda else torch.float64
@@ -147,7 +146,7 @@ def run_kmeans_faiss(
     num_clusters: int,
     n_iter: int,
     verbose: bool = False,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     x_np = x.detach().cpu().numpy()
     x_np = np.reshape(x_np, (x_np.shape[0], -1))
     n_data, d = x_np.shape

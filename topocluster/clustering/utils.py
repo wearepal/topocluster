@@ -1,7 +1,4 @@
 from __future__ import annotations
-import collections
-import pdb
-from typing import Dict, Optional, Tuple
 
 from lapjv import lapjv
 import numba
@@ -18,11 +15,11 @@ def l2_centroidal_distance(x: Tensor, centroids: Tensor):
 
 
 def compute_optimal_assignments(
-    labels_pred: np.array[np.int64],
-    labels_true: np.ndarray[np.int64],
-    num_classes: Optional[int] = None,
+    labels_pred: np.ndarray,
+    labels_true: np.ndarray,
+    num_classes: int | None = None,
     encode: bool = True,
-) -> Tuple[float, Dict[int, int]]:
+) -> tuple[float, dict[int, int]]:
     """Find an assignment of cluster to class such that the overall accuracy is maximized."""
     # row_ind maps from class ID to cluster ID: cluster_id = row_ind[class_id]
     # col_ind maps from cluster ID to class ID: class_id = row_ind[cluster_id]
@@ -47,7 +44,7 @@ def compute_optimal_assignments(
 
 
 @numba.jit(nopython=True)
-def _get_index_mapping(arr: np.ndarray[np.int]) -> Tuple[Dict[int, int], Dict[int, int]]:
+def _get_index_mapping(arr: np.ndarray) -> tuple[dict[int, int], dict[int, int]]:
     encodings, decodings = {}, {}
     for i, val in enumerate(np.unique(arr)):
         encodings[val] = i
@@ -55,16 +52,16 @@ def _get_index_mapping(arr: np.ndarray[np.int]) -> Tuple[Dict[int, int], Dict[in
     return encodings, decodings
 
 
-def _encode(arr: np.ndarray, encoding_dict: Dict[int, int]) -> np.ndarray:
+def _encode(arr: np.ndarray, encoding_dict: dict[int, int]) -> np.ndarray:
     return np.vectorize(encoding_dict.__getitem__)(arr)
 
 
 def compute_cost_matrix(
-    labels_pred: np.ndarray[np.int],
-    labels_true: np.ndarray[np.int],
+    labels_pred: np.ndarray,
+    labels_true: np.ndarray,
     num_classes: int = True,
     encode: bool = True,
-) -> Tuple[np.ndarray[np.int], Optional[Dict[int, int]], Optional[Dict[int, int]]]:
+) -> tuple[np.ndarray, dict[int, int] | None, dict[int, int] | None]:
     if encode and num_classes is None:
         encodings_pred, decodings_pred = _get_index_mapping(labels_pred)
         encodings_true, decodings_true = _get_index_mapping(labels_true)

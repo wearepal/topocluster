@@ -1,5 +1,6 @@
 # """Main training file"""
-from typing import Any, Dict, Optional
+from __future__ import annotations
+from typing import Any, Optional
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -10,7 +11,9 @@ from torch.tensor import Tensor
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import compute_optimal_assignments
 from topocluster.data.data_modules import DataModule
+from topocluster.data.utils import Batch
 from topocluster.models.autoencoder import AutoEncoder
+from topocluster.utils.interface import implements
 
 
 __all__ = ["Experiment"]
@@ -29,17 +32,22 @@ class Experiment(pl.LightningModule):
         seed: Optional[int] = 42,
     ):
         super().__init__()
-        self.save_hyperparameters("lr", "log_offline", "seed")
+        self.lr = lr
+        self.log_offline = log_offline
+        self.seed = seed
+
         self.datamodule = datamodule
         self.encoder = encoder
         self.clusterer = clusterer
         self.trainer = trainer
         self.pretrainer = pretrainer
 
+    @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=self.hparams.lr)
+        return Adam(self.parameters(), lr=self.lr)
 
-    def validation_step(self, batch: Tensor, batch_idx: int) -> Dict[str, float]:
+    @implements(pl.LightningModule)
+    def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
         x, y = batch
         y_np = y.cpu().numpy()
 
@@ -58,7 +66,8 @@ class Experiment(pl.LightningModule):
 
         return metrics
 
-    def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
+    @implements(pl.LightningModule)
+    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
         x, y = batch
 
         encoding = self.encoder(x)
@@ -73,7 +82,8 @@ class Experiment(pl.LightningModule):
 
         return sum(loss_dict.values())
 
-    def test_step(self, batch: Tensor, batch_idx: int) -> Dict[str, float]:
+    @implements(pl.LightningModule)
+    def test_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
         val_metrics = self.validation_step(batch, batch_idx)
         test_metrics = {
             "test/ARI": val_metrics["val/ARI"],
@@ -84,19 +94,19 @@ class Experiment(pl.LightningModule):
 
         return test_metrics
 
-    def start(self, raw_config: Optional[Dict[str, Any]] = None):
+    def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
         logger = WandbLogger(
             entity="predictive-analytics-lab",
             project="topocluster",
-            offline=self.hparams.log_offline,
+            offline=self.log_offline,
         )
         if raw_config is not None:
             logger.log_hyperparams(raw_config)
         self.pretrainer.logger = logger
         self.trainer.logger = logger
 
-        pl.seed_everything(seed=self.hparams.seed)
+        pl.seed_everything(seed=self.seed)
         self.encoder.build(self.datamodule.dims)
         self.clusterer.build(self.encoder.latent_dim, self.datamodule.num_classes)
 

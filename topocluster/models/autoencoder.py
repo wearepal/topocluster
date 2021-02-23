@@ -1,20 +1,19 @@
 """Autoencoders"""
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Dict, List, Sequence, Tuple
+from typing import cast
 
 import pytorch_lightning as pl
 from torch import Tensor
 import torch.nn as nn
 from torch.optim import Adam, Optimizer
 
+from topocluster.data.utils import Batch, ImageDims
 from topocluster.layers.misc import View
+from topocluster.utils.interface import implements
 
 
-__all__ = ["AutoEncoder", "GatedConvAutoEncoder"]
-
-
-INPUT_SHAPE = Tuple[int, int, int]
+__all__ = ["AutoEncoder", "ConvAutoEncoder"]
 
 
 class AutoEncoder(pl.LightningModule):
@@ -25,65 +24,73 @@ class AutoEncoder(pl.LightningModule):
 
     def __init__(self, latent_dim: int, lr: float = 1.0e-3) -> None:
         super().__init__()
-        self.save_hyperparameters("lr")
         self.latent_dim = latent_dim
         self.loss_fn = nn.MSELoss()
+        self.lr = lr
 
     @abstractmethod
-    def _build(self, input_shape: INPUT_SHAPE) -> Tuple[nn.Module, nn.Module]:
+    def _build(self, input_shape: int | ImageDims) -> tuple[nn.Module, nn.Module]:
         ...
 
-    def build(self, input_shape: INPUT_SHAPE) -> None:
+    def build(self, input_shape: int | ImageDims) -> None:
         self.encoder, self.decoder = self._build(input_shape)
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
 
-    def get_loss(self, encoding: Tensor, x: Tensor, prefix: str = "") -> Dict[str, Tensor]:
+    def get_loss(self, encoding: Tensor, x: Tensor, prefix: str = "") -> dict[str, Tensor]:
         if prefix:
             prefix += "/"
         return {f"{prefix}recon_loss": self.loss_fn(self.decoder(encoding), x)}
 
+    @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=self.hparams.lr)
+        return Adam(self.parameters(), lr=self.lr)
 
-    def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
-        x = batch[0] if isinstance(batch, Sequence) else batch
-        encoding = self.encoder(x)
-        loss_dict = self.get_loss(encoding, x, prefix="train")
+    @implements(pl.LightningModule)
+    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
+        encoding = self.encoder(batch.x)
+        loss_dict = self.get_loss(encoding, batch.x, prefix="train")
         self.logger.experiment.log(loss_dict)
-        return sum(loss_dict.values())
+        return cast(Tensor, sum(loss_dict.values()))
+
+    @implements(pl.LightningModule)
+    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
+        encoding = self.encoder(batch.x)
+        loss_dict = self.get_loss(encoding, batch.x, prefix="val")
+        self.logger.experiment.log(loss_dict)
+        return cast(Tensor, sum(loss_dict.values()))
 
 
-class GatedConvAutoEncoder(AutoEncoder):
+class ConvAutoEncoder(AutoEncoder):
     def __init__(
         self,
         init_hidden_dims: int,
-        levels: int,
+        num_stages: int,
         latent_dim: int,
         lr: float = 1.0e-3,
     ):
         super().__init__(latent_dim=latent_dim, lr=lr)
         self.init_hidden_dims = init_hidden_dims
-        self.levels = levels
+        self.num_stages = num_stages
+        self.act = nn.GELU()
 
-    @staticmethod
-    def _gated_down_conv(
-        in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int
+    def _down_conv(
+        self, in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int
     ) -> nn.Sequential:
         return nn.Sequential(
             nn.Conv2d(
                 in_channels,
-                out_channels * 2,
+                out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
             ),
-            nn.GLU(dim=1),
+            self.act,
         )
 
-    @staticmethod
-    def _gated_up_conv(
+    def _up_conv(
+        self,
         in_channels: int,
         out_channels: int,
         kernel_size: int,
@@ -94,40 +101,42 @@ class GatedConvAutoEncoder(AutoEncoder):
         return nn.Sequential(
             nn.ConvTranspose2d(
                 in_channels,
-                out_channels * 2,
+                out_channels,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
                 output_padding=output_padding,
             ),
-            nn.GLU(dim=1),
+            self.act,
         )
 
-    def _build(self, input_shape: INPUT_SHAPE) -> Tuple[nn.Sequential, nn.Sequential]:
-        encoder_ls: List[nn.Module] = []
-        decoder_ls: List[nn.Module] = []
+    @implements(AutoEncoder)
+    def _build(self, input_shape: ImageDims) -> tuple[nn.Sequential, nn.Sequential]:
         c_in, height, width = input_shape
         c_out = self.init_hidden_dims
 
-        for level in range(self.levels):
+        encoder_ls: list[nn.Module] = []
+        decoder_ls: list[nn.Module] = []
+
+        for level in range(self.num_stages):
             if level != 0:
                 c_in = c_out
                 c_out *= 2
 
             encoder_ls.append(
                 nn.Sequential(
-                    self._gated_down_conv(c_in, c_out, kernel_size=3, stride=1, padding=1),
-                    self._gated_down_conv(c_out, c_out, kernel_size=4, stride=2, padding=1),
+                    self._down_conv(c_in, c_out, kernel_size=3, stride=1, padding=1),
+                    self._down_conv(c_out, c_out, kernel_size=4, stride=2, padding=1),
                 )
             )
 
             decoder_ls.append(
                 nn.Sequential(
                     # inverted order
-                    self._gated_up_conv(
+                    self._up_conv(
                         c_out, c_out, kernel_size=4, stride=2, padding=1, output_padding=0
                     ),
-                    self._gated_down_conv(c_out, c_in, kernel_size=3, stride=1, padding=1),
+                    self._down_conv(c_out, c_in, kernel_size=3, stride=1, padding=1),
                 )
             )
 

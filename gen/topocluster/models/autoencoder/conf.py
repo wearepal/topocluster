@@ -5,6 +5,8 @@
 # flake8: noqa
 
 from dataclasses import dataclass, field
+from typing import Any
+
 from omegaconf import MISSING
 
 
@@ -16,9 +18,9 @@ class AutoEncoderConf:
 
 
 @dataclass
-class GatedConvAutoEncoderConf:
-    _target_: str = "topocluster.models.autoencoder.GatedConvAutoEncoder"
+class ConvAutoEncoderConf:
+    _target_: str = "topocluster.models.autoencoder.ConvAutoEncoder"
     init_hidden_dims: int = MISSING
-    levels: int = MISSING
+    num_stages: int = MISSING
     latent_dim: int = MISSING
     lr: float = 0.001

@@ -1,7 +1,6 @@
-"""Model that contains all."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, Iterator, Optional, Tuple, final
+from typing import Callable
 
 from torch import Tensor
 import torch
@@ -24,14 +23,14 @@ class PlClusterer(Clusterer, nn.Module):
     def build(self, input_dim: int, num_classes: int) -> None:
         self.classifier = nn.Linear(input_dim, num_classes)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         soft_labels = self.classifier(x)
         hard_labels = soft_labels.argmax(dim=-1)
         return hard_labels, soft_labels
 
     def get_loss(
         self, x: Tensor, soft_labels: Tensor, hard_labels: Tensor, y: Tensor, prefix: str = ""
-    ) -> Dict[str, Tensor]:
+    ) -> dict[str, Tensor]:
         if prefix:
             prefix += "/"
         y_labeled = y != IGNORE_INDEX

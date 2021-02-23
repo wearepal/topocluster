@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 import warnings
 
-from faiss import IndexFlatL2
 import matplotlib.pyplot as plt
 from numba import jit
 import numpy as np

@@ -1,10 +1,8 @@
-"""Labelers"""
-
 import torch
 from torch import Tensor
 import torch.nn as nn
 
-from topocluster.data.data_modules import IGNORE_INDEX
+from topocluster.data.utils import IGNORE_INDEX
 from topocluster.utils import dot_product
 
 __all__ = ["RankingStatistics", "CosineSimThreshold"]

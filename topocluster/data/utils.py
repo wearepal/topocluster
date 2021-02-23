@@ -1,4 +1,6 @@
-from typing import Any, List, Sequence, Set, Tuple
+from __future__ import annotations
+from collections import namedtuple
+from typing import Any, Final, Optional, Protocol, Sequence
 
 import numpy as np
 import torch
@@ -9,10 +11,49 @@ from torch.utils.data._utils.collate import (
     np_str_obj_array_pattern,
 )
 
-__all__ = ["RandomSampler", "adaptive_collate", "filter_by_labels", "prop_random_split"]
+__all__ = [
+    "IGNORE_INDEX",
+    "ImageDims",
+    "MaskedLabelDataset",
+    "RandomSampler",
+    "SizedDatasetProt",
+    "adaptive_collate",
+    "filter_by_labels",
+    "prop_random_split",
+]
 
 
-def prop_random_split(dataset: Dataset, props: Sequence[float]) -> List[Subset]:
+ImageDims = namedtuple("ImageDims", "C H W")
+Batch = namedtuple("Batch", "x y")
+IGNORE_INDEX: Final = -100
+
+
+class SizedDatasetProt(Protocol):
+    """Typing Protocol for a SizedDataset (a Dataset defining a __len__ method)."""
+
+    def __len__(self) -> int:
+        ...
+
+    def __getitem__(self, index: int) -> tuple[Any, ...]:
+        ...
+
+
+class MaskedLabelDataset(Dataset):
+    def __init__(self, dataset: SizedDatasetProt, threshold: Optional[int] = None) -> None:
+        self.dataset = dataset
+        self.threshold = threshold
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        x, y = self.dataset[index]
+        if self.threshold is None or y >= self.threshold:
+            y = IGNORE_INDEX
+        return x, y
+
+
+def prop_random_split(dataset: SizedDatasetProt, props: Sequence[float]) -> list[Subset]:
     len_ = len(dataset)
     if (sum_ := (np.sum(props)) > 1.0) or any(prop < 0 for prop in props):
         raise ValueError("Values for 'props` must be positive and sum to 1 or less.")
@@ -23,10 +64,10 @@ def prop_random_split(dataset: Dataset, props: Sequence[float]) -> List[Subset]:
 
 
 def filter_by_labels(
-    dataset: Dataset[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]], labels: Set[int]
+    dataset: Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]], labels: set[int]
 ) -> Subset:
     """Filter samples from a dataset by labels."""
-    indices: List[int] = []
+    indices: list[int] = []
     for _, _, y in dataset:
         if (label := int(y.numpy())) in labels:
             indices.append(label)
@@ -79,7 +120,7 @@ class RandomSampler(Sampler):
         return self.num_samples
 
 
-def adaptive_collate(batch: Any) -> Any:
+def adaptive_collate(batch: list[Any]) -> Any:
     elem = batch[0]
     elem_type = type(elem)
     if isinstance(elem, Tensor):
@@ -115,3 +156,9 @@ def adaptive_collate(batch: Any) -> Any:
         transposed = zip(*batch)
         return [adaptive_collate(samples) for samples in transposed]
     raise TypeError(default_collate_err_msg_format.format(elem_type))
+
+
+def image_collate(batch: list[Any]) -> Batch:
+    image, label = adaptive_collate(batch)
+    image = image.refine_names("N", "C", "H", "W")
+    return Batch(x=image, y=label)
