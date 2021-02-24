@@ -15,7 +15,6 @@ from topocluster.data.utils import (
     ImageDims,
     MaskedLabelDataset,
     adaptive_collate,
-    image_collate,
     prop_random_split,
 )
 from topocluster.utils.interface import implements
