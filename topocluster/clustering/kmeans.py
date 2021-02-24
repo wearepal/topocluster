@@ -46,7 +46,7 @@ class Kmeans(Clusterer):
             raise ValueError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
             hard_labels, centroids = run_kmeans_torch(
-                x,
+                x.detach().cpu(),  # Requires a newer version of cuda that we have access to atm
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
@@ -103,7 +103,8 @@ def run_kmeans_torch(
 ) -> tuple[Tensor, Tensor]:
     x = x.flatten(start_dim=1)
     N, D = x.shape  # Number of samples, dimension of the ambient space
-    dtype = torch.float32 if x.is_cuda else torch.float64
+    use_cuda = x.is_cuda
+    dtype = torch.float32 if use_cuda else torch.float64
 
     # K-means loop:
     # - x  is the point cloud,
@@ -131,6 +132,8 @@ def run_kmeans_torch(
     end = time.time()
 
     if verbose:
+        if use_cuda:
+            torch.cuda.synchronize()
         print(f"K-means with {N:,} points in dimension {D:,}, K = {num_clusters:,}:")
         print(
             "Timing for {} iterations: {:.5f}s = {} x {:.5f}s\n".format(
