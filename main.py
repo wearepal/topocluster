@@ -7,7 +7,7 @@ from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.pytorch_lightning.conf import TrainerConf
 from gen.topocluster.clustering.dac.conf import PlClustererConf
 from gen.topocluster.clustering.kmeans.conf import KmeansConf
-from gen.topocluster.data.data_modules.conf import (
+from gen.topocluster.data.datamodules.conf import (
     CIFAR100DataModuleConf,
     CIFAR10DataModuleConf,
     MNISTDataModuleConf,

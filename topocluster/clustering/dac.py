@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from topocluster.clustering.common import Clusterer
-from topocluster.data.data_modules import IGNORE_INDEX
+from topocluster.data.utils import IGNORE_INDEX
 from topocluster.utils.torch_ops import dot_product, normalized_softmax
 
 __all__ = ["PlClusterer"]

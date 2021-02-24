@@ -1,2 +1,2 @@
-from .data_modules import *
+from .datamodules import *
 from .utils import *

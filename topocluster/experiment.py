@@ -10,7 +10,7 @@ from torch.tensor import Tensor
 
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import compute_optimal_assignments
-from topocluster.data.data_modules import DataModule
+from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import Batch
 from topocluster.models.autoencoder import AutoEncoder
 from topocluster.utils.interface import implements

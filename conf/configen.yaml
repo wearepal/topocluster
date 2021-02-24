@@ -23,7 +23,7 @@ configen:
       classes:
         - AutoEncoder
         - ConvAutoEncoder
-    - name: topocluster.data.data_modules
+    - name: topocluster.data.datamodules
       classes:
         - MNISTDataModule
         - CIFAR10DataModule
