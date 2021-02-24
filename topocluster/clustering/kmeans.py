@@ -1,10 +1,7 @@
 from __future__ import annotations
-from enum import Enum, auto
 import time
 from typing import Optional
 
-import faiss
-import numpy as np
 from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
@@ -17,12 +14,7 @@ from topocluster.clustering.utils import (
 )
 from topocluster.data.utils import IGNORE_INDEX
 
-__all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
-
-
-class Backends(Enum):
-    FAISS = auto()
-    TORCH = auto()
+__all__ = ["Kmeans", "run_kmeans"]
 
 
 class Kmeans(Clusterer):
@@ -30,12 +22,10 @@ class Kmeans(Clusterer):
         self,
         n_iter: int,
         k: Optional[int] = None,
-        backend: Backends = Backends.FAISS,
         verbose: bool = False,
     ):
         self.k = k
         self.n_iter = n_iter
-        self.backend = backend
         self.verbose = verbose
 
     def build(self, input_dim: int, num_classes: int) -> None:
@@ -44,22 +34,14 @@ class Kmeans(Clusterer):
     def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
         if self.k is None:
             raise ValueError("Value for 'k' not yet set.")
-        if self.backend == Backends.TORCH:
-            hard_labels, centroids = run_kmeans_torch(
-                x,
-                num_clusters=self.k,
-                n_iter=self.n_iter,
-                verbose=self.verbose,
-            )
-            hard_labels = hard_labels.detach()
-            centroids = centroids.detach()
-        else:
-            hard_labels, centroids = run_kmeans_faiss(
-                x=x,
-                num_clusters=self.k,
-                n_iter=self.n_iter,
-                verbose=self.verbose,
-            )
+        hard_labels, centroids = run_kmeans(
+            x,
+            num_clusters=self.k,
+            n_iter=self.n_iter,
+            verbose=self.verbose,
+        )
+        hard_labels = hard_labels.detach()
+        centroids = centroids.detach()
         soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
 
         return hard_labels, soft_labels
@@ -95,7 +77,7 @@ class Kmeans(Clusterer):
         return {f"{prefix}purity_loss": softmax_xent}
 
 
-def run_kmeans_torch(
+def run_kmeans(
     x: torch.Tensor,
     num_clusters: int,
     n_iter: int = 10,
@@ -137,44 +119,5 @@ def run_kmeans_torch(
                 n_iter, end - start, n_iter, (end - start) / n_iter
             )
         )
-
-    return cluster_indexes, centroids
-
-
-def run_kmeans_faiss(
-    x: Tensor,
-    num_clusters: int,
-    n_iter: int,
-    verbose: bool = False,
-) -> tuple[Tensor, Tensor]:
-    x_np = x.detach().cpu().numpy()
-    x_np = np.reshape(x_np, (x_np.shape[0], -1))
-    _, d = x_np.shape
-
-    if x.is_cuda:
-        # faiss implementation of k-means
-        kmeans = faiss.Clustering(d, num_clusters)
-        kmeans.niter = n_iter
-        kmeans.max_points_per_centroid = 10000000
-        kmeans.verbose = verbose
-        res = faiss.StandardGpuResources()
-        flat_config = faiss.GpuIndexFlatConfig()
-        flat_config.useFloat16 = False
-        index = faiss.GpuIndexFlatL2(res, d, flat_config)
-
-        # perform the training
-        kmeans.train(x_np, index)
-        flat_config.device = 0
-        _, cluster_indexes = index.search(x_np, 1)
-        centroids = faiss.vector_float_to_array(kmeans.centroids)
-        centroids = centroids.reshape(num_clusters, d)
-    else:
-        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=20)
-        kmeans.train(x_np)
-        _, cluster_indexes = kmeans.index.search(x_np, 1)
-        centroids = kmeans.centroids
-
-    cluster_indexes = torch.as_tensor(cluster_indexes, dtype=torch.long, device=x.device).squeeze()
-    centroids = torch.as_tensor(centroids, dtype=torch.float32, device=x.device)
 
     return cluster_indexes, centroids
