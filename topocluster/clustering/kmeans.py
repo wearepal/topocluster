@@ -30,7 +30,7 @@ class Kmeans(Clusterer):
         self,
         n_iter: int,
         k: Optional[int] = None,
-        backend: Backends = Backends.TORCH,
+        backend: Backends = Backends.FAISS,
         verbose: bool = False,
     ):
         self.k = k
@@ -43,7 +43,7 @@ class Kmeans(Clusterer):
 
     def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
         if self.k is None:
-            raise ValueError("Value for k not yet set.")
+            raise ValueError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
             hard_labels, centroids = run_kmeans_torch(
                 x,
@@ -110,23 +110,23 @@ def run_kmeans_torch(
     # - cl is the vector of class labels
     # - c  is the cloud of cluster centroids
     start = time.time()
-    c = x[:num_clusters, :].clone()  # Simplistic random initialization
+    centroids = x[:num_clusters, :].clone()  # Simplistic random initialization
     x_i = LazyTensor(x[:, None, :])  # (Npoints, 1, D)
-    cl = None
+    cluster_indexes = None
 
     for _ in range(n_iter):
-        c_j = LazyTensor(c[None, :, :])  # (1, Nclusters, D)
+        c_j = LazyTensor(centroids[None, :, :])  # (1, Nclusters, D)
         # (Npoints, Nclusters) symbolic matrix of squared distances
         D_ij = ((x_i - c_j) ** 2).sum(-1)
-        cl = D_ij.argmin(dim=1).long().view(-1)  # Points -> Nearest cluster
+        cluster_indexes = D_ij.argmin(dim=1).long().view(-1)  # Points -> Nearest cluster
 
-        Ncl = torch.bincount(cl).type(dtype)  # Class weights
+        Ncl = torch.bincount(cluster_indexes).type(dtype)  # Class weights
         for d in range(D):  # Compute the cluster centroids with torch.bincount:
-            c[:, d] = torch.bincount(cl, weights=x[:, d]) / Ncl
+            centroids[:, d] = torch.bincount(cluster_indexes, weights=x[:, d]) / Ncl
 
-    if cl is None:
+    if cluster_indexes is None:
         D_ij = ((x_i - c_j) ** 2).sum(-1)
-        cl = D_ij.argmin(dim=1).long().view(-1)  # Points -> Nearest cluster
+        cluster_indexes = D_ij.argmin(dim=1).long().view(-1)  # Points -> Nearest cluster
 
     end = time.time()
 
@@ -138,7 +138,7 @@ def run_kmeans_torch(
             )
         )
 
-    return cl, c
+    return cluster_indexes, centroids
 
 
 def run_kmeans_faiss(
@@ -149,7 +149,7 @@ def run_kmeans_faiss(
 ) -> tuple[Tensor, Tensor]:
     x_np = x.detach().cpu().numpy()
     x_np = np.reshape(x_np, (x_np.shape[0], -1))
-    n_data, d = x_np.shape
+    _, d = x_np.shape
 
     if x.is_cuda:
         # faiss implementation of k-means
