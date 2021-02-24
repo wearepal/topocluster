@@ -7,7 +7,6 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset, Sampler, Subset, random_split
 from torch.utils.data._utils.collate import (
-    default_collate,
     default_collate_err_msg_format,
     default_collate_err_msg_format,
     np_str_obj_array_pattern,
@@ -161,5 +160,5 @@ def adaptive_collate(batch: list[Any]) -> Any:
 
 
 def image_collate(batch: list[Any]) -> Batch:
-    image, label = default_collate(batch)
+    image, label = adaptive_collate(batch)
     return Batch(x=image, y=label)
