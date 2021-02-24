@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass, field
 from omegaconf import MISSING
+from topocluster.clustering.kmeans import Backends
 from typing import Optional
 
 
@@ -14,4 +15,5 @@ class KmeansConf:
     _target_: str = "topocluster.clustering.kmeans.Kmeans"
     n_iter: int = MISSING
     k: Optional[int] = None
+    backend: Backends = Backends.FAISS
     verbose: bool = False
