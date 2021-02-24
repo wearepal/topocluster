@@ -1,4 +1,3 @@
-# @package clusterer
 pl_loss:
   _target_: topocluster.clustering.dac.PlCosineBCE
   pseudo_labeler:

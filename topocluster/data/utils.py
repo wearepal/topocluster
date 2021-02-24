@@ -160,5 +160,4 @@ def adaptive_collate(batch: list[Any]) -> Any:
 
 def image_collate(batch: list[Any]) -> Batch:
     image, label = adaptive_collate(batch)
-    image = image.refine_names("N", "C", "H", "W")
     return Batch(x=image, y=label)
