@@ -108,6 +108,7 @@ class VisionDataModule(DataModule):
         train_batch_size: int = 256,
         test_batch_size: int = 1000,
         num_workers: int = 0,
+        collate_fn: Callable[[List[Any]], Any] = adaptive_collate,
     ):
         super().__init__(
             label_threshold=label_threshold,
@@ -115,7 +116,7 @@ class VisionDataModule(DataModule):
             train_batch_size=train_batch_size,
             test_batch_size=test_batch_size,
             num_workers=num_workers,
-            collate_fn=image_collate,
+            collate_fn=collate_fn,
         )
 
 

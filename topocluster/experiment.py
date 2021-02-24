@@ -48,15 +48,16 @@ class Experiment(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        encoding = self.encoder(batch.x)
+        x, y = batch
+        encoding = self.encoder(x)
         hard_labels, soft_labels = self.clusterer(encoding)
-        loss_dict = self.encoder.get_loss(encoding, batch.x, prefix="train")
+        loss_dict = self.encoder.get_loss(encoding, x, prefix="train")
         loss_dict.update(
             self.clusterer.get_loss(
                 x=encoding,
                 soft_labels=soft_labels,
                 hard_labels=hard_labels,
-                y=batch.y,
+                y=y,
                 prefix="train",
             )
         )
@@ -66,9 +67,10 @@ class Experiment(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
-        y_np = batch.y.cpu().numpy()
+        x, y = batch
+        y_np = y.cpu().numpy()
 
-        encoding = self.encoder(batch.x)
+        encoding = self.encoder(x)
         preds = self.clusterer(encoding)[0].cpu().detach().numpy()
 
         metrics = {

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import namedtuple
-from typing import Any, Final, Optional, Protocol, Sequence
+from typing import Any, Final, Optional, Protocol, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -24,8 +24,8 @@ __all__ = [
 ]
 
 
-ImageDims = namedtuple("ImageDims", "C H W")
-Batch = namedtuple("Batch", "x y")
+ImageDims = namedtuple("ImageDims", ["C", "H", "W"])
+Batch = Tuple[Tensor, Tensor]
 IGNORE_INDEX: Final = -100
 
 
@@ -157,8 +157,3 @@ def adaptive_collate(batch: list[Any]) -> Any:
         transposed = zip(*batch)
         return [adaptive_collate(samples) for samples in transposed]
     raise TypeError(default_collate_err_msg_format.format(elem_type))
-
-
-def image_collate(batch: list[Any]) -> Batch:
-    image, label = adaptive_collate(batch)
-    return Batch(x=image, y=label)

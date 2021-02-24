@@ -49,15 +49,17 @@ class AutoEncoder(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        encoding = self.encoder(batch.x)
-        loss_dict = self.get_loss(encoding, batch.x, prefix="train")
+        x, _ = batch
+        encoding = self.encoder(x)
+        loss_dict = self.get_loss(encoding, x, prefix="train")
         self.logger.experiment.log(loss_dict)
         return cast(Tensor, sum(loss_dict.values()))
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        encoding = self.encoder(batch.x)
-        loss_dict = self.get_loss(encoding, batch.x, prefix="val")
+        x, _ = batch
+        encoding = self.encoder(x)
+        loss_dict = self.get_loss(encoding, x, prefix="val")
         self.logger.experiment.log(loss_dict)
         return cast(Tensor, sum(loss_dict.values()))
 
