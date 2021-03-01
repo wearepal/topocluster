@@ -82,14 +82,14 @@ class Kmeans(Clusterer):
             encode=False,
         )
 
-        mask = torch.zeros_like(y_l, dtype=torch.bool)
+        mask = torch.zeros_like(soft_labels, dtype=torch.bool)
         mapped_inds = torch.full((y_l.size(0),), fill_value=float("nan"))
         for class_ind, cluster_ind in cluster_map.items():
             mask_k = (y_l == class_ind) & (hard_labels_l == cluster_ind)
             mapped_inds[mask_k] = cluster_ind
             mask |= mask_k
 
-        assert not mapped_inds.isnan().any()
+        assert not mapped_inds[mask].isnan().any()
         mapped_inds = mapped_inds.long()
 
         softmax_xent = -torch.mean(
