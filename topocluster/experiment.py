@@ -75,7 +75,6 @@ class Experiment(pl.LightningModule):
             )
         total_loss = cast(Tensor, sum(loss_dict.values()))
         loss_dict["train/total_loss"] = total_loss
-        self.log_dict(loss_dict, prog_bar=True, logger=False)
         self.logger.experiment.log(loss_dict)
 
         return total_loss

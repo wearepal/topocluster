@@ -54,9 +54,7 @@ class AutoEncoder(pl.LightningModule):
         encoding = self.encoder(x)
         loss_dict = self.get_loss(encoding, x, prefix="train")
         total_loss = cast(Tensor, sum(loss_dict.values()))
-        loss_dict["train/total_loss"] = total_loss
         self.logger.experiment.log(loss_dict)
-        self.log_dict(loss_dict, prog_bar=True, logger=False)
         return total_loss
 
     @implements(pl.LightningModule)
