@@ -83,7 +83,7 @@ class Kmeans(Clusterer):
         )
 
         mask = torch.zeros_like(y_l, dtype=torch.bool)
-        mapped_inds = torch.full_like(y_l, fill_value=float("nan"))
+        mapped_inds = torch.full((y_l.size(0),), fill_value=float("nan"))
         for class_ind, cluster_ind in cluster_map.items():
             mask_k = (y_l == class_ind) & (hard_labels_l == cluster_ind)
             mapped_inds[mask_k] = cluster_ind
