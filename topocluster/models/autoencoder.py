@@ -6,7 +6,7 @@ from typing import cast
 import pytorch_lightning as pl
 from torch import Tensor
 import torch.nn as nn
-from torch.optim import Adam, Optimizer
+from torch.optim import AdamW, Optimizer
 
 from topocluster.data.utils import Batch, ImageDims
 from topocluster.layers.misc import View
@@ -45,7 +45,7 @@ class AutoEncoder(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=self.lr)
+        return AdamW(self.parameters(), lr=self.lr)
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:

@@ -200,12 +200,24 @@ testing = ["pytest (>=5.3.5)", "pytest-cov (>=2.8.1)"]
 
 [[package]]
 category = "main"
-description = "A library for efficient similarity search and clustering of dense vectors."
-name = "faiss-gpu"
+description = "Differentiable sorting and ranking in O(n log n)."
+name = "fast-soft-sort"
 optional = false
 python-versions = "*"
-version = "1.7.0"
+version = "0.1"
 
+[package.dependencies]
+numba = "*"
+numpy = "*"
+scipy = ">=1.2.0"
+
+[package.extras]
+tf = ["tensorflow (>=1.12)"]
+
+[package.source]
+reference = "c3110360d7c94c42027865c71b23e46fa22151e2"
+type = "git"
+url = "https://github.com/google-research/fast-soft-sort.git"
 [[package]]
 category = "dev"
 description = "the modular source code checker: pep8 pyflakes and co"
@@ -350,18 +362,18 @@ description = "A framework for elegantly configuring complex applications"
 name = "hydra-core"
 optional = false
 python-versions = "*"
-version = "1.1.0.dev4"
+version = "1.1.0.dev5"
 
 [package.dependencies]
 antlr4-python3-runtime = "4.8"
-omegaconf = ">=2.1.0dev19"
+omegaconf = ">=2.1.0dev20"
 
 [package.dependencies.importlib-resources]
 python = "<3.9"
 version = "*"
 
 [package.source]
-reference = "bb2cabb7765764b5f6d415f24ddba8011b8226e3"
+reference = "40d9d11dd782e52aa8d9cf0a42f0a98740918bca"
 type = "git"
 url = "https://github.com/facebookresearch/hydra.git"
 
@@ -1154,7 +1166,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [metadata]
-content-hash = "aa498925bc795f0e7cf690cbe5c5a0c24ce72e9c9ea041760c1a7346126ba14a"
+content-hash = "f97310c13e9bd79cb3a87ae82a2dac1137179966f44490ae6add94c52349c37c"
 lock-version = "1.0"
 python-versions = "3.8"
 
@@ -1294,13 +1306,7 @@ eagerpy = [
     {file = "eagerpy-0.29.0-py3-none-any.whl", hash = "sha256:b130559ff9d9794f27d19ef9ec542b0edb704e9f63c3ee56d391e7bda14a9c19"},
     {file = "eagerpy-0.29.0.tar.gz", hash = "sha256:bd9cb9170dcb9eeb25b6fd90c827c665322f4e78b12ce845b93052f04d3a9408"},
 ]
-faiss-gpu = [
-    {file = "faiss-gpu-1.7.0.tar.gz", hash = "sha256:9dd7f92c10a04894e2b6065eb2274aa73705381327f34da5aae5da66523a2ca6"},
-    {file = "faiss_gpu-1.7.0-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:b7d8e5794428ef8222a12bb3c11ff6dfddd33241544686a6a310ad28a2c5c94a"},
-    {file = "faiss_gpu-1.7.0-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:c9ad2325d4f6cf7089d48aaa139ed4ad3ecb1d941125b16de2f4ffd02e1b3e60"},
-    {file = "faiss_gpu-1.7.0-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:9df4c89f22ed4cbc853a7f381e6d1f887ff1deddb004f431755680639f11c8eb"},
-    {file = "faiss_gpu-1.7.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:dc408162253ccbd0d3e508979685bba7ff83e7a2cab8f50a2616ac6da54d7389"},
-]
+fast-soft-sort = []
 flake8 = [
     {file = "flake8-3.8.4-py2.py3-none-any.whl", hash = "sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839"},
     {file = "flake8-3.8.4.tar.gz", hash = "sha256:aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b"},

@@ -21,6 +21,7 @@ omegaconf = {git = "https://github.com/omry/omegaconf.git"}
 hydra-core = {git = "https://github.com/facebookresearch/hydra.git"}
 matplotlib = "^3.3.2"
 neoconfigen = {git = "https://github.com/predictive-analytics-lab/neoconfigen.git"}
+fast-soft-sort = {git = "https://github.com/google-research/fast-soft-sort.git"}
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"

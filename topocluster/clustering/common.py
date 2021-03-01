@@ -13,10 +13,6 @@ class Clusterer:
         ...
 
     @abstractmethod
-    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
-        ...
-
-    @abstractmethod
     def get_loss(
         self, x: Tensor, soft_labels: Tensor, hard_labels: Tensor, y: Tensor, prefix: str = ""
     ) -> Dict[str, Tensor]:

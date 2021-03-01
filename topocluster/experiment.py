@@ -5,7 +5,7 @@ from typing import Any, Optional
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
-from torch.optim import Adam, Optimizer
+from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
 
 from topocluster.clustering.common import Clusterer
@@ -30,37 +30,46 @@ class Experiment(pl.LightningModule):
         lr: float = 1.0e-3,
         log_offline: bool = False,
         seed: Optional[int] = 42,
+        recon_loss_weight: float = 1.0,
+        clust_loss_weight: float = 1.0,
     ):
         super().__init__()
-        self.lr = lr
         self.log_offline = log_offline
         self.seed = seed
-
+        # Components
         self.datamodule = datamodule
         self.encoder = encoder
         self.clusterer = clusterer
+        # Trainers
         self.trainer = trainer
         self.pretrainer = pretrainer
+        # Optimization
+        self.lr = lr
+        self.recon_loss_weight = recon_loss_weight
+        self.clust_loss_weight = clust_loss_weight
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.parameters(), lr=self.lr)
+        return AdamW(self.parameters(), lr=self.lr)
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
         x, y = batch
         encoding = self.encoder(x)
         hard_labels, soft_labels = self.clusterer(encoding)
-        loss_dict = self.encoder.get_loss(encoding, x, prefix="train")
-        loss_dict.update(
-            self.clusterer.get_loss(
-                x=encoding,
-                soft_labels=soft_labels,
-                hard_labels=hard_labels,
-                y=y,
-                prefix="train",
+        loss_dict = {}
+        if self.recon_loss_weight > 0:
+            loss_dict.update(self.encoder.get_loss(encoding, x, prefix="train"))
+        if self.clust_loss_weight > 0:
+            loss_dict.update(
+                self.clusterer.get_loss(
+                    x=encoding,
+                    soft_labels=soft_labels,
+                    hard_labels=hard_labels,
+                    y=y,
+                    prefix="train",
+                )
             )
-        )
         self.logger.experiment.log(loss_dict)
 
         return sum(loss_dict.values())
