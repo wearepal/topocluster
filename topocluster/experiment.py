@@ -75,7 +75,7 @@ class Experiment(pl.LightningModule):
             )
         total_loss = cast(Tensor, sum(loss_dict.values()))
         loss_dict["train/total_loss"] = total_loss
-        self.log("train_loss", total_loss, prog_bar=True, logger=False)
+        self.log_dict(loss_dict, prog_bar=True, logger=False)
         self.logger.experiment.log(loss_dict)
 
         return total_loss
@@ -90,7 +90,7 @@ class Experiment(pl.LightningModule):
 
         metrics = {
             "val/ARI": adjusted_rand_score(labels_true=y_np, labels_pred=preds),
-            "val/NMI": normalized_mutual_info_score(labels_true=y_np, labels_pred=preds),
+            "val/NMI": normalized_mutual_info_score(labels_true=y_np, labels_pred=preds),  # type: ignore
             "val/Accuracy": compute_optimal_assignments(
                 labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
             )[0],

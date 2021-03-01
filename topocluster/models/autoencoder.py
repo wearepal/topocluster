@@ -53,16 +53,20 @@ class AutoEncoder(pl.LightningModule):
         x, _ = batch
         encoding = self.encoder(x)
         loss_dict = self.get_loss(encoding, x, prefix="train")
+        total_loss = cast(Tensor, sum(loss_dict.values()))
+        loss_dict["train/total_loss"] = total_loss
         self.logger.experiment.log(loss_dict)
-        return cast(Tensor, sum(loss_dict.values()))
+        self.log_dict(loss_dict, prog_bar=True, logger=False)
+        return total_loss
 
     @implements(pl.LightningModule)
-    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
+    def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
         x, _ = batch
         encoding = self.encoder(x)
         loss_dict = self.get_loss(encoding, x, prefix="val")
         self.logger.experiment.log(loss_dict)
-        return cast(Tensor, sum(loss_dict.values()))
+        self.log_dict(loss_dict, prog_bar=True, logger=False)
+        return loss_dict
 
 
 class ConvAutoEncoder(AutoEncoder):
