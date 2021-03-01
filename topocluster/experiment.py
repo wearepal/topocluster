@@ -92,8 +92,8 @@ class Experiment(pl.LightningModule):
                 labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
             )[0],
         }
-        self.log_dict(metrics, prog_bar=True, logger=False)
-        self.logger.experiment.log(metrics)
+        self.log_dict(metrics, prog_bar=True, logger=True)
+        # self.logger.experiment.log(metrics)
 
         return metrics
 
