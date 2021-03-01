@@ -21,3 +21,5 @@ class ExperimentConf:
     lr: float = 0.001
     log_offline: bool = False
     seed: Optional[int] = 42
+    recon_loss_weight: float = 1.0
+    clust_loss_weight: float = 1.0
