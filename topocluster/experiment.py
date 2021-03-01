@@ -1,6 +1,6 @@
 # """Main training file"""
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
@@ -73,9 +73,12 @@ class Experiment(pl.LightningModule):
                     prefix="train",
                 )
             )
+        total_loss = cast(Tensor, sum(loss_dict.values()))
+        loss_dict["train/total_loss"] = total_loss
+        self.log("train_loss", total_loss, prog_bar=True, logger=False)
         self.logger.experiment.log(loss_dict)
 
-        return sum(loss_dict.values())
+        return total_loss
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
@@ -92,8 +95,8 @@ class Experiment(pl.LightningModule):
                 labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
             )[0],
         }
-        self.log_dict(metrics, prog_bar=True, logger=True)
-        # self.logger.experiment.log(metrics)
+        self.log_dict(metrics, prog_bar=True, logger=False)
+        self.logger.experiment.log(metrics)
 
         return metrics
 
