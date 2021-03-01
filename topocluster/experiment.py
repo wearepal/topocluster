@@ -44,9 +44,10 @@ class Experiment(pl.LightningModule):
         # Trainers
         self.trainer = trainer
         self.pretrainer = pretrainer
-        # Optimization
+        # Optimizer configuration
         self.lr = lr
         self.weight_decay = weight_decay
+        # Pre-factors
         self.recon_loss_weight = recon_loss_weight
         self.clust_loss_weight = clust_loss_weight
 
@@ -91,7 +92,7 @@ class Experiment(pl.LightningModule):
                 labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
             )[0],
         }
-
+        self.log_dict(metrics, prog_bar=True, logger=False)
         self.logger.experiment.log(metrics)
 
         return metrics

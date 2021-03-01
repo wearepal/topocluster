@@ -35,6 +35,7 @@ class AutoEncoder(pl.LightningModule):
     def build(self, input_shape: int | ImageDims) -> None:
         self.encoder, self.decoder = self._build(input_shape)
 
+    @implements(nn.Module)
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
 
