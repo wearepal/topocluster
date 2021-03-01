@@ -201,7 +201,7 @@ testing = ["pytest (>=5.3.5)", "pytest-cov (>=2.8.1)"]
 [[package]]
 category = "main"
 description = "A library for efficient similarity search and clustering of dense vectors."
-name = "faiss-cpu"
+name = "faiss-gpu"
 optional = false
 python-versions = "*"
 version = "1.7.0"
@@ -1154,7 +1154,7 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [metadata]
-content-hash = "a9276dc44d89ca72953c6f783cd5613be1d224aa81ba76d64fc47312047cfdc8"
+content-hash = "aa498925bc795f0e7cf690cbe5c5a0c24ce72e9c9ea041760c1a7346126ba14a"
 lock-version = "1.0"
 python-versions = "3.8"
 
@@ -1294,20 +1294,12 @@ eagerpy = [
     {file = "eagerpy-0.29.0-py3-none-any.whl", hash = "sha256:b130559ff9d9794f27d19ef9ec542b0edb704e9f63c3ee56d391e7bda14a9c19"},
     {file = "eagerpy-0.29.0.tar.gz", hash = "sha256:bd9cb9170dcb9eeb25b6fd90c827c665322f4e78b12ce845b93052f04d3a9408"},
 ]
-faiss-cpu = [
-    {file = "faiss-cpu-1.7.0.tar.gz", hash = "sha256:d4a22067aeadaaaaf366af6b92c06c492f76edb534163dd64a42579fef8dd922"},
-    {file = "faiss_cpu-1.7.0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:ac8fbe094fe2b2c41030045f96474435e682a91e214400e0a0b49ae477f0a92e"},
-    {file = "faiss_cpu-1.7.0-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:bba811c22889cfd2773363e961e10ebd8267ba08ed2c0cb73de77535553beb92"},
-    {file = "faiss_cpu-1.7.0-cp36-cp36m-win_amd64.whl", hash = "sha256:846ac7274c908ff51d99e445db51793ef7c24d745bc88a3147d9dd7c424d34e5"},
-    {file = "faiss_cpu-1.7.0-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:08e358373266712c79e67d1488b5188f9c2938fa89e105be66b1e8fdb25e21f7"},
-    {file = "faiss_cpu-1.7.0-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:dc5ed99213cc175cbec5ac3c3bf5a9d3319c42a056b3837c904bc32b21783c9f"},
-    {file = "faiss_cpu-1.7.0-cp37-cp37m-win_amd64.whl", hash = "sha256:3eaddeae644504336ead0246c2bbc84588977e16d5fe0457f5d819fe87da91cd"},
-    {file = "faiss_cpu-1.7.0-cp38-cp38-macosx_10_14_x86_64.whl", hash = "sha256:9de08f0db4d45d34afc1fd5512f98991328657b3ac043365db1583601403c11b"},
-    {file = "faiss_cpu-1.7.0-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:4da67c5c1af28d91d09d9a9ac60205889666bbfe12857b23131a930999ca0307"},
-    {file = "faiss_cpu-1.7.0-cp38-cp38-win_amd64.whl", hash = "sha256:0f9d9355af20d7725d649c67f4c976192da870e28fd1ea7ed77662dd7e303862"},
-    {file = "faiss_cpu-1.7.0-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:250e0f66b848c26a3c11466f3fe452c9a26068cf78511d08f9402d7f85362a1c"},
-    {file = "faiss_cpu-1.7.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:44594e2148628af020ecb1a41f9eadbde4cffc5098ec57b703abe054b38ec2a6"},
-    {file = "faiss_cpu-1.7.0-cp39-cp39-win_amd64.whl", hash = "sha256:7aaa734018c60c7bcc2f5b86ac9374c60cc1280b5e66ef976bf27e6fac185cdd"},
+faiss-gpu = [
+    {file = "faiss-gpu-1.7.0.tar.gz", hash = "sha256:9dd7f92c10a04894e2b6065eb2274aa73705381327f34da5aae5da66523a2ca6"},
+    {file = "faiss_gpu-1.7.0-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:b7d8e5794428ef8222a12bb3c11ff6dfddd33241544686a6a310ad28a2c5c94a"},
+    {file = "faiss_gpu-1.7.0-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:c9ad2325d4f6cf7089d48aaa139ed4ad3ecb1d941125b16de2f4ffd02e1b3e60"},
+    {file = "faiss_gpu-1.7.0-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:9df4c89f22ed4cbc853a7f381e6d1f887ff1deddb004f431755680639f11c8eb"},
+    {file = "faiss_gpu-1.7.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:dc408162253ccbd0d3e508979685bba7ff83e7a2cab8f50a2616ac6da54d7389"},
 ]
 flake8 = [
     {file = "flake8-3.8.4-py2.py3-none-any.whl", hash = "sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839"},

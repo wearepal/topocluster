@@ -60,7 +60,7 @@ class TrainerConf:
     resume_from_checkpoint: Any = None  # Union[Path, str, NoneType]
     profiler: Any = None  # Union[BaseProfiler, bool, str, NoneType]
     benchmark: bool = False
-    deterministic: bool = False
+    deterministic: bool = True
     reload_dataloaders_every_epoch: bool = False
     auto_lr_find: Any = False  # Union[bool, str]
     replace_sampler_ddp: bool = True

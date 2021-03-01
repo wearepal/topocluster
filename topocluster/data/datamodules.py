@@ -44,6 +44,7 @@ class DataModule(pl.LightningDataModule):
         data_dir: str = "./",
         train_batch_size: int = 256,
         test_batch_size: int = 1000,
+        val_batch_size: int | None = None,
         num_workers: int = 0,
         collate_fn: Callable[[List[Any]], Any] = adaptive_collate,
     ):
@@ -51,6 +52,7 @@ class DataModule(pl.LightningDataModule):
         self.data_dir = data_dir
         self.train_batch_size = train_batch_size
         self.test_batch_size = test_batch_size
+        self.val_batch_size = test_batch_size if val_batch_size is None else val_batch_size
         self.num_workers = num_workers
         self.label_threshold = label_threshold
         self.collate_fn = collate_fn
@@ -75,7 +77,7 @@ class DataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             self.val_data,
-            batch_size=self.test_batch_size,
+            batch_size=self.val_batch_size,
             shuffle=False,
             pin_memory=True,
             num_workers=self.num_workers,
