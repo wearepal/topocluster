@@ -100,7 +100,7 @@ class Experiment(pl.LightningModule):
         test_metrics = {
             "test/ARI": val_metrics["val/ARI"],
             "test/NMI": val_metrics["val/NMI"],
-            "test/Accuracy": val_metrics["test/Accuracy"],
+            "test/Accuracy": val_metrics["val/Accuracy"],
         }
         self.logger.experiment.log(test_metrics)
 
