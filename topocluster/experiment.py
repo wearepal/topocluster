@@ -28,6 +28,7 @@ class Experiment(pl.LightningModule):
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
         lr: float = 1.0e-3,
+        weight_decay: float = 9,
         log_offline: bool = False,
         seed: Optional[int] = 42,
         recon_loss_weight: float = 1.0,
@@ -45,12 +46,13 @@ class Experiment(pl.LightningModule):
         self.pretrainer = pretrainer
         # Optimization
         self.lr = lr
+        self.weight_decay = weight_decay
         self.recon_loss_weight = recon_loss_weight
         self.clust_loss_weight = clust_loss_weight
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
-        return AdamW(self.parameters(), lr=self.lr)
+        return AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
