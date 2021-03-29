@@ -8,9 +8,9 @@ from torch import Tensor
 import torch.nn as nn
 from torch.optim import AdamW, Optimizer
 
+from kit import implements
 from topocluster.data.utils import Batch, ImageDims
 from topocluster.layers.misc import View
-from topocluster.utils.interface import implements
 
 
 __all__ = ["AutoEncoder", "ConvAutoEncoder"]

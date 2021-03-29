@@ -25,10 +25,7 @@ configen:
         - ConvAutoEncoder
     - name: topocluster.data.datamodules
       classes:
-        - MNISTDataModule
-        - CIFAR10DataModule
-        - CIFAR100DataModule
-        - SVHNDataModule
+        - UMNISTDataModule
     - name: gudhi.clustering.tomato
       classes:
         - Tomato

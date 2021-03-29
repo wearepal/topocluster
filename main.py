@@ -1,5 +1,4 @@
 import hydra
-from hydra.core.config_store import ConfigStore
 from hydra.utils import instantiate, to_absolute_path
 from omegaconf import OmegaConf
 
@@ -7,47 +6,32 @@ from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.pytorch_lightning.conf import TrainerConf
 from gen.topocluster.clustering.dac.conf import PlClustererConf
 from gen.topocluster.clustering.kmeans.conf import KmeansConf
-from gen.topocluster.data.datamodules.conf import (
-    CIFAR100DataModuleConf,
-    CIFAR10DataModuleConf,
-    MNISTDataModuleConf,
-    SVHNDataModuleConf,
-)
+from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.autoencoder.conf import ConvAutoEncoderConf
+from kit import SchemaRegistration
 
+sr = SchemaRegistration()
+sr.register(path="experiment_schema", config_class=ExperimentConf)
 
-# ConfigStore enables type validation
-cs = ConfigStore.instance()
-cs.store(name="experiment_schema", node=ExperimentConf)
-cs.store(group="schema/datamodule", name="mnist", node=MNISTDataModuleConf, package="datamodule")
-cs.store(
-    group="schema/datamodule",
-    name="cifar10_schema",
-    node=CIFAR10DataModuleConf,
-    package="datamodule",
-)
-cs.store(
-    group="schema/datamodule",
-    name="cifar100_schema",
-    node=CIFAR100DataModuleConf,
-    package="datamodule",
-)
-cs.store(
-    group="schema/datamodule", name="svhn_schema", node=SVHNDataModuleConf, package="datamodule"
-)
+# Definne the 'datamodule' group
+with sr.new_group(group_name="schema/datamodule", target_path="datamodule") as group:
+    group.add_option(name="umnist", config_class=UMNISTDataModuleConf)
 
+# Definne the 'encoder' group
+with sr.new_group(group_name="schema/encoder", target_path="encoder") as group:
+    group.add_option(name="conv_ae", config_class=ConvAutoEncoderConf)
 
-cs.store(group="schema/encoder", name="conv_ae_schema", node=ConvAutoEncoderConf, package="encoder")
+with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as group:
+    group.add_option(name="tomato", config_class=TomatoConf)
+    group.add_option(name="kmeans", config_class=KmeansConf)
+    group.add_option(name="plc", config_class=PlClustererConf)
 
-cs.store(group="schema/clusterer", name="tomato_schema", node=TomatoConf, package="clusterer")
-cs.store(group="schema/clusterer", name="kmeans_schema", node=KmeansConf, package="clusterer")
-cs.store(group="schema/clusterer", name="plc_schema", node=PlClustererConf, package="clusterer")
-
-cs.store(group="schema/trainer", name="trainer_schema", node=TrainerConf, package="trainer")
-cs.store(
-    group="schema/pretrainer", name="pretrainer_schema", node=TrainerConf, package="pretrainer"
-)
+# Definne the 'trainer'/'pretrainer' groups - these are singleton (containing one schema) groups
+with sr.new_group(group_name="schema/trainer", target_path="trainer") as group:
+    group.add_option(name="trainer", config_class=TrainerConf)
+with sr.new_group(group_name="schema/pretrainer", target_path="pretrainer") as group:
+    group.add_option(name="pretrainer", config_class=TrainerConf)
 
 
 @hydra.main(config_path="conf", config_name="experiment")

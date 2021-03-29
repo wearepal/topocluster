@@ -1,5 +1,7 @@
+from __future__ import annotations
 from typing import Any, Callable, Tuple, Type, Union
 
+from pykeops.torch.lazytensor.LazyTensor import LazyTensor
 import torch
 from torch import Tensor, jit
 import torch.distributions as td
@@ -84,8 +86,8 @@ def pairwise_L2sqr(tensor_a: Tensor, tensor_b: Tensor) -> Tensor:
     return (tensor_a - tensor_b) ** 2
 
 
-def rbf(x: Tensor, y: Tensor, scale: float) -> Tensor:
-    return torch.exp(-torch.norm(x - y, axis=1) ** 2 / scale)
+def rbf(x: Tensor, y: Tensor, scale: float, dim: int = 1) -> Tensor:
+    return torch.exp(-torch.norm(x - y, dim=dim) ** 2 / scale)
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> Tuple[Tensor, Tensor]:
@@ -94,16 +96,16 @@ def compute_density_map(pc: Tensor, k: int, scale: float) -> Tuple[Tensor, Tenso
     return dists / dists.max(), inds
 
 
-def compute_rips(pc: Tensor, k: int) -> Tuple[Tensor, Tensor]:
-    return knn(pc=pc, k=k, kernel=pairwise_L2sqr)
+def compute_rips(pc: Tensor, k: int) -> Tensor:
+    return knn(pc=pc, k=k, kernel=pairwise_L2sqr)[1]
 
 
 def knn(
     pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
 ) -> Tuple[Tensor, Tensor]:
-    X_i = pc[:, None, :]
-    X_j = pc[None, :, :]  # (1, N, 2)
-    D_ij = kernel(X_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of distances
-    indKNN = D_ij.topk(k=k, dim=1, largest=False)[1]
-    # indKNN = soft_rank(D_ij, direction="ASCENDING", regularization_strength=0.01)
-    return D_ij, indKNN
+    G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
+    X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
+    D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
+    valKNN = D_ij.Kmin(k, dim=1)
+    indKNN = D_ij.argKmin(k, dim=1)  # Grid <-> Samples, (M**2, K) integer tensor
+    return valKNN, indKNN

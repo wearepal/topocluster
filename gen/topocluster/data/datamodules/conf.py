@@ -8,41 +8,8 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class MNISTDataModuleConf:
-    _target_: str = "topocluster.data.datamodules.MNISTDataModule"
-    data_dir: str = "./"
-    train_batch_size: int = 256
-    test_batch_size: int = 1000
-    num_workers: int = 0
-    val_pcnt: float = 0.2
-    label_threshold: int = 5
-
-
-@dataclass
-class CIFAR10DataModuleConf:
-    _target_: str = "topocluster.data.datamodules.CIFAR10DataModule"
-    data_dir: str = "./"
-    train_batch_size: int = 256
-    test_batch_size: int = 1000
-    num_workers: int = 0
-    val_pcnt: float = 0.2
-    label_threshold: int = 5
-
-
-@dataclass
-class CIFAR100DataModuleConf:
-    _target_: str = "topocluster.data.datamodules.CIFAR100DataModule"
-    data_dir: str = "./"
-    train_batch_size: int = 256
-    test_batch_size: int = 1000
-    num_workers: int = 0
-    val_pcnt: float = 0.2
-    label_threshold: int = 80
-
-
-@dataclass
-class SVHNDataModuleConf:
-    _target_: str = "topocluster.data.datamodules.SVHNDataModule"
+class UMNISTDataModuleConf:
+    _target_: str = "topocluster.data.datamodules.UMNISTDataModule"
     data_dir: str = "./"
     train_batch_size: int = 256
     test_batch_size: int = 1000

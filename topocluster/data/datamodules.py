@@ -1,33 +1,28 @@
 from __future__ import annotations
 from abc import abstractstaticmethod
-from typing import Any, Callable, ClassVar, List
+from typing import Any, Callable, ClassVar, Final, List
 
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import ConcatDataset, Dataset
+from torch.utils.data.dataset import Dataset, Subset
 from torchvision import transforms
-from torchvision.datasets import CIFAR10, MNIST
-from torchvision.datasets.cifar import CIFAR100
-from torchvision.datasets.omniglot import Omniglot
-from torchvision.datasets.svhn import SVHN
+from torchvision.datasets import MNIST
 
+from kit import implements
+from kit.torch import prop_random_split
 from topocluster.data.utils import (
+    BinarizedLabelDataset,
     ImageDims,
-    MaskedLabelDataset,
+    ImageDims,
     adaptive_collate,
-    prop_random_split,
 )
-from topocluster.utils.interface import implements
 
 
 __all__ = [
     "DataModule",
+    "UMNISTDataModule",
     "VisionDataModule",
-    "MNISTDataModule",
-    "CIFAR10DataModule",
-    "CIFAR100DataModule",
-    "SVHNDataModule",
-    "OmniglotDataModule",
 ]
 
 
@@ -40,7 +35,6 @@ class DataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        label_threshold: int,
         data_dir: str = "./",
         train_batch_size: int = 256,
         test_batch_size: int = 1000,
@@ -54,11 +48,14 @@ class DataModule(pl.LightningDataModule):
         self.test_batch_size = test_batch_size
         self.val_batch_size = test_batch_size if val_batch_size is None else val_batch_size
         self.num_workers = num_workers
-        self.label_threshold = label_threshold
         self.collate_fn = collate_fn
 
     @abstractstaticmethod
     def num_classes() -> int:
+        ...
+
+    @abstractstaticmethod
+    def num_subgroups() -> int:
         ...
 
     @implements(pl.LightningDataModule)
@@ -104,7 +101,6 @@ class VisionDataModule(DataModule):
 
     def __init__(
         self,
-        label_threshold: int,
         data_dir: str = "./",
         train_batch_size: int = 256,
         test_batch_size: int = 1000,
@@ -112,7 +108,6 @@ class VisionDataModule(DataModule):
         collate_fn: Callable[[List[Any]], Any] = adaptive_collate,
     ):
         super().__init__(
-            label_threshold=label_threshold,
             data_dir=data_dir,
             train_batch_size=train_batch_size,
             test_batch_size=test_batch_size,
@@ -121,9 +116,9 @@ class VisionDataModule(DataModule):
         )
 
 
-class MNISTDataModule(VisionDataModule):
-
-    num_classes: ClassVar[int] = 10
+class UMNISTDataModule(VisionDataModule):
+    undersampling_props: Final[ClassVar[dict[str, float]]] = {"8": 0.05}
+    threshold: Final[int] = 5
 
     def __init__(
         self,
@@ -132,19 +127,25 @@ class MNISTDataModule(VisionDataModule):
         test_batch_size: int = 1000,
         num_workers: int = 0,
         val_pcnt: float = 0.2,
-        label_threshold: int = 5,
     ):
         super().__init__(
             data_dir=data_dir,
             train_batch_size=train_batch_size,
             test_batch_size=test_batch_size,
             num_workers=num_workers,
-            label_threshold=label_threshold,
         )
         self.val_pcnt = val_pcnt
         self.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         )
+
+    @property
+    def num_classes(self) -> int:
+        return 2
+
+    @property
+    def num_subgroups(self) -> int:
+        return 5
 
     @implements(pl.LightningDataModule)
     def prepare_data(self) -> None:
@@ -152,211 +153,45 @@ class MNISTDataModule(VisionDataModule):
         MNIST(self.data_dir, train=True, download=True)
         MNIST(self.data_dir, train=False, download=True)
 
+    def _undersample(self, dataset: MNIST | Subset[MNIST]) -> Subset:
+        if isinstance(dataset, Subset):
+            targets = dataset.dataset.targets[dataset.indices]  # type: ignore
+        else:
+            targets = dataset.targets
+        inds_to_keep = torch.ones(len(targets), dtype=torch.long)
+        for class_, prop in self.undersampling_props.items():
+            class_ = int(class_)  # hydra doesn't allow ints as keys, so we have to cast
+            if not (0 <= prop <= 1):
+                raise ValueError("Undersampling proportions must be between 0 and 1.")
+            class_inds = (targets == class_).nonzero()
+            n_matches = len(class_inds)
+            num_to_drop = round(1 - prop * (n_matches - 1))
+            to_drop = torch.randperm(n_matches) < num_to_drop  # type: ignore
+            inds_to_keep[class_inds[to_drop]] = 0
+
+        return Subset(dataset=dataset, indices=inds_to_keep.tolist())
+
     @implements(pl.LightningDataModule)
     def setup(self, stage: str | None = None) -> None:
         # Assign Train/val split(s) for use in Dataloaders
         if stage == "fit" or stage is None:
             all_data = MNIST(self.data_dir, train=True, download=True, transform=self.transform)
-            self.val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
-            self.train_data = MaskedLabelDataset(train_data, threshold=self.label_threshold)
+            self.val_data, self.train_data = prop_random_split(all_data, props=(self.val_pcnt,))
+            self.train_data = BinarizedLabelDataset(
+                self._undersample(self.train_data), threshold=self.threshold
+            )
+            self.val = BinarizedLabelDataset(self.val_data, threshold=self.threshold)
             self.dims = ImageDims(*self.train_data[0][0].shape)
 
         # Assign Test split(s) for use in Dataloaders
         if stage == "test" or stage is None:
-            self.test_data = MNIST(
-                self.data_dir, train=False, download=True, transform=self.transform
+            self.test_data = BinarizedLabelDataset(
+                MNIST(
+                    self.data_dir,
+                    train=False,
+                    download=True,
+                    transform=self.transform,
+                ),
+                threshold=self.threshold,
             )
             self.dims = ImageDims(*getattr(self, "dims", self.test_data[0][0].shape))
-
-
-class CIFAR10DataModule(VisionDataModule):
-
-    num_classes: ClassVar[int] = 10
-
-    def __init__(
-        self,
-        data_dir: str = "./",
-        train_batch_size: int = 256,
-        test_batch_size: int = 1000,
-        num_workers: int = 0,
-        val_pcnt: float = 0.2,
-        label_threshold: int = 5,
-    ):
-        super().__init__(
-            data_dir=data_dir,
-            train_batch_size=train_batch_size,
-            test_batch_size=test_batch_size,
-            num_workers=num_workers,
-            label_threshold=label_threshold,
-        )
-        self.val_pcnt = val_pcnt
-        self.transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ]
-        )
-
-    @implements(pl.LightningDataModule)
-    def prepare_data(self) -> None:
-        # download
-        CIFAR10(root=self.data_dir, train=True, download=True)
-        CIFAR10(root=self.data_dir, train=False, download=True)
-
-    @implements(pl.LightningDataModule)
-    def setup(self, stage: str | None = None) -> None:
-        # Assign Train/val split(s) for use in Dataloaders
-        if stage == "fit" or stage is None:
-            all_data = CIFAR10(self.data_dir, train=True, download=True, transform=self.transform)
-            self.val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
-            self.train_data = MaskedLabelDataset(train_data, threshold=self.label_threshold)
-            self.dims = ImageDims(*self.train_data[0][0].shape)
-
-        # Assign Test split(s) for use in Dataloaders
-        if stage == "test" or stage is None:
-            self.test_data = CIFAR10(
-                self.data_dir, train=False, download=True, transform=self.transform
-            )
-
-
-class CIFAR100DataModule(VisionDataModule):
-    def __init__(
-        self,
-        data_dir: str = "./",
-        train_batch_size: int = 256,
-        test_batch_size: int = 1000,
-        num_workers: int = 0,
-        val_pcnt: float = 0.2,
-        label_threshold: int = 80,
-    ):
-        super().__init__(
-            data_dir=data_dir,
-            train_batch_size=train_batch_size,
-            test_batch_size=test_batch_size,
-            num_workers=num_workers,
-            label_threshold=label_threshold,
-        )
-        self.val_pcnt = val_pcnt
-        self.transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ]
-        )
-
-    @staticmethod
-    @implements(DataModule)
-    def num_classes() -> int:
-        return 100
-
-    @implements(pl.LightningDataModule)
-    def prepare_data(self) -> None:
-        # download
-        CIFAR100(root=self.data_dir, train=True, download=True)
-        CIFAR100(root=self.data_dir, train=False, download=True)
-
-    @implements(pl.LightningDataModule)
-    def setup(self, stage: str | None = None) -> None:
-        # Assign Train/val split(s) for use in Dataloaders
-        if stage == "fit" or stage is None:
-            all_data = CIFAR100(self.data_dir, train=True, download=True, transform=self.transform)
-            self.val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
-            self.train_data = MaskedLabelDataset(train_data, threshold=self.label_threshold)
-            self.dims = ImageDims(*self.train_data[0][0].shape)
-
-        # Assign Test split(s) for use in Dataloaders
-        if stage == "test" or stage is None:
-            self.test_data = CIFAR100(
-                self.data_dir, train=False, download=True, transform=self.transform
-            )
-
-
-class SVHNDataModule(VisionDataModule):
-    def __init__(
-        self,
-        data_dir: str = "./",
-        train_batch_size: int = 256,
-        test_batch_size: int = 1000,
-        num_workers: int = 0,
-        val_pcnt: float = 0.2,
-        label_threshold: int = 5,
-    ):
-        super().__init__(
-            data_dir=data_dir,
-            train_batch_size=train_batch_size,
-            test_batch_size=test_batch_size,
-            num_workers=num_workers,
-            label_threshold=label_threshold,
-        )
-        self.val_pcnt = val_pcnt
-        self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        )
-
-    @staticmethod
-    @implements(DataModule)
-    def num_classes() -> int:
-        return 10
-
-    @implements(pl.LightningDataModule)
-    def prepare_data(self) -> None:
-        # download
-        SVHN(root=self.data_dir, split="train", download=True)
-        SVHN(root=self.data_dir, split="test", download=True)
-
-    @implements(pl.LightningDataModule)
-    def setup(self, stage: str | None = None) -> None:
-        # Assign Train/val split(s) for use in Dataloaders
-        if stage == "fit" or stage is None:
-            all_data = SVHN(self.data_dir, split="train", download=True, transform=self.transform)
-            self.val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
-            self.train_data = MaskedLabelDataset(train_data, threshold=self.label_threshold)
-            self.dims = ImageDims(*self.train_data[0][0].shape)
-
-        # Assign Test split(s) for use in Dataloaders
-        if stage == "test" or stage is None:
-            self.test_data = SVHN(
-                self.data_dir, split="test", download=True, transform=self.transform
-            )
-
-
-class OmniglotDataModule(VisionDataModule):
-    def __init__(
-        self,
-        data_dir: str = "./",
-        train_batch_size: int = 256,
-        test_batch_size: int = 1000,
-        num_workers: int = 0,
-        label_threshold: int = 5,
-    ):
-        super().__init__(
-            data_dir=data_dir,
-            train_batch_size=train_batch_size,
-            test_batch_size=test_batch_size,
-            num_workers=num_workers,
-            label_threshold=label_threshold,
-        )
-        self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        )
-
-    @staticmethod
-    @implements(DataModule)
-    def num_classes() -> int:
-        return 50
-
-    @implements(pl.LightningDataModule)
-    def prepare_data(self) -> None:
-        # download
-        Omniglot(root=self.data_dir, background=True, download=True)
-        Omniglot(root=self.data_dir, background=False, download=True)
-
-    @implements(pl.LightningDataModule)
-    def setup(self, stage: str | None = None) -> None:
-        # Assign Train/val split(s) for use in Dataloaders
-        background = Omniglot(root=self.data_dir, background=True, download=True)
-        evaluation = Omniglot(root=self.data_dir, background=False, download=True)
-        all_data = ConcatDataset([background, MaskedLabelDataset(evaluation)])
-        # TODO: Create validation and test sets
-        self.train_data = all_data
-        self.dims = ImageDims(*self.train_data[0][0].shape)

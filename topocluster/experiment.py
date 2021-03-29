@@ -8,12 +8,12 @@ from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
 
+from kit import implements
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import compute_optimal_assignments
 from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import Batch
 from topocluster.models.autoencoder import AutoEncoder
-from topocluster.utils.interface import implements
 
 
 __all__ = ["Experiment"]

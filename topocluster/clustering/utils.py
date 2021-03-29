@@ -33,7 +33,7 @@ def compute_optimal_assignments(
         row_ind, col_ind = linear_sum_assignment(-cost_matrix)
     best_acc = cost_matrix[row_ind, col_ind].sum() / labels_pred.shape[0]
     assignments = {}
-    for class_id, cluster_id in enumerate(row_ind):
+    for class_id, cluster_id in enumerate(col_ind):
         if decodings_true is not None:
             class_id = decodings_true[class_id]
         if decodings_pred is not None:

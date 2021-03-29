@@ -1,21 +1,21 @@
 defaults:
   - experiment_schema
 
-  - schema/clusterer: kmeans_schema
+  - schema/clusterer: kmeans
   - clusterer: kmeans
 
-  - schema/datamodule: cifar10_schema
+  - schema/datamodule: umnist
   - datamodule/defaults
-  - datamodule: cifar10
+  - datamodule: umnist
 
-  - schema/encoder: conv_ae_schema
+  - schema/encoder: conv_ae
   - encoder: cifar10
 
-  - schema/trainer: trainer_schema
+  - schema/trainer: trainer
   - trainer/defaults
   - trainer: cifar10
 
-  - schema/pretrainer: pretrainer_schema
+  - schema/pretrainer: pretrainer
   - pretrainer/defaults
   - pretrainer: cifar10
 
