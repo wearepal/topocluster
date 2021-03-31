@@ -2,13 +2,16 @@ import hydra
 from hydra.utils import instantiate, to_absolute_path
 from omegaconf import OmegaConf
 
-from gen.gudhi.clustering.tomato.conf import TomatoConf
 from gen.pytorch_lightning.conf import TrainerConf
-from gen.topocluster.clustering.dac.conf import PlClustererConf
-from gen.topocluster.clustering.kmeans.conf import KmeansConf
+from gen.topocluster.clustering.conf import (
+    GMMConf,
+    KmeansConf,
+    TomatoConf,
+    TopoGradConf,
+)
 from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
 from gen.topocluster.experiment.conf import ExperimentConf
-from gen.topocluster.models.autoencoder.conf import ConvAutoEncoderConf
+from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
 from kit import SchemaRegistration
 
 sr = SchemaRegistration()
@@ -21,11 +24,14 @@ with sr.new_group(group_name="schema/datamodule", target_path="datamodule") as g
 # Definne the 'encoder' group
 with sr.new_group(group_name="schema/encoder", target_path="encoder") as group:
     group.add_option(name="conv_ae", config_class=ConvAutoEncoderConf)
+    group.add_option(name="lenet4", config_class=LeNet4Conf)
 
 with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as group:
-    group.add_option(name="tomato", config_class=TomatoConf)
     group.add_option(name="kmeans", config_class=KmeansConf)
-    group.add_option(name="plc", config_class=PlClustererConf)
+    group.add_option(name="gmm", config_class=GMMConf)
+    # group.add_option(name="plc", config_class=PlClustererConf)
+    group.add_option(name="topograd", config_class=TopoGradConf)
+    group.add_option(name="tomato", config_class=TomatoConf)
 
 # Definne the 'trainer'/'pretrainer' groups - these are singleton (containing one schema) groups
 with sr.new_group(group_name="schema/trainer", target_path="trainer") as group:
@@ -38,7 +44,7 @@ with sr.new_group(group_name="schema/pretrainer", target_path="pretrainer") as g
 def launcher(cfg: ExperimentConf) -> None:
     cfg.datamodule.data_dir = to_absolute_path(cfg.datamodule.data_dir)
     exp = instantiate(cfg, _recursive_=True)
-    exp.start(OmegaConf.to_container(cfg))
+    exp.start(OmegaConf.to_container(cfg, enum_to_str=True))
 
 
 if __name__ == "__main__":

@@ -6,27 +6,26 @@ from typing import cast
 import pytorch_lightning as pl
 from torch import Tensor
 import torch.nn as nn
-from torch.optim import AdamW, Optimizer
 
 from kit import implements
+from topocluster.data.datamodules import VisionDataModule
 from topocluster.data.utils import Batch, ImageDims
 from topocluster.layers.misc import View
+from topocluster.models.base import Encoder
 
 
 __all__ = ["AutoEncoder", "ConvAutoEncoder"]
 
 
-class AutoEncoder(pl.LightningModule):
+class AutoEncoder(Encoder):
     """Base class for AutoEncoder models."""
 
-    encoder: nn.Module
     decoder: nn.Module
 
     def __init__(self, latent_dim: int, lr: float = 1.0e-3) -> None:
-        super().__init__()
+        super().__init__(lr=lr)
         self.latent_dim = latent_dim
         self.loss_fn = nn.MSELoss()
-        self.lr = lr
 
     @abstractmethod
     def _build(self, input_shape: int | ImageDims) -> tuple[nn.Module, nn.Module]:
@@ -35,36 +34,8 @@ class AutoEncoder(pl.LightningModule):
     def build(self, input_shape: int | ImageDims) -> None:
         self.encoder, self.decoder = self._build(input_shape)
 
-    @implements(nn.Module)
-    def forward(self, inputs: Tensor) -> Tensor:
-        return self.encoder(inputs)
-
-    def get_loss(self, encoding: Tensor, x: Tensor, prefix: str = "") -> dict[str, Tensor]:
-        if prefix:
-            prefix += "/"
-        return {f"{prefix}recon_loss": self.loss_fn(self.decoder(encoding), x)}
-
-    @implements(pl.LightningModule)
-    def configure_optimizers(self) -> Optimizer:
-        return AdamW(self.parameters(), lr=self.lr)
-
-    @implements(pl.LightningModule)
-    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        x, _ = batch
-        encoding = self.encoder(x)
-        loss_dict = self.get_loss(encoding, x, prefix="train")
-        total_loss = cast(Tensor, sum(loss_dict.values()))
-        self.logger.experiment.log(loss_dict)
-        return total_loss
-
-    @implements(pl.LightningModule)
-    def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
-        x, _ = batch
-        encoding = self.encoder(x)
-        loss_dict = self.get_loss(encoding, x, prefix="val")
-        self.logger.experiment.log(loss_dict)
-        self.log_dict(loss_dict, prog_bar=True, logger=False)
-        return loss_dict
+    def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
+        return {"recon_loss": self.loss_fn(self.decoder(encoding), batch.x)}
 
 
 class ConvAutoEncoder(AutoEncoder):
@@ -116,8 +87,8 @@ class ConvAutoEncoder(AutoEncoder):
         )
 
     @implements(AutoEncoder)
-    def _build(self, input_shape: ImageDims) -> tuple[nn.Sequential, nn.Sequential]:
-        c_in, height, width = input_shape
+    def _build(self, dm: VisionDataModule) -> tuple[nn.Sequential, nn.Sequential]:
+        c_in, height, width = dm.dims
         c_out = self.init_hidden_dims
 
         encoder_ls: list[nn.Module] = []
@@ -155,9 +126,7 @@ class ConvAutoEncoder(AutoEncoder):
         decoder_ls += [View((c_out, height, width))]
         decoder_ls += [nn.Linear(self.latent_dim, flattened_size)]
         decoder_ls = decoder_ls[::-1]
-        decoder_ls += [
-            nn.Conv2d(input_shape[0], input_shape[0], kernel_size=1, stride=1, padding=0)
-        ]
+        decoder_ls += [nn.Conv2d(dm.dims.C, dm.dims.C, kernel_size=1, stride=1, padding=0)]
 
         encoder = nn.Sequential(*encoder_ls)
         decoder = nn.Sequential(*decoder_ls)

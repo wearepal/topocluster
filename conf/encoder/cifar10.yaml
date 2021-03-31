@@ -1,3 +1,0 @@
-init_hidden_dims: 32
-num_stages: 4
-latent_dim: 100

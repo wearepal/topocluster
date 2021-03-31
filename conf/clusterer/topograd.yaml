@@ -1,0 +1,6 @@
+defaults:
+  - /schema/clusterer: topograd
+k_kde: 30
+k_rips: 30
+scale: 0.05
+threshold: 0.5

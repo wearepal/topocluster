@@ -13,7 +13,9 @@ from topocluster.clustering.utils import (
     compute_optimal_assignments,
     l2_centroidal_distance,
 )
+from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import IGNORE_INDEX
+from topocluster.models.base import Encoder
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
 
 from .common import Clusterer
@@ -34,7 +36,7 @@ class Tomato(Clusterer):
 
     def plot(self) -> plt.Figure:
         fig, ax = plt.subplots(dpi=100)
-        ax.scatter(self._pers_pairs[:, 1], self._pers_pairs[:, 0], s=15, c="orange")  # type: ignore[arg-type]
+        ax.scatter(self.pers_pairs[:, 1], self.pers_pairs[:, 0], s=15, c="orange")  # type: ignore[arg-type]
         ax.plot(np.array([0, 1]), np.array([0, 1]), c="black", alpha=0.6)  # type: ignore[call-arg]
         ax.set_xlabel("Birth")
         ax.set_ylabel("Death")
@@ -42,30 +44,32 @@ class Tomato(Clusterer):
 
         return fig
 
-    def get_loss(
-        self, x: Tensor, hard_labels: Tensor, soft_labels: Tensor, y: Tensor, prefix: str = ""
-    ) -> Dict[str, Tensor]:
-        if prefix:
-            prefix += "/"
-        labeled = y != IGNORE_INDEX
-        _, cluster_map = compute_optimal_assignments(
-            labels_pred=hard_labels[labeled].cpu().detach().numpy(),
-            labels_true=y[labeled].cpu().detach().numpy(),
-            encode=True,
-        )
-        permute_inds = list(cluster_map.values())
-        soft_labels_permuted = soft_labels[labeled][:, permute_inds]
-        purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
-        return {f"{prefix}purity_loss": purity_loss}
+    def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
+        return {}
 
-    def build(self, input_dim: int, num_classes: int) -> None:
+    # def _get_loss(
+    #     self, x: Tensor, hard_labels: Tensor, soft_labels: Tensor, y: Tensor, prefix: str = ""
+    # ) -> Dict[str, Tensor]:
+    #     labeled = y != IGNORE_INDEX
+    #     _, cluster_map = compute_optimal_assignments(
+    #         labels_pred=hard_labels[labeled].cpu().detach().numpy(),
+    #         labels_true=y[labeled].cpu().detach().numpy(),
+    #         encode=True,
+    #     )
+    #     permute_inds = list(cluster_map.values())
+    #     soft_labels_permuted = soft_labels[labeled][:, permute_inds]
+    #     purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
+    #     return {f"{prefix}purity_loss": purity_loss}
+
+    def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         return None
 
-    def __call__(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor, threshold: float | None = None) -> Tuple[Tensor, Tensor]:
+        threshold = self.threshold if threshold is None else threshold
         x_np = x.detach().cpu().numpy()
-        x_np = x_np.reshape(num_samples := x_np.shape[0], -1)
+        x_np = x_np.reshape(x_np.shape[0], -1)
         clusters, pers_pairs = tomato(
-            x_np, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=self.threshold
+            x_np, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=threshold
         )
 
         cluster_labels = np.empty(x_np.shape[0])

@@ -1,30 +1,41 @@
 from __future__ import annotations
 from collections import namedtuple
-from typing import Any, Final, MutableMapping, Optional, Protocol, Sequence, Tuple
+from functools import partial
+from typing import Any, Callable, Final, Optional, Protocol, Union
 
-import numpy as np
+from PIL import Image
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset, Sampler, Subset, random_split
+from torch.utils.data import Dataset
 from torch.utils.data._utils.collate import (
     default_collate_err_msg_format,
     np_str_obj_array_pattern,
 )
 
 __all__ = [
-    "EnvironmentDatasetProt",
     "IGNORE_INDEX",
     "ImageDims",
     "MaskedLabelDataset",
+    "Transform",
+    "DataTransformer",
     "SizedDatasetProt",
     "adaptive_collate",
-    "filter_by_labels",
+    "cast_collation",
 ]
 
 
 ImageDims = namedtuple("ImageDims", ["C", "H", "W"])
-Batch = Tuple[Tensor, Tensor]
+Batch = namedtuple("Batch", ["x", "s", "y"])
+Transform = Callable[[Union[Image.Image, Tensor]], Tensor]
 IGNORE_INDEX: Final = -100
+
+
+def _cast(collate_fn: Transform, cast_to: type, inputs: list[Any]):
+    return cast_to(*collate_fn(inputs))
+
+
+def cast_collation(collate_fn: Transform, cast_to: type):
+    return partial(_cast, collate_fn, cast_to)
 
 
 class SizedDatasetProt(Protocol):
@@ -37,9 +48,19 @@ class SizedDatasetProt(Protocol):
         ...
 
 
-class EnvironmentDatasetProt(SizedDatasetProt):
-    def __getitem__(self, index: int) -> tuple[Tensor, Tensor, Tensor]:
-        ...
+class DataTransformer(Dataset):
+    def __init__(self, base_dataset: SizedDatasetProt, transforms: Transform):
+        self.base_dataset = base_dataset
+        self.transforms = transforms
+
+    def __len__(self) -> int:
+        return len(self.base_dataset)
+
+    def __getitem__(self, index: int) -> tuple[Tensor | Image.Image, ...]:
+        data = self.base_dataset[index]
+        if self.transforms is not None:
+            data = (self.transforms(data[0]),) + data[1:]
+        return tuple(data)
 
 
 class MaskedLabelDataset(Dataset):
@@ -67,19 +88,8 @@ class BinarizedLabelDataset(Dataset):
 
     def __getitem__(self, index: int) -> tuple[Any, int, int]:
         x, y = self.dataset[index]
-        y_bin = y >= self.threshold
+        y_bin = int(y >= self.threshold)
         return x, y, y_bin
-
-
-def filter_by_labels(
-    dataset: Dataset[tuple[torch.Tensor, torch.Tensor, torch.Tensor]], labels: set[int]
-) -> Subset:
-    """Filter samples from a dataset by labels."""
-    indices: list[int] = []
-    for _, _, y in dataset:
-        if (label := int(y.numpy())) in labels:
-            indices.append(label)
-    return Subset(dataset, indices)
 
 
 def adaptive_collate(batch: list[Any]) -> Any:

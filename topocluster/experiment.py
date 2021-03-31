@@ -1,29 +1,36 @@
 # """Main training file"""
 from __future__ import annotations
-from typing import Any, Optional, cast
+from pathlib import Path
+from typing import Any, ClassVar, Literal, Optional, cast
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+import torch
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
+import wandb
 
 from kit import implements
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.utils import compute_optimal_assignments
+from topocluster.clustering.tomato import Tomato
 from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import Batch
-from topocluster.models.autoencoder import AutoEncoder
+from topocluster.metrics import compute_metrics
+from topocluster.models.base import Encoder
 
 
 __all__ = ["Experiment"]
 
 
 class Experiment(pl.LightningModule):
+
+    artifacts_dir: ClassVar[Path] = Path("artifacts_dir")
+
     def __init__(
         self,
         datamodule: DataModule,
-        encoder: AutoEncoder,
+        encoder: Encoder,
         clusterer: Clusterer,
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
@@ -48,7 +55,7 @@ class Experiment(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         # Pre-factors
-        self.recon_loss_weight = recon_loss_weight
+        self.encoder_loss_weight = recon_loss_weight
         self.clust_loss_weight = clust_loss_weight
 
     @implements(pl.LightningModule)
@@ -57,22 +64,12 @@ class Experiment(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        x, y = batch
-        encoding = self.encoder(x)
-        hard_labels, soft_labels = self.clusterer(encoding)
+        encoding = self.encoder(batch.x)
         loss_dict = {}
-        if self.recon_loss_weight > 0:
-            loss_dict.update(self.encoder.get_loss(encoding, x, prefix="train"))
+        if self.encoder_loss_weight > 0:
+            loss_dict.update(self.encoder.get_loss(encoding, batch, prefix="train/"))
         if self.clust_loss_weight > 0:
-            loss_dict.update(
-                self.clusterer.get_loss(
-                    x=encoding,
-                    soft_labels=soft_labels,
-                    hard_labels=hard_labels,
-                    y=y,
-                    prefix="train",
-                )
-            )
+            loss_dict.update(self.clusterer.get_loss(x=encoding, prefix="train/"))
         total_loss = cast(Tensor, sum(loss_dict.values()))
         loss_dict["train/total_loss"] = total_loss
         self.logger.experiment.log(loss_dict)
@@ -80,39 +77,61 @@ class Experiment(pl.LightningModule):
         return total_loss
 
     @implements(pl.LightningModule)
-    def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
-        x, y = batch
-        y_np = y.cpu().numpy()
-
-        encoding = self.encoder(x)
-        preds = self.clusterer(encoding)[0].cpu().detach().numpy()
-
-        metrics = {
-            "val/ARI": adjusted_rand_score(labels_true=y_np, labels_pred=preds),
-            "val/NMI": normalized_mutual_info_score(labels_true=y_np, labels_pred=preds),  # type: ignore
-            "val/Accuracy": compute_optimal_assignments(
-                labels_true=y_np, labels_pred=preds, num_classes=self.datamodule.num_classes
-            )[0],
-        }
-        self.log_dict(metrics, prog_bar=True, logger=False)
-        self.logger.experiment.log(metrics)
-
-        return metrics
+    def validation_step(self, batch: Batch, batch_idx: int) -> tuple[Tensor, Tensor, Tensor]:
+        encoding = self.encoder(batch.x)
+        # Defer clustering until the end of the epoch so that clustering can take into account
+        # all of the data during fitting
+        return encoding, batch.s, batch.y
 
     @implements(pl.LightningModule)
-    def test_step(self, batch: Batch, batch_idx: int) -> dict[str, float]:
-        val_metrics = self.validation_step(batch, batch_idx)
-        test_metrics = {
-            "test/ARI": val_metrics["val/ARI"],
-            "test/NMI": val_metrics["val/NMI"],
-            "test/Accuracy": val_metrics["val/Accuracy"],
-        }
-        self.logger.experiment.log(test_metrics)
+    def validation_epoch_end(
+        self,
+        outputs: list[tuple[Tensor, Tensor, Tensor]],
+    ) -> None:
+        self._val_test_epoch_end(outputs=outputs, stage="val")
 
-        return test_metrics
+    @implements(pl.LightningModule)
+    def test_step(self, batch: Batch, batch_idx: int) -> tuple[Tensor, Tensor, Tensor]:
+        return self.validation_step(batch, batch_idx)
+
+    @implements(pl.LightningModule)
+    def test_epoch_end(self, outputs: list[tuple[Tensor, Tensor, Tensor]]) -> None:
+        self._val_test_epoch_end(outputs=outputs, stage="test")
+
+    def _val_test_epoch_end(
+        self, outputs: list[tuple[Tensor, Tensor, Tensor]], stage: Literal["val", "test"]
+    ) -> None:
+        encodings, subgroup_inf, targets = tuple(zip(*outputs))
+        encodings, subgroup_inf, targets = (
+            torch.cat(encodings, dim=0),
+            torch.cat(subgroup_inf, dim=0),
+            torch.cat(targets, dim=0),
+        )
+
+        self.print("Clustering using all data.")
+        preds = self.clusterer(encodings)[0]
+        logging_dict = compute_metrics(
+            preds=preds, subgroup_inf=subgroup_inf, targets=targets, prefix=stage
+        )
+
+        if isinstance(self.clusterer, Tomato):
+            pers_diagrams = {
+                f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
+                    self.clusterer.plot()
+                )
+            }
+            self.print("Computing the persistence diagram with threshold=1.0")
+            self.clusterer(encodings, threshold=1.0)
+            pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(self.clusterer.plot())
+            self.logger.experiment.log(pers_diagrams)
+
+        self.log_dict(logging_dict)
 
     def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
+        self.datamodule.prepare_data()
+        self.artifacts_dir.mkdir(exist_ok=True, parents=True)
+
         logger = WandbLogger(
             entity="predictive-analytics-lab",
             project="topocluster",
@@ -123,10 +142,19 @@ class Experiment(pl.LightningModule):
         self.pretrainer.logger = logger
         self.trainer.logger = logger
 
-        pl.seed_everything(seed=self.seed)
-        self.encoder.build(self.datamodule.dims)
-        self.clusterer.build(self.encoder.latent_dim, self.datamodule.num_classes)
+        self.trainer.callbacks.append(
+            ModelCheckpoint(
+                monitor="val/Accuracy",
+                dirpath=self.artifacts_dir,
+                save_top_k=1,
+                filename="best",
+                mode="max",
+            )
+        )
 
-        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        pl.seed_everything(seed=self.seed)
+        self.encoder.build(self.datamodule)
+        self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
+        # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self, datamodule=self.datamodule)
         self.trainer.test(self, datamodule=self.datamodule)

@@ -7,7 +7,12 @@ from scipy.optimize import linear_sum_assignment
 import torch
 from torch import Tensor
 
-__all__ = ["l2_centroidal_distance", "compute_optimal_assignments", "compute_cost_matrix"]
+__all__ = [
+    "l2_centroidal_distance",
+    "compute_optimal_assignments",
+    "compute_cost_matrix",
+    "encode_arr_with_dict",
+]
 
 
 def l2_centroidal_distance(x: Tensor, centroids: Tensor):
@@ -38,7 +43,7 @@ def compute_optimal_assignments(
             class_id = decodings_true[class_id]
         if decodings_pred is not None:
             cluster_id = decodings_pred[cluster_id]
-        assignments[class_id] = cluster_id
+        assignments[cluster_id] = class_id
 
     return best_acc, assignments
 
@@ -52,7 +57,7 @@ def _get_index_mapping(arr: np.ndarray) -> tuple[dict[int, int], dict[int, int]]
     return encodings, decodings
 
 
-def _encode(arr: np.ndarray, encoding_dict: dict[int, int]) -> np.ndarray:
+def encode_arr_with_dict(arr: np.ndarray, encoding_dict: dict[int, int]) -> np.ndarray:
     return np.vectorize(encoding_dict.__getitem__)(arr)
 
 
@@ -65,8 +70,8 @@ def compute_cost_matrix(
     if encode and num_classes is None:
         encodings_pred, decodings_pred = _get_index_mapping(labels_pred)
         encodings_true, decodings_true = _get_index_mapping(labels_true)
-        labels_pred = _encode(labels_pred, encodings_pred)
-        labels_true = _encode(labels_true, encodings_true)
+        labels_pred = encode_arr_with_dict(labels_pred, encodings_pred)
+        labels_true = encode_arr_with_dict(labels_true, encodings_true)
         cost_matrix = np.zeros((len(encodings_true), len(encodings_pred)))
     else:
         if num_classes is None:

@@ -1,4 +1,7 @@
+defaults:
+  - /schema/pretrainer: pretrainer
+check_val_every_n_epoch: 1
 gpus: 0
 auto_select_gpus: False
 auto_scale_batch_size: False
-accelerator: ddp_cpu
+# accelerator: null

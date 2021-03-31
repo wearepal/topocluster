@@ -1,23 +1,11 @@
 defaults:
   - experiment_schema
+  - clusterer: topograd
 
-  - schema/clusterer: kmeans
-  - clusterer: kmeans
-
-  - schema/datamodule: umnist
-  - datamodule/defaults
   - datamodule: umnist
-
-  - schema/encoder: conv_ae
-  - encoder: cifar10
-
-  - schema/trainer: trainer
-  - trainer/defaults
-  - trainer: cifar10
-
-  - schema/pretrainer: pretrainer
-  - pretrainer/defaults
-  - pretrainer: cifar10
+  - encoder: umnist
+  - trainer: umnist
+  - pretrainer: umnist
 
 log_offline: False
 seed: 42

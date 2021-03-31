@@ -14,7 +14,7 @@ from typing import Optional
 class ExperimentConf:
     _target_: str = "topocluster.experiment.Experiment"
     datamodule: Any = MISSING  # DataModule
-    encoder: Any = MISSING  # AutoEncoder
+    encoder: Any = MISSING  # Encoder
     clusterer: Any = MISSING  # Clusterer
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer

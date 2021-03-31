@@ -8,14 +8,11 @@ import numpy as np
 from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
-import torch.nn.functional as F
 
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.utils import (
-    compute_optimal_assignments,
-    l2_centroidal_distance,
-)
-from topocluster.data.utils import IGNORE_INDEX
+from topocluster.clustering.utils import l2_centroidal_distance
+from topocluster.data.datamodules import DataModule
+from topocluster.models.base import Encoder
 
 __all__ = ["Kmeans", "run_kmeans_torch", "run_kmeans_faiss"]
 
@@ -38,12 +35,12 @@ class Kmeans(Clusterer):
         self.backend = backend
         self.verbose = verbose
 
-    def build(self, input_dim: int, num_classes: int) -> None:
-        self.k = num_classes
+    def build(self, encoder: Encoder, datamodule: DataModule) -> None:
+        self.k = datamodule.num_classes * datamodule.num_subgroups
 
     def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
         if self.k is None:
-            raise ValueError("Value for 'k' not yet set.")
+            raise AttributeError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
             hard_labels, centroids = run_kmeans_torch(
                 x.detach().cpu(),  # Requires a newer version of cuda that we have access to atm
@@ -64,36 +61,33 @@ class Kmeans(Clusterer):
 
         return hard_labels, soft_labels
 
-    def get_loss(
-        self, x: Tensor, soft_labels: Tensor, hard_labels: Tensor, y: Tensor, prefix: str = ""
-    ) -> dict[str, Tensor]:
-        if prefix:
-            prefix += "/"
+    def get_loss(self, x: Tensor) -> dict[str, Tensor]:
+        return {}
 
-        labeled = y != IGNORE_INDEX
-        y_l = y[labeled]
-        soft_labels_l = soft_labels[labeled]
-        hard_labels_l = hard_labels[labeled]
+        # labeled = y != IGNORE_INDEX
+        # y_l = y[labeled]
+        # soft_labels_l = soft_labels[labeled]
+        # hard_labels_l = hard_labels[labeled]
 
-        _, cluster_map = compute_optimal_assignments(
-            labels_pred=hard_labels_l.detach().cpu().numpy(),
-            labels_true=y_l.detach().cpu().numpy(),
-            num_classes=self.k,
-            encode=False,
-        )
+        # _, cluster_map = compute_optimal_assignments(
+        #     labels_pred=hard_labels_l.detach().cpu().numpy(),
+        #     labels_true=y_l.detach().cpu().numpy(),
+        #     num_classes=self.k,
+        #     encode=False,
+        # )
 
-        mask = torch.zeros_like(y_l, dtype=torch.bool)
-        mapped_inds = torch.empty_like(y_l)
-        for class_ind, cluster_ind in cluster_map.items():
-            mask_k = (y_l == class_ind) & (hard_labels_l == cluster_ind)
-            mapped_inds[mask_k] = cluster_ind
-            mask |= mask_k
+        # mask = torch.zeros_like(y_l, dtype=torch.bool)
+        # mapped_inds = torch.empty_like(y_l)
+        # for class_ind, cluster_ind in cluster_map.items():
+        #     mask_k = (y_l == class_ind) & (hard_labels_l == cluster_ind)
+        #     mapped_inds[mask_k] = cluster_ind
+        #     mask |= mask_k
 
-        nll = -torch.sum(
-            F.log_softmax(soft_labels_l[mask], dim=-1).gather(1, mapped_inds[mask].view(-1, 1))
-        ) / mask.size(0)
+        # nll = -torch.sum(
+        #     F.log_softmax(soft_labels_l[mask], dim=-1).gather(1, mapped_inds[mask].view(-1, 1))
+        # ) / mask.size(0)
 
-        return {f"{prefix}purity_loss": nll}
+        # return {f"{prefix}purity_loss": nll}
 
 
 def run_kmeans_torch(

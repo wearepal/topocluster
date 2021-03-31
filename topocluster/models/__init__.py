@@ -1,2 +1,3 @@
 from .autoencoder import *
-from .selfsupervised import *
+from .base import *
+from .lenet import *

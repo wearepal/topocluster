@@ -1,9 +1,10 @@
 from __future__ import annotations
-from abc import abstractstaticmethod
-from typing import Any, Callable, ClassVar, Final, List
+from abc import abstractmethod, abstractstaticmethod
+from typing import ClassVar, cast
 
 import pytorch_lightning as pl
 import torch
+from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
 from torchvision import transforms
@@ -12,10 +13,12 @@ from torchvision.datasets import MNIST
 from kit import implements
 from kit.torch import prop_random_split
 from topocluster.data.utils import (
+    Batch,
     BinarizedLabelDataset,
-    ImageDims,
+    DataTransformer,
     ImageDims,
     adaptive_collate,
+    cast_collation,
 )
 
 
@@ -40,7 +43,6 @@ class DataModule(pl.LightningDataModule):
         test_batch_size: int = 1000,
         val_batch_size: int | None = None,
         num_workers: int = 0,
-        collate_fn: Callable[[List[Any]], Any] = adaptive_collate,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -48,14 +50,16 @@ class DataModule(pl.LightningDataModule):
         self.test_batch_size = test_batch_size
         self.val_batch_size = test_batch_size if val_batch_size is None else val_batch_size
         self.num_workers = num_workers
-        self.collate_fn = collate_fn
+        self._collate_fn = cast_collation(adaptive_collate, Batch)
 
-    @abstractstaticmethod
-    def num_classes() -> int:
+    @property
+    @abstractmethod
+    def num_classes(self) -> int:
         ...
 
+    @property
     @abstractstaticmethod
-    def num_subgroups() -> int:
+    def num_subgroups(self) -> int:
         ...
 
     @implements(pl.LightningDataModule)
@@ -67,7 +71,7 @@ class DataModule(pl.LightningDataModule):
             pin_memory=True,
             num_workers=self.num_workers,
             drop_last=True,
-            collate_fn=self.collate_fn,
+            collate_fn=self._collate_fn,
         )
 
     @implements(pl.LightningDataModule)
@@ -79,7 +83,7 @@ class DataModule(pl.LightningDataModule):
             pin_memory=True,
             num_workers=self.num_workers,
             drop_last=True,
-            collate_fn=self.collate_fn,
+            collate_fn=self._collate_fn,
         )
 
     @implements(pl.LightningDataModule)
@@ -91,7 +95,7 @@ class DataModule(pl.LightningDataModule):
             pin_memory=True,
             num_workers=self.num_workers,
             drop_last=True,
-            collate_fn=self.collate_fn,
+            collate_fn=self._collate_fn,
         )
 
 
@@ -105,20 +109,18 @@ class VisionDataModule(DataModule):
         train_batch_size: int = 256,
         test_batch_size: int = 1000,
         num_workers: int = 0,
-        collate_fn: Callable[[List[Any]], Any] = adaptive_collate,
     ):
         super().__init__(
             data_dir=data_dir,
             train_batch_size=train_batch_size,
             test_batch_size=test_batch_size,
             num_workers=num_workers,
-            collate_fn=collate_fn,
         )
 
 
 class UMNISTDataModule(VisionDataModule):
-    undersampling_props: Final[ClassVar[dict[str, float]]] = {"8": 0.05}
-    threshold: Final[int] = 5
+    undersampling_props: ClassVar[dict[str, float]] = {"8": 0.05}
+    threshold: ClassVar[int] = 5
 
     def __init__(
         self,
@@ -135,9 +137,22 @@ class UMNISTDataModule(VisionDataModule):
             num_workers=num_workers,
         )
         self.val_pcnt = val_pcnt
-        self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        )
+
+    @staticmethod
+    def _transform(train: bool) -> transforms.Compose:
+        test_transform_list = [
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ]
+        test_transform_list.insert(0, transforms.Resize((32, 32)))
+        if not train:
+            return transforms.Compose(test_transform_list)
+
+        train_transform_list = [
+            transforms.RandomCrop(28, padding=4),
+            transforms.RandomHorizontalFlip(),
+        ] + test_transform_list
+        return transforms.Compose(train_transform_list)
 
     @property
     def num_classes(self) -> int:
@@ -175,13 +190,18 @@ class UMNISTDataModule(VisionDataModule):
     def setup(self, stage: str | None = None) -> None:
         # Assign Train/val split(s) for use in Dataloaders
         if stage == "fit" or stage is None:
-            all_data = MNIST(self.data_dir, train=True, download=True, transform=self.transform)
-            self.val_data, self.train_data = prop_random_split(all_data, props=(self.val_pcnt,))
-            self.train_data = BinarizedLabelDataset(
-                self._undersample(self.train_data), threshold=self.threshold
+            all_data = MNIST(self.data_dir, train=True, download=True)
+            val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
+            self.train_data = DataTransformer(
+                BinarizedLabelDataset(self._undersample(train_data), threshold=self.threshold),  # type: ignore
+                self._transform(True),
             )
-            self.val = BinarizedLabelDataset(self.val_data, threshold=self.threshold)
-            self.dims = ImageDims(*self.train_data[0][0].shape)
+            self.val_data = DataTransformer(
+                BinarizedLabelDataset(val_data, threshold=self.threshold),
+                self._transform(False),
+            )
+            sample = cast(Tensor, self.train_data[0][0])
+            self.dims = ImageDims(*sample.shape)
 
         # Assign Test split(s) for use in Dataloaders
         if stage == "test" or stage is None:
@@ -190,7 +210,7 @@ class UMNISTDataModule(VisionDataModule):
                     self.data_dir,
                     train=False,
                     download=True,
-                    transform=self.transform,
+                    transform=self._transform(False),
                 ),
                 threshold=self.threshold,
             )

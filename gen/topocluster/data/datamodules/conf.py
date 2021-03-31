@@ -15,4 +15,3 @@ class UMNISTDataModuleConf:
     test_batch_size: int = 1000
     num_workers: int = 0
     val_pcnt: float = 0.2
-    label_threshold: int = 5

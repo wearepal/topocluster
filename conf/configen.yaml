@@ -19,29 +19,24 @@ configen:
     - name: topocluster.experiment
       classes:
         - Experiment
-    - name: topocluster.models.autoencoder
+    - name: topocluster.models
       classes:
         - AutoEncoder
         - ConvAutoEncoder
+        - LeNet4
     - name: topocluster.data.datamodules
       classes:
         - UMNISTDataModule
-    - name: gudhi.clustering.tomato
+    - name: topocluster.clustering
       classes:
         - Tomato
-    - name: topocluster.clustering.tomato
-      classes:
-        - Tomato
-    - name: topocluster.clustering.dac
-      classes:
-        - PlClusterer
-    - name: topocluster.clustering.kmeans
-      classes:
+        - GMM
+        - TopoGrad
         - Kmeans
     - name: torch.nn
       classes:
         - ReLU
-    # - name: pytorch_lightning
-    #   classes:
-    #     - LightningDataModule
-    #     - Trainer
+    - name: pytorch_lightning
+      classes:
+        - LightningDataModule
+        - Trainer

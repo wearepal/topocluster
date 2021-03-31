@@ -10,15 +10,21 @@ from omegaconf import MISSING
 
 @dataclass
 class AutoEncoderConf:
-    _target_: str = "topocluster.models.autoencoder.AutoEncoder"
+    _target_: str = "topocluster.models.AutoEncoder"
     latent_dim: int = MISSING
     lr: float = 0.001
 
 
 @dataclass
 class ConvAutoEncoderConf:
-    _target_: str = "topocluster.models.autoencoder.ConvAutoEncoder"
+    _target_: str = "topocluster.models.ConvAutoEncoder"
     init_hidden_dims: int = MISSING
     num_stages: int = MISSING
     latent_dim: int = MISSING
+    lr: float = 0.001
+
+
+@dataclass
+class LeNet4Conf:
+    _target_: str = "topocluster.models.LeNet4"
     lr: float = 0.001
