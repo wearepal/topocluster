@@ -172,14 +172,6 @@ optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
-name = "distlib"
-version = "0.3.1"
-description = "Distribution utilities"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "docker-pycreds"
 version = "0.4.0"
 description = "Python bindings for the docker credentials store API"
@@ -206,51 +198,9 @@ typing-extensions = ">=3.7.4.1"
 testing = ["pytest (>=5.3.5)", "pytest-cov (>=2.8.1)"]
 
 [[package]]
-name = "EthicML"
-version = "0.3.0.dev1"
-description = "A toolkit for understanding and researching algorithmic bias"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-develop = false
-
-[package.dependencies]
-GitPython = ">=2.1.11"
-matplotlib = ">=3.0.2"
-numpy = ">=1.14.2"
-pandas = ">=1.0"
-pillow = "*"
-pipenv = ">=2018.11.26"
-scikit-learn = ">=0.20.1"
-seaborn = ">=0.9.0"
-teext = "*"
-tqdm = ">=4.31.1"
-typed-argument-parser = "1.4"
-typing-extensions = ">=3.7.2"
-
-[package.extras]
-all = ["fairlearn (==0.4.6)"]
-ci = ["fairlearn (==0.4.6)", "pytest (>=3.3.2)", "pytest-cov (>=2.6.0)", "torch (==1.8.0)", "torchvision (==0.9.0)"]
-dev = ["black", "isort (==5.5.4)", "mypy", "pydocstyle", "pylint", "pytest", "pytest-cov", "pre-commit"]
-
-[package.source]
-type = "git"
-url = "https://github.com/predictive-analytics-lab/EthicML.git"
-reference = "master"
-resolved_reference = "4679152c24c7c3badce0b3c76202a07669676399"
-
-[[package]]
 name = "faiss-cpu"
 version = "1.7.0"
 description = "A library for efficient similarity search and clustering of dense vectors."
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
-name = "filelock"
-version = "3.0.12"
-description = "A platform independent file lock."
 category = "main"
 optional = false
 python-versions = "*"
@@ -689,23 +639,6 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "pipenv"
-version = "2020.11.15"
-description = "Python Development Workflow for Humans."
-category = "main"
-optional = false
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
-
-[package.dependencies]
-certifi = "*"
-virtualenv = "*"
-virtualenv-clone = ">=0.2.5"
-
-[package.extras]
-dev = ["towncrier", "bs4", "twine", "sphinx (<2)", "flake8 (>=3.3.0,<4.0)", "parver", "invoke", "black"]
-tests = ["pytest (<5.0)", "pytest-timeout", "pytest-xdist (<2.0)", "flaky", "mock"]
-
-[[package]]
 name = "pot"
 version = "0.7.0"
 description = "Python Optimal Transport Library"
@@ -969,20 +902,6 @@ python-versions = ">=3.7,<3.10"
 numpy = ">=1.16.5,<1.23.0"
 
 [[package]]
-name = "seaborn"
-version = "0.11.1"
-description = "seaborn: statistical data visualization"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-matplotlib = ">=2.2"
-numpy = ">=1.15"
-pandas = ">=0.23"
-scipy = ">=1.0"
-
-[[package]]
 name = "sentry-sdk"
 version = "1.0.0"
 description = "Python client for Sentry (https://sentry.io)"
@@ -1041,14 +960,6 @@ description = "A backport of the subprocess module from Python 3 for use on 2.x.
 category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, <4"
-
-[[package]]
-name = "teext"
-version = "0.1.2"
-description = "Typing extensions extensions"
-category = "main"
-optional = false
-python-versions = ">=3.6"
 
 [[package]]
 name = "tensorboard"
@@ -1148,18 +1059,6 @@ notebook = ["ipywidgets (>=6)"]
 telegram = ["requests"]
 
 [[package]]
-name = "typed-argument-parser"
-version = "1.4"
-description = "Typed Argument Parser"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-typing_extensions = ">=3.7.4"
-typing-inspect = ">=0.5"
-
-[[package]]
 name = "typed-ast"
 version = "1.4.2"
 description = "a fork of Python 2 and 3 ast modules with type comment support"
@@ -1176,18 +1075,6 @@ optional = false
 python-versions = "*"
 
 [[package]]
-name = "typing-inspect"
-version = "0.6.0"
-description = "Runtime inspection utilities for typing module."
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-mypy-extensions = ">=0.3.0"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "urllib3"
 version = "1.26.4"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -1199,32 +1086,6 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 brotli = ["brotlipy (>=0.6.0)"]
-
-[[package]]
-name = "virtualenv"
-version = "20.4.3"
-description = "Virtual Python Environment builder"
-category = "main"
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
-
-[package.dependencies]
-appdirs = ">=1.4.3,<2"
-distlib = ">=0.3.1,<1"
-filelock = ">=3.0.0,<4"
-six = ">=1.9.0,<2"
-
-[package.extras]
-docs = ["proselint (>=0.10.2)", "sphinx (>=3)", "sphinx-argparse (>=0.2.5)", "sphinx-rtd-theme (>=0.4.3)", "towncrier (>=19.9.0rc1)"]
-testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", "pytest (>=4)", "pytest-env (>=0.6.2)", "pytest-freezegun (>=0.4.1)", "pytest-mock (>=2)", "pytest-randomly (>=1)", "pytest-timeout (>=1)", "packaging (>=20.0)", "xonsh (>=0.9.16)"]
-
-[[package]]
-name = "virtualenv-clone"
-version = "0.5.4"
-description = "script to clone virtualenvs."
-category = "main"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "wandb"
@@ -1293,7 +1154,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "3.8"
-content-hash = "cd592c3d3ebd55457aad5aad9b5e29090556100791affaf506dcef6abd641525"
+content-hash = "b9e8ce2eeb131abdb2094176ffdfa07538b21cd52a3aee4752ee8139bd3a5c6b"
 
 [metadata.files]
 absl-py = [
@@ -1423,10 +1284,6 @@ cython = [
     {file = "Cython-0.29.22-py2.py3-none-any.whl", hash = "sha256:f5f57b2e13cc3aa95526145ffa551df529f04bf5d137c59350e7accff9362dc0"},
     {file = "Cython-0.29.22.tar.gz", hash = "sha256:df6b83c7a6d1d967ea89a2903e4a931377634a297459652e4551734c48195406"},
 ]
-distlib = [
-    {file = "distlib-0.3.1-py2.py3-none-any.whl", hash = "sha256:8c09de2c67b3e7deef7184574fc060ab8a793e7adbb183d942c389c8b13c52fb"},
-    {file = "distlib-0.3.1.zip", hash = "sha256:edf6116872c863e1aa9d5bb7cb5e05a022c519a4594dc703843343a9ddd9bff1"},
-]
 docker-pycreds = [
     {file = "docker-pycreds-0.4.0.tar.gz", hash = "sha256:6ce3270bcaf404cc4c3e27e4b6c70d3521deae82fb508767870fdbf772d584d4"},
     {file = "docker_pycreds-0.4.0-py2.py3-none-any.whl", hash = "sha256:7266112468627868005106ec19cd0d722702d2b7d5912a28e19b826c3d37af49"},
@@ -1435,7 +1292,6 @@ eagerpy = [
     {file = "eagerpy-0.29.0-py3-none-any.whl", hash = "sha256:b130559ff9d9794f27d19ef9ec542b0edb704e9f63c3ee56d391e7bda14a9c19"},
     {file = "eagerpy-0.29.0.tar.gz", hash = "sha256:bd9cb9170dcb9eeb25b6fd90c827c665322f4e78b12ce845b93052f04d3a9408"},
 ]
-EthicML = []
 faiss-cpu = [
     {file = "faiss-cpu-1.7.0.tar.gz", hash = "sha256:d4a22067aeadaaaaf366af6b92c06c492f76edb534163dd64a42579fef8dd922"},
     {file = "faiss_cpu-1.7.0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:ac8fbe094fe2b2c41030045f96474435e682a91e214400e0a0b49ae477f0a92e"},
@@ -1450,10 +1306,6 @@ faiss-cpu = [
     {file = "faiss_cpu-1.7.0-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:250e0f66b848c26a3c11466f3fe452c9a26068cf78511d08f9402d7f85362a1c"},
     {file = "faiss_cpu-1.7.0-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:44594e2148628af020ecb1a41f9eadbde4cffc5098ec57b703abe054b38ec2a6"},
     {file = "faiss_cpu-1.7.0-cp39-cp39-win_amd64.whl", hash = "sha256:7aaa734018c60c7bcc2f5b86ac9374c60cc1280b5e66ef976bf27e6fac185cdd"},
-]
-filelock = [
-    {file = "filelock-3.0.12-py3-none-any.whl", hash = "sha256:929b7d63ec5b7d6b71b0fa5ac14e030b3f70b75747cef1b10da9b879fef15836"},
-    {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
 ]
 flake8 = [
     {file = "flake8-3.9.0-py2.py3-none-any.whl", hash = "sha256:12d05ab02614b6aee8df7c36b97d1a3b2372761222b19b58621355e82acddcff"},
@@ -1904,10 +1756,6 @@ pillow = [
     {file = "Pillow-8.1.2-pp37-pypy37_pp73-win32.whl", hash = "sha256:f36c3ff63d6fc509ce599a2f5b0d0732189eed653420e7294c039d342c6e204a"},
     {file = "Pillow-8.1.2.tar.gz", hash = "sha256:b07c660e014852d98a00a91adfbe25033898a9d90a8f39beb2437d22a203fc44"},
 ]
-pipenv = [
-    {file = "pipenv-2020.11.15-py2.py3-none-any.whl", hash = "sha256:4ab2f60742184d851ac44b9e1d423afe71dc2ea7a68bde07eb890c8b4ce5a420"},
-    {file = "pipenv-2020.11.15.tar.gz", hash = "sha256:8253fe6f9cfb3791a54da8a0571f73c918cb3457dd908684c1800a13a06ec4c1"},
-]
 pot = [
     {file = "POT-0.7.0-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:a490923905b6a6930ec23c3a9af5859b1c54faba8eaf3efdc83b354250f26bf4"},
     {file = "POT-0.7.0-cp35-cp35m-manylinux2010_i686.whl", hash = "sha256:f47d8e2fd2f36500d83c47d35b66e5bfdd6755bb4952bcd21015d5ed70844583"},
@@ -2168,10 +2016,6 @@ scipy = [
     {file = "scipy-1.6.2-cp39-cp39-win_amd64.whl", hash = "sha256:d744657c27c128e357de2f0fd532c09c84cd6e4933e8232895a872e67059ac37"},
     {file = "scipy-1.6.2.tar.gz", hash = "sha256:e9da33e21c9bc1b92c20b5328adb13e5f193b924c9b969cd700c8908f315aa59"},
 ]
-seaborn = [
-    {file = "seaborn-0.11.1-py3-none-any.whl", hash = "sha256:4e1cce9489449a1c6ff3c567f2113cdb41122f727e27a984950d004a88ef3c5c"},
-    {file = "seaborn-0.11.1.tar.gz", hash = "sha256:44e78eaed937c5a87fc7a892c329a7cc091060b67ebd1d0d306b446a74ba01ad"},
-]
 sentry-sdk = [
     {file = "sentry-sdk-1.0.0.tar.gz", hash = "sha256:71de00c9711926816f750bc0f57ef2abbcb1bfbdf5378c601df7ec978f44857a"},
     {file = "sentry_sdk-1.0.0-py2.py3-none-any.whl", hash = "sha256:9221e985f425913204989d0e0e1cbb719e8b7fa10540f1bc509f660c06a34e66"},
@@ -2192,10 +2036,6 @@ subprocess32 = [
     {file = "subprocess32-3.5.4-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:88e37c1aac5388df41cc8a8456bb49ebffd321a3ad4d70358e3518176de3a56b"},
     {file = "subprocess32-3.5.4-cp27-cp27mu-manylinux2014_x86_64.whl", hash = "sha256:e45d985aef903c5b7444d34350b05da91a9e0ea015415ab45a21212786c649d0"},
     {file = "subprocess32-3.5.4.tar.gz", hash = "sha256:eb2937c80497978d181efa1b839ec2d9622cf9600a039a79d0e108d1f9aec79d"},
-]
-teext = [
-    {file = "teext-0.1.2-py3-none-any.whl", hash = "sha256:4aac2f5819f542560a8bccc12db323f1729f2444b9242efc078139e1fbef4b72"},
-    {file = "teext-0.1.2.tar.gz", hash = "sha256:0d11dd2bb988e26287d94d0b32da48d57ed4241f9b917e6795b9c2b9046b4199"},
 ]
 tensorboard = [
     {file = "tensorboard-2.4.1-py3-none-any.whl", hash = "sha256:7b8c53c396069b618f6f276ec94fc45d17e3282d668979216e5d30be472115e4"},
@@ -2255,9 +2095,6 @@ tqdm = [
     {file = "tqdm-4.59.0-py2.py3-none-any.whl", hash = "sha256:9fdf349068d047d4cfbe24862c425883af1db29bcddf4b0eeb2524f6fbdb23c7"},
     {file = "tqdm-4.59.0.tar.gz", hash = "sha256:d666ae29164da3e517fcf125e41d4fe96e5bb375cd87ff9763f6b38b5592fe33"},
 ]
-typed-argument-parser = [
-    {file = "typed-argument-parser-1.4.tar.gz", hash = "sha256:45b02038dfb8e01fafb39bb27d5be34039b11cfd4f70b0e16b346327431fd1ab"},
-]
 typed-ast = [
     {file = "typed_ast-1.4.2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:7703620125e4fb79b64aa52427ec192822e9f45d37d4b6625ab37ef403e1df70"},
     {file = "typed_ast-1.4.2-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:c9aadc4924d4b5799112837b226160428524a9a45f830e0d0f184b19e4090487"},
@@ -2295,22 +2132,9 @@ typing-extensions = [
     {file = "typing_extensions-3.7.4.3-py3-none-any.whl", hash = "sha256:7cb407020f00f7bfc3cb3e7881628838e69d8f3fcab2f64742a5e76b2f841918"},
     {file = "typing_extensions-3.7.4.3.tar.gz", hash = "sha256:99d4073b617d30288f569d3f13d2bd7548c3a7e4c8de87db09a9d29bb3a4a60c"},
 ]
-typing-inspect = [
-    {file = "typing_inspect-0.6.0-py2-none-any.whl", hash = "sha256:de08f50a22955ddec353876df7b2545994d6df08a2f45d54ac8c05e530372ca0"},
-    {file = "typing_inspect-0.6.0-py3-none-any.whl", hash = "sha256:3b98390df4d999a28cf5b35d8b333425af5da2ece8a4ea9e98f71e7591347b4f"},
-    {file = "typing_inspect-0.6.0.tar.gz", hash = "sha256:8f1b1dd25908dbfd81d3bebc218011531e7ab614ba6e5bf7826d887c834afab7"},
-]
 urllib3 = [
     {file = "urllib3-1.26.4-py2.py3-none-any.whl", hash = "sha256:2f4da4594db7e1e110a944bb1b551fdf4e6c136ad42e4234131391e21eb5b0df"},
     {file = "urllib3-1.26.4.tar.gz", hash = "sha256:e7b021f7241115872f92f43c6508082facffbd1c048e3c6e2bb9c2a157e28937"},
-]
-virtualenv = [
-    {file = "virtualenv-20.4.3-py2.py3-none-any.whl", hash = "sha256:83f95875d382c7abafe06bd2a4cdd1b363e1bb77e02f155ebe8ac082a916b37c"},
-    {file = "virtualenv-20.4.3.tar.gz", hash = "sha256:49ec4eb4c224c6f7dd81bb6d0a28a09ecae5894f4e593c89b0db0885f565a107"},
-]
-virtualenv-clone = [
-    {file = "virtualenv-clone-0.5.4.tar.gz", hash = "sha256:665e48dd54c84b98b71a657acb49104c54e7652bce9c1c4f6c6976ed4c827a29"},
-    {file = "virtualenv_clone-0.5.4-py2.py3-none-any.whl", hash = "sha256:07e74418b7cc64f4fda987bf5bc71ebd59af27a7bc9e8a8ee9fd54b1f2390a27"},
 ]
 wandb = [
     {file = "wandb-0.10.23-py2.py3-none-any.whl", hash = "sha256:13edc781aa54c9d732b05a3b46fd46aa373f66995f43d210c12ea4e7cd99bceb"},

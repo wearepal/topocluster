@@ -1,50 +1,37 @@
 """Functions for computing metrics."""
 from __future__ import annotations
 
-import numpy as np
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from torch import Tensor
 
-import ethicml as em
-import pandas as pd
-from topocluster.clustering.utils import (
-    compute_optimal_assignments,
-    encode_arr_with_dict,
-)
+from topocluster.clustering.utils import compute_optimal_assignments
 
 __all__ = ["compute_metrics"]
 
 
 def compute_metrics(
-    preds: Tensor, subgroup_inf: Tensor, targets: Tensor, prefix: str
+    preds: Tensor, subgroup_inf: Tensor, superclass_inf: Tensor, prefix: str, num_subgroups: int
 ) -> dict[str, float]:
-    logging_dict: dict[str, float] = {}
-
     # Convert from torch to numpy
     preds_np = preds.detach().cpu().numpy()
-    targets_np = targets.cpu().numpy()
+    superclass_inf_np = superclass_inf.cpu().numpy()
     subgroup_inf_np = subgroup_inf.cpu().numpy()
 
-    total_acc, cluster_map = compute_optimal_assignments(
-        labels_true=targets_np, labels_pred=preds_np
-    )
-    logging_dict[f"{prefix}/total_acc"] = total_acc
-    aligned_preds = encode_arr_with_dict(preds_np, cluster_map)
+    subgroup_id = superclass_inf_np * num_subgroups + subgroup_inf_np
 
-    # ==================================== EthicML metrics ====================================
-    aligned_preds = em.Prediction(hard=pd.Series(aligned_preds))
-    aligned_preds._info = {}
-    sens = pd.DataFrame(subgroup_inf_np.astype(np.float32), columns=["subgroup"])
-    labels = pd.DataFrame(targets_np.flatten().astype(np.float32), columns=["superclass"])
-    actual = em.DataTuple(x=sens, s=sens, y=labels)
-    metrics = em.run_metrics(
-        aligned_preds,
-        actual,
-        metrics=[em.Accuracy(), em.TPR(), em.TNR(), em.RenyiCorrelation()],
-        per_sens_metrics=[em.Accuracy(), em.ProbPos(), em.TPR(), em.TNR()],
-        diffs_and_ratios=False,
+    logging_dict = {
+        f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds),
+        f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds),  # type: ignore
+    }
+
+    total_acc, cluster_map = compute_optimal_assignments(
+        labels_true=subgroup_id, labels_pred=preds_np
     )
-    # replace the slash -- it's causing problems -- and add the prefix
-    metrics = {f"{prefix}/" + k.replace("/", "÷"): v for k, v in metrics.items()}
-    logging_dict.update(metrics)
+
+    logging_dict[f"{prefix}/Accuracy/Total"] = total_acc
+    for i, (class_id, cluster_id) in enumerate(cluster_map.items()):
+        class_mask = subgroup_id == class_id
+        subgroup_acc = (class_mask & (preds_np == cluster_id)).sum() / class_mask.sum()
+        logging_dict[f"{prefix}/Accuracy/{i}"] = subgroup_acc
 
     return logging_dict

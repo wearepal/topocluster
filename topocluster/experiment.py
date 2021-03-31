@@ -101,17 +101,21 @@ class Experiment(pl.LightningModule):
     def _val_test_epoch_end(
         self, outputs: list[tuple[Tensor, Tensor, Tensor]], stage: Literal["val", "test"]
     ) -> None:
-        encodings, subgroup_inf, targets = tuple(zip(*outputs))
-        encodings, subgroup_inf, targets = (
+        encodings, subgroup_inf, superclass_inf = tuple(zip(*outputs))
+        encodings, subgroup_inf, superclass_inf = (
             torch.cat(encodings, dim=0),
             torch.cat(subgroup_inf, dim=0),
-            torch.cat(targets, dim=0),
+            torch.cat(superclass_inf, dim=0),
         )
 
         self.print("Clustering using all data.")
         preds = self.clusterer(encodings)[0]
         logging_dict = compute_metrics(
-            preds=preds, subgroup_inf=subgroup_inf, targets=targets, prefix=stage
+            preds=preds,
+            subgroup_inf=subgroup_inf,
+            superclass_inf=superclass_inf,
+            prefix=stage,
+            num_subgroups=self.datamodule.num_subgroups,
         )
 
         if isinstance(self.clusterer, Tomato):

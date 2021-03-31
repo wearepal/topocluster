@@ -27,5 +27,5 @@ class GMM(Clusterer, GaussianMixture):
 
         return hard_labels, soft_labels
 
-    def get_loss(self, x: Tensor) -> dict[str, Tensor]:
+    def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
         return {}
