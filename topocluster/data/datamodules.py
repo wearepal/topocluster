@@ -82,7 +82,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=False,
             collate_fn=self._collate_fn,
         )
 
@@ -94,7 +94,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=False,
             collate_fn=self._collate_fn,
         )
 

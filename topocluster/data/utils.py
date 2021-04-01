@@ -30,11 +30,11 @@ Transform = Callable[[Union[Image.Image, Tensor]], Tensor]
 IGNORE_INDEX: Final = -100
 
 
-def _cast(collate_fn: Transform, cast_to: type, inputs: list[Any]):
+def _cast(collate_fn: Callable[[list[Any]], Any], cast_to: type, inputs: list[Any]):
     return cast_to(*collate_fn(inputs))
 
 
-def cast_collation(collate_fn: Transform, cast_to: type):
+def cast_collation(collate_fn: Callable[[list[Any]], Any], cast_to: type):
     return partial(_cast, collate_fn, cast_to)
 
 
