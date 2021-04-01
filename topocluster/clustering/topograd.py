@@ -26,7 +26,9 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     pc_sorted = pc[sorted_idxs]
 
     rips_idxs = compute_rips(pc_sorted, k_rips)
-    _, pers_pairs = cluster(kde_dists_sorted.detach().numpy(), rips_idxs.numpy(), 1)
+    _, pers_pairs = cluster(
+        density_map=kde_dists_sorted.detach().numpy(), rips_idxs=rips_idxs.numpy(), threshold=1.0
+    )
 
     pers_pairs = torch.tensor(pers_pairs)
     seen = pers_pairs[~torch.all(pers_pairs == -1, dim=1)]
