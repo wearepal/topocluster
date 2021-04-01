@@ -32,7 +32,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
         threshold=1.0,
     )
 
-    pers_pairs = torch.as_tensor(pers_pairs, device=pc.device, dtype=torch.long)
+    pers_pairs = torch.as_tensor(pers_pairs, device=pc.device)
     seen = pers_pairs[~torch.all(pers_pairs == -1, dim=1)]
 
     pd_pairs = []
