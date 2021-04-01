@@ -148,7 +148,7 @@ class Experiment(pl.LightningModule):
             pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(self.clusterer.plot())
             plt.close("all")
 
-            self.logger.experiment.log_dict(pers_diagrams)
+            self.logger.experiment.log(pers_diagrams)
 
         self.log_dict(logging_dict)
 
