@@ -28,12 +28,12 @@ def compute_metrics(
         labels_true=subgroup_id, labels_pred=preds_np
     )
 
-    logging_dict[f"{prefix}/Accuracy/Total"] = total_acc
+    logging_dict[f"{prefix}/Cluster_Acc/Total"] = total_acc
     for i, (class_id, cluster_id) in enumerate(cluster_map.items()):
         class_mask = subgroup_id == class_id
         num_matches = class_mask.sum()
         if num_matches > 0:
             subgroup_acc = (class_mask & (preds_np == cluster_id)).sum() / num_matches
-            logging_dict[f"{prefix}/Accuracy/{i}"] = subgroup_acc
+            logging_dict[f"{prefix}/Cluster_Acc/{i}"] = subgroup_acc
 
     return logging_dict
