@@ -62,46 +62,65 @@ class Experiment(pl.LightningModule):
     def configure_optimizers(self) -> Optimizer:
         return AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
-    @implements(pl.LightningModule)
-    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        encoding = self.encoder(batch.x)
+    def _get_loss(
+        self, encoding: Tensor, batch: Batch, stage: Literal["train", "val", "test"]
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        total_loss = encoding.new_zeros(())
         loss_dict = {}
         if self.encoder_loss_weight > 0:
-            loss_dict.update(self.encoder.get_loss(encoding, batch, prefix="train/"))
+            enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
+            loss_dict.update(enc_loss_dict)
+            total_loss += self.encoder_loss_weight * sum(enc_loss_dict.values())
         if self.clust_loss_weight > 0:
-            loss_dict.update(self.clusterer.get_loss(x=encoding, prefix="train/"))
+            clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
+            loss_dict.update(clust_loss_dict)
+            total_loss += self.encoder_loss_weight * sum(clust_loss_dict.values())
         total_loss = cast(Tensor, sum(loss_dict.values()))
-        loss_dict["train/total_loss"] = total_loss
-        self.logger.experiment.log(loss_dict)
+        loss_dict[f"{stage}/total_loss"] = total_loss
+        return total_loss, loss_dict
 
+    @implements(pl.LightningModule)
+    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
+        encoding = self.encoder(batch.x)
+        total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
+        self.log_dict(loss_dict)
+
+        return {
+            "loss": total_loss,
+            "encoding": encoding,
+            "subgroup_inf": batch.s,
+            "superclass_inf": batch.y,
+        }
+
+    @implements(pl.LightningModule)
+    def training_epoch_end(
+        self,
+        outputs: list[dict[str, Tensor]],
+    ) -> None:
+        self._epoch_end(outputs=outputs, stage="train")
+
+    @implements(pl.LightningModule)
+    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
+        encoding = self.encoder(batch.x)
+        total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="val")
+        self.log_dict(loss_dict, on_epoch=True)
         return total_loss
 
     @implements(pl.LightningModule)
-    def validation_step(self, batch: Batch, batch_idx: int) -> tuple[Tensor, Tensor, Tensor]:
+    def test_step(self, batch: Batch, batch_idx: int) -> Tensor:
         encoding = self.encoder(batch.x)
-        # Defer clustering until the end of the epoch so that clustering can take into account
-        # all of the data during fitting
-        return encoding, batch.s, batch.y
+        total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="test")
+        self.log_dict(loss_dict, on_epoch=True)
+        return total_loss
 
-    @implements(pl.LightningModule)
-    def validation_epoch_end(
-        self,
-        outputs: list[tuple[Tensor, Tensor, Tensor]],
+    def _epoch_end(
+        self, outputs: list[dict[str, Tensor]], stage: Literal["train", "val", "test"]
     ) -> None:
-        self._val_test_epoch_end(outputs=outputs, stage="val")
-
-    @implements(pl.LightningModule)
-    def test_step(self, batch: Batch, batch_idx: int) -> tuple[Tensor, Tensor, Tensor]:
-        return self.validation_step(batch, batch_idx)
-
-    @implements(pl.LightningModule)
-    def test_epoch_end(self, outputs: list[tuple[Tensor, Tensor, Tensor]]) -> None:
-        self._val_test_epoch_end(outputs=outputs, stage="test")
-
-    def _val_test_epoch_end(
-        self, outputs: list[tuple[Tensor, Tensor, Tensor]], stage: Literal["val", "test"]
-    ) -> None:
-        encodings, subgroup_inf, superclass_inf = tuple(zip(*outputs))
+        encodings, subgroup_inf, superclass_inf = [], [], []
+        for step_outputs in outputs:
+            encodings.append(step_outputs["encoding"])
+            subgroup_inf.append(step_outputs["subgroup_inf"])
+            superclass_inf.append(step_outputs["superclass_inf"])
         encodings, subgroup_inf, superclass_inf = (
             torch.cat(encodings, dim=0),
             torch.cat(subgroup_inf, dim=0),
@@ -148,7 +167,7 @@ class Experiment(pl.LightningModule):
 
         self.trainer.callbacks.append(
             ModelCheckpoint(
-                monitor="val/Accuracy",
+                monitor="val/total_loss",
                 dirpath=self.artifacts_dir,
                 save_top_k=1,
                 filename="best",
