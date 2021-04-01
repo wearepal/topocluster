@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Optional, cast
 
+from matplotlib import pyplot as plt
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
@@ -138,14 +139,20 @@ class Experiment(pl.LightningModule):
         )
 
         if isinstance(self.clusterer, Tomato):
+            pers_diagram = self.clusterer.plot()
             pers_diagrams = {
                 f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
-                    self.clusterer.plot()
+                    pers_diagram
                 )
             }
+            plt.close(pers_diagram)
+
             self.print("Computing the persistence diagram with threshold=1.0")
             self.clusterer(encodings, threshold=1.0)
-            pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(self.clusterer.plot())
+            pers_diagram = self.clusterer.plot()
+            pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(pers_diagram)
+            plt.close(pers_diagram)
+
             self.logger.experiment.log(pers_diagrams)
 
         self.log_dict(logging_dict)
