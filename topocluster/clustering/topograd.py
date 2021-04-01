@@ -43,7 +43,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
                 max(seen[torch.where(seen[:, 0] == i)[0]][:, 1]),
             ]
         )
-    pd_pairs = pers_pairs.new_tensor(pd_pairs)
+    pd_pairs = torch.as_tensor(pd_pairs, device=pc.device)
     oripd = kde_dists_sorted[pd_pairs]
     pers_idxs_sorted = torch.argsort(oripd[:, 0] - oripd[:, 1])
 
@@ -51,7 +51,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     nochanging = pers_idxs_sorted[-destnum:-1]
 
     biggest = oripd[pers_idxs_sorted[-1]]
-    dest = pers_pairs.new_tensor([biggest[0], biggest[1]])
+    dest = torch.as_tensor([biggest[0], biggest[1]], device=pc.device)
     changepairs = pd_pairs[changing]
     nochangepairs = pd_pairs[nochanging]
     pd11 = kde_dists_sorted[changepairs]
