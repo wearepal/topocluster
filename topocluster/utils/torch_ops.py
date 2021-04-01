@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any, Callable, Tuple, Type, Union
 
-from pykeops.torch.lazytensor.LazyTensor import LazyTensor
 import torch
 from torch import Tensor, jit
 import torch.distributions as td
@@ -100,14 +99,24 @@ def compute_rips(pc: Tensor, k: int) -> Tensor:
     return knn(pc=pc, k=k, kernel=pairwise_L2sqr)[1]
 
 
+# def knn(
+#     pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
+# ) -> Tuple[Tensor, Tensor]:
+#     G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
+#     X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
+#     D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
+#     indKNN = D_ij.argKmin(k, dim=1)  # Grid <-> Samples, (M**2, K) integer tensor
+#     # Workaround for pykeops urrently not supporting differentiation through Kmin
+#     to_nn_alt = kernel(pc[:, None], pc[indKNN, :]).sum(-1)
+
+#     return to_nn_alt, indKNN
+
+
 def knn(
     pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
 ) -> Tuple[Tensor, Tensor]:
-    G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
-    X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
+    G_i = pc[:, None, :]  # (M**2, 1, 2)
+    X_j = pc[None, :, :]  # (1, N, 2)
     D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
-    indKNN = D_ij.argKmin(k, dim=1)  # Grid <-> Samples, (M**2, K) integer tensor
-    # Workaround for pykeops urrently not supporting differentiation through Kmin
-    to_nn_alt = kernel(pc[:, None], pc[indKNN, :]).sum(-1)
-
-    return to_nn_alt, indKNN
+    res = D_ij.topk(k, dim=1)  # Grid <-> Samples, (M**2, K) integer tensor
+    return res.values, res.indices
