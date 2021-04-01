@@ -173,18 +173,20 @@ class UMNISTDataModule(VisionDataModule):
             targets = dataset.dataset.targets[dataset.indices]  # type: ignore
         else:
             targets = dataset.targets
-        inds_to_keep = torch.ones(len(targets), dtype=torch.long)
+        inds_to_keep_mask = torch.ones(len(targets), dtype=torch.long)
         for class_, prop in self.undersampling_props.items():
             class_ = int(class_)  # hydra doesn't allow ints as keys, so we have to cast
             if not (0 <= prop <= 1):
                 raise ValueError("Undersampling proportions must be between 0 and 1.")
             class_inds = (targets == class_).nonzero()
             n_matches = len(class_inds)
-            num_to_drop = round(1 - prop * (n_matches - 1))
+            num_to_drop = round((1 - prop) * (n_matches - 1))
             to_drop = torch.randperm(n_matches) < num_to_drop  # type: ignore
-            inds_to_keep[class_inds[to_drop]] = 0
+            inds_to_keep_mask[class_inds[to_drop]] = 0
 
-        return Subset(dataset=dataset, indices=inds_to_keep.tolist())
+        inds_to_keep = inds_to_keep_mask.nonzero().squeeze(-1).tolist()
+
+        return Subset(dataset=dataset, indices=inds_to_keep)
 
     @implements(pl.LightningDataModule)
     def setup(self, stage: str | None = None) -> None:
