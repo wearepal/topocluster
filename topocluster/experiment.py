@@ -39,8 +39,8 @@ class Experiment(pl.LightningModule):
         weight_decay: float = 9,
         log_offline: bool = False,
         seed: Optional[int] = 42,
-        recon_loss_weight: float = 1.0,
-        clust_loss_weight: float = 1.0,
+        enc_loss_w: float = 1.0,
+        clust_loss_w: float = 1.0,
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -56,8 +56,8 @@ class Experiment(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         # Pre-factors
-        self.encoder_loss_weight = recon_loss_weight
-        self.clust_loss_weight = clust_loss_weight
+        self.enc_loss_w = enc_loss_w
+        self.clust_loss_w = clust_loss_w
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
@@ -68,14 +68,14 @@ class Experiment(pl.LightningModule):
     ) -> tuple[Tensor, dict[str, Tensor]]:
         total_loss = encoding.new_zeros(())
         loss_dict = {}
-        if self.encoder_loss_weight > 0:
+        if self.enc_loss_w > 0:
             enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
             loss_dict.update(enc_loss_dict)
-            total_loss += self.encoder_loss_weight * sum(enc_loss_dict.values())
-        if self.clust_loss_weight > 0:
+            total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
+        if self.clust_loss_w > 0:
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
-            total_loss += self.encoder_loss_weight * sum(clust_loss_dict.values())
+            total_loss += self.enc_loss_w * sum(clust_loss_dict.values())
         total_loss = cast(Tensor, sum(loss_dict.values()))
         loss_dict[f"{stage}/total_loss"] = total_loss
         return total_loss, loss_dict
@@ -139,21 +139,16 @@ class Experiment(pl.LightningModule):
         )
 
         if isinstance(self.clusterer, Tomato):
-            pers_diagram = self.clusterer.plot()
             pers_diagrams = {
                 f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
-                    pers_diagram
+                    self.clusterer.plot()
                 )
             }
-            plt.close(pers_diagram)
-
-            self.print("Computing the persistence diagram with threshold=1.0")
             self.clusterer(encodings, threshold=1.0)
-            pers_diagram = self.clusterer.plot()
-            pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(pers_diagram)
-            plt.close(pers_diagram)
+            pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(self.clusterer.plot())
+            plt.close("all")
 
-            self.logger.experiment.log(pers_diagrams)
+            self.logger.experiment.log_dict(pers_diagrams)
 
         self.log_dict(logging_dict)
 

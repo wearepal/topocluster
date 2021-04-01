@@ -22,5 +22,5 @@ class ExperimentConf:
     weight_decay: float = 9
     log_offline: bool = False
     seed: Optional[int] = 42
-    recon_loss_weight: float = 1.0
-    clust_loss_weight: float = 1.0
+    enc_loss_w: float = 1.0
+    clust_loss_w: float = 1.0
