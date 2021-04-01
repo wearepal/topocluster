@@ -27,7 +27,9 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
 
     rips_idxs = compute_rips(pc_sorted, k_rips)
     _, pers_pairs = cluster(
-        density_map=kde_dists_sorted.detach().numpy(), rips_idxs=rips_idxs.numpy(), threshold=1.0
+        density_map=kde_dists_sorted.detach().cpu().numpy(),
+        rips_idxs=rips_idxs.cpu().numpy(),
+        threshold=1.0,
     )
 
     pers_pairs = torch.tensor(pers_pairs)
@@ -110,7 +112,6 @@ class TopoGradCluster:
         self.iters = iters
         self.optimizer_cls = optimizer_cls
         self.optimizer_kwargs = optimizer_kwargs
-        self._loss_fn = TopoGradLoss(k_kde=k_kde, k_rips=k_rips, scale=scale, destnum=destnum)
 
     def plot(self) -> plt.Figure:
         fig, ax = plt.subplots(dpi=100)
@@ -130,7 +131,13 @@ class TopoGradCluster:
         optimizer = self.optimizer_cls((x,), lr=self.lr)
         with tqdm(desc="topograd", total=self.iters) as pbar:
             for _ in range(self.iters):
-                loss = self._loss_fn(x)
+                loss = topograd_loss(
+                    pc=x,
+                    k_kde=self.k_kde,
+                    k_rips=self.k_rips,
+                    scale=self.scale,
+                    destnum=self.destnum,
+                )
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
