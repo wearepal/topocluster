@@ -39,7 +39,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
                 max(seen[torch.where(seen[:, 0] == i)[0]][:, 1]),
             ]
         )
-    pd_pairs = torch.tensor(pd_pairs)
+    pd_pairs = torch.tensor(pd_pairs, dtype=torch.long)
     oripd = kde_dists_sorted[pd_pairs]
     pers_idxs_sorted = torch.argsort(oripd[:, 0] - oripd[:, 1])
 
