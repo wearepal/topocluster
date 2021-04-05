@@ -24,3 +24,4 @@ class ExperimentConf:
     seed: Optional[int] = 42
     enc_loss_w: float = 1.0
     clust_loss_w: float = 1.0
+    exp_group: Optional[str] = None
