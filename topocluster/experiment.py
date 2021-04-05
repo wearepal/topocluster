@@ -186,3 +186,5 @@ class Experiment(pl.LightningModule):
         # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self, datamodule=self.datamodule)
         self.trainer.test(self, datamodule=self.datamodule)
+        # Manually call exit for multirun compatibility
+        logger.experiment.__exit__(None, 0, 0)
