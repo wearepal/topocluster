@@ -41,6 +41,7 @@ class Experiment(pl.LightningModule):
         seed: Optional[int] = 42,
         enc_loss_w: float = 1.0,
         clust_loss_w: float = 1.0,
+        exp_group: Optional[str] = None,
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -58,6 +59,7 @@ class Experiment(pl.LightningModule):
         # Pre-factors
         self.enc_loss_w = enc_loss_w
         self.clust_loss_w = clust_loss_w
+        self.exp_group = exp_group
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
@@ -161,6 +163,7 @@ class Experiment(pl.LightningModule):
             entity="predictive-analytics-lab",
             project="topocluster",
             offline=self.log_offline,
+            group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
         if raw_config is not None:
             logger.log_hyperparams(raw_config)
