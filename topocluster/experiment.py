@@ -45,6 +45,7 @@ class Experiment(pl.LightningModule):
     ):
         super().__init__()
         self.log_offline = log_offline
+        self.exp_group = exp_group
         self.seed = seed
         # Components
         self.datamodule = datamodule
@@ -59,7 +60,6 @@ class Experiment(pl.LightningModule):
         # Pre-factors
         self.enc_loss_w = enc_loss_w
         self.clust_loss_w = clust_loss_w
-        self.exp_group = exp_group
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
