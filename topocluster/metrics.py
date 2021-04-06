@@ -20,8 +20,8 @@ def compute_metrics(
     subgroup_id = superclass_inf_np * num_subgroups + subgroup_inf_np
 
     logging_dict = {
-        f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds),
-        f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds),  # type: ignore
+        f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),
+        f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
     }
 
     total_acc, cluster_map = compute_optimal_assignments(
