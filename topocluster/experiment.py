@@ -87,18 +87,17 @@ class Experiment(pl.LightningModule):
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor | None]:
         encoding = self.encoder(batch.x)
-        if self.eval_mode:
-            total_loss = None
-        else:
-            total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
-            self.log_dict(loss_dict)
-
-        return {
-            "loss": total_loss,
+        res_dict = {
             "encoding": encoding,
             "subgroup_inf": batch.s,
             "superclass_inf": batch.y,
         }
+        if not self.eval_mode:
+            total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
+            self.log_dict(loss_dict)
+            res_dict["loss"] = total_loss
+
+        return res_dict
 
     @implements(pl.LightningModule)
     def training_epoch_end(
