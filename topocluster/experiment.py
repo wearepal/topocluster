@@ -43,12 +43,14 @@ class Experiment(pl.LightningModule):
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
+        eval_mode: bool = False,
     ):
         super().__init__()
         self.log_offline = log_offline
         self.exp_group = exp_group
         self.seed = seed
         self.train_eval_freq = train_eval_freq
+        self.eval_mode = eval_mode
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
@@ -70,26 +72,26 @@ class Experiment(pl.LightningModule):
     def _get_loss(
         self, encoding: Tensor, batch: Batch, stage: Literal["train", "val", "test"]
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        total_loss = encoding.new_zeros(())
         loss_dict = {}
+        total_loss = encoding.new_zeros(())
         if self.enc_loss_w > 0:
             enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
             loss_dict.update(enc_loss_dict)
             total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
-        if self.clust_loss_w > 0:
-            clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
-            loss_dict.update(clust_loss_dict)
-            total_loss += self.enc_loss_w * sum(clust_loss_dict.values())
-        if not total_loss.requires_grad:
-            total_loss.requires_grad_(True)
+        clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
+        loss_dict.update(clust_loss_dict)
+        total_loss += self.enc_loss_w * sum(clust_loss_dict.values())
         loss_dict[f"{stage}/total_loss"] = total_loss
         return total_loss, loss_dict
 
     @implements(pl.LightningModule)
-    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
+    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor | None]:
         encoding = self.encoder(batch.x)
-        total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
-        self.log_dict(loss_dict)
+        if self.eval_mode:
+            total_loss = None
+        else:
+            total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
+            self.log_dict(loss_dict)
 
         return {
             "loss": total_loss,
