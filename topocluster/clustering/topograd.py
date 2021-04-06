@@ -97,7 +97,7 @@ class TopoGrad(Tomato):
         # Run topograd on the embedding (without backpropagating through the network)
         if self.iters > 0:
             # Avoid modifying the original embedding
-            x = x.detach().clone()
+            x = x.detach().clone().requires_grad_(True)
             optimizer = self.optimizer_cls((x,), lr=self.lr)
             with tqdm(desc="topograd", total=self.iters) as pbar:
                 for _ in range(self.iters):
