@@ -198,6 +198,7 @@ class Experiment(pl.LightningModule):
         if self.checkpoint_path is not None:
             self = self.load_from_checkpoint(
                 checkpoint_path=self.checkpoint_path,
+                datamodule=self.datamodule,
                 encoder=self.encoder,
                 clusterer=self.clusterer,
                 pretrainer=self.pretrainer,
