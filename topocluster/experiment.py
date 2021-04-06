@@ -196,7 +196,13 @@ class Experiment(pl.LightningModule):
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
         # Load weights/hparams from checkpoint-path if provided
         if self.checkpoint_path is not None:
-            self = self.load_from_checkpoint(checkpoint_path=self.checkpoint_path)
+            self = self.load_from_checkpoint(
+                checkpoint_path=self.checkpoint_path,
+                encoder=self.encoder,
+                clusterer=self.clusterer,
+                pretrainer=self.pretrainer,
+                trainer=self.trainer,
+            )
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Training phase
