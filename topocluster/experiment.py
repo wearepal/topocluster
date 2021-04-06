@@ -42,11 +42,13 @@ class Experiment(pl.LightningModule):
         enc_loss_w: float = 1.0,
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
+        train_eval_freq: int = 1,
     ):
         super().__init__()
         self.log_offline = log_offline
         self.exp_group = exp_group
         self.seed = seed
+        self.train_eval_freq = train_eval_freq
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
@@ -100,7 +102,8 @@ class Experiment(pl.LightningModule):
         self,
         outputs: list[dict[str, Tensor]],
     ) -> None:
-        self._epoch_end(outputs=outputs, stage="train")
+        if (self.current_epoch % self.train_eval_freq) == 0:
+            self._epoch_end(outputs=outputs, stage="train")
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:

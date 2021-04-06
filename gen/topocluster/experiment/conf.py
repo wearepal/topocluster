@@ -25,3 +25,4 @@ class ExperimentConf:
     enc_loss_w: float = 1.0
     clust_loss_w: float = 1.0
     exp_group: Optional[str] = None
+    train_eval_freq: int = 1
