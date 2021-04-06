@@ -43,14 +43,12 @@ class Experiment(pl.LightningModule):
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
-        eval_mode: bool = False,
     ):
         super().__init__()
         self.log_offline = log_offline
         self.exp_group = exp_group
         self.seed = seed
         self.train_eval_freq = train_eval_freq
-        self.eval_mode = eval_mode
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
@@ -92,12 +90,9 @@ class Experiment(pl.LightningModule):
             "subgroup_inf": batch.s,
             "superclass_inf": batch.y,
         }
-        if self.eval_mode:
-            res_dict["loss"] = encoding.new_zeros((), requires_grad=True)
-        else:
-            total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
-            self.log_dict(loss_dict)
-            res_dict["loss"] = total_loss
+        total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
+        self.log_dict(loss_dict)
+        res_dict["loss"] = total_loss
 
         return res_dict
 
