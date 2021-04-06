@@ -1,5 +1,6 @@
 # """Main training file"""
 from __future__ import annotations
+import os
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Optional, cast
 
@@ -43,12 +44,14 @@ class Experiment(pl.LightningModule):
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
+        checkpoint_path: Optional[str] = None,
     ):
         super().__init__()
         self.log_offline = log_offline
         self.exp_group = exp_group
         self.seed = seed
         self.train_eval_freq = train_eval_freq
+        self.checkpoint_path = checkpoint_path
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
@@ -168,8 +171,10 @@ class Experiment(pl.LightningModule):
             offline=self.log_offline,
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
+        hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
-            logger.log_hyperparams(raw_config)
+            hparams.update(raw_config)
+        logger.log_hyperparams(hparams)
         self.pretrainer.logger = logger
         self.trainer.logger = logger
 
@@ -183,11 +188,20 @@ class Experiment(pl.LightningModule):
             )
         )
 
+        # PRNG seeding
         pl.seed_everything(seed=self.seed)
+        # Build the encoder
         self.encoder.build(self.datamodule)
+        # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
+        # Load weights/hparams from checkpoint-path if provided
+        if self.checkpoint_path is not None:
+            self = self.load_from_checkpoint(checkpoint_path=self.checkpoint_path)
+        # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        # Training phase
         self.trainer.fit(self, datamodule=self.datamodule)
+        # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
         # Manually call exit for multirun compatibility
         logger.experiment.__exit__(None, 0, 0)
