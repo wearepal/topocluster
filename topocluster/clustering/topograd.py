@@ -93,7 +93,8 @@ class TopoGrad(Tomato):
         )
         return {"saliency_loss": loss}
 
-    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor, threshold: float | None = None) -> tuple[Tensor, Tensor]:
+        threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)
         if self.iters > 0:
             # Avoid modifying the original embedding
