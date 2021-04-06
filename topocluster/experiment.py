@@ -70,7 +70,7 @@ class Experiment(pl.LightningModule):
     def _get_loss(
         self, encoding: Tensor, batch: Batch, stage: Literal["train", "val", "test"]
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        total_loss = 0
+        total_loss = torch.tensor(0, device=encoding.device)
         loss_dict = {}
         if self.enc_loss_w > 0:
             enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
@@ -80,8 +80,8 @@ class Experiment(pl.LightningModule):
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
             total_loss += self.enc_loss_w * sum(clust_loss_dict.values())
-        if isinstance(total_loss, float):
-            total_loss = encoding.new_zeros((), requires_grad=True)
+        if not total_loss.requires_grad:
+            total_loss.requires_grad_(True)
         loss_dict[f"{stage}/total_loss"] = total_loss
         return total_loss, loss_dict
 
