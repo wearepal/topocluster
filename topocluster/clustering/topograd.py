@@ -1,6 +1,6 @@
 from __future__ import annotations
 import math
-from typing import Any
+from typing import Any, Type
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +9,7 @@ from torch import Tensor
 import torch.nn as nn
 from tqdm import tqdm
 
+from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
 from topocluster.models.base import Encoder
 from topocluster.utils.torch_ops import compute_density_map, compute_rips
@@ -64,8 +65,20 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
 class TopoGrad(Tomato):
     destnum: int
 
-    def __init__(self, k_kde: int, k_rips: int, scale: float, threshold: float):
+    def __init__(
+        self,
+        k_kde: int,
+        k_rips: int,
+        scale: float,
+        threshold: float,
+        iters: int = 0,
+        optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.AdamW,
+        lr: float = 1e-3,
+    ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
+        self.iters = iters
+        self.optimizer_cls = optimizer_cls
+        self.lr = lr
 
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         self.destnum = datamodule.num_subgroups * datamodule.num_classes
@@ -80,54 +93,10 @@ class TopoGrad(Tomato):
         )
         return {"saliency_loss": loss}
 
-
-class TopoGradCluster:
-    """
-    Variant of topograd designed to be applied to static embeddings rather than used to train an
-    embedding network.
-    """
-
-    labels: np.ndarray
-    pers_pairs: np.ndarray
-
-    def __init__(
-        self,
-        destnum: int,
-        k_kde: int = 10,
-        k_rips: int = 10,
-        scale: float = 0.5,
-        merge_threshold: float = 1,
-        iters: int = 100,
-        lr: float = 1.0e-3,
-        optimizer_cls=torch.optim.AdamW,
-        **optimizer_kwargs: dict[str, Any],
-    ) -> None:
-        super().__init__()
-        self.k_kde = k_kde
-        self.k_rips = k_rips
-        self.scale = scale
-        self.destnum = destnum
-        self.merge_threshold = merge_threshold
-        self.lr = lr
-        self.iters = iters
-        self.optimizer_cls = optimizer_cls
-        self.optimizer_kwargs = optimizer_kwargs
-
-    def plot(self) -> plt.Figure:
-        fig, ax = plt.subplots(dpi=100)
-        ax.scatter(self.pers_pairs[:, 0], self.pers_pairs[:, 1], s=15, c="orange")  # type: ignore[arg-type]
-        ax.plot(np.array([0, 1]), np.array([0, 1]), c="black", alpha=0.6)  # type: ignore[call-arg]
-        ax.set_xlabel("Death")
-        ax.set_ylabel("Birth")
-        ax.set_title("Persistence Diagram")
-
-        return fig
-
-    def fit(self, x: Tensor | np.ndarray) -> TopoGradCluster:
-        if isinstance(x, np.ndarray):
-            x = torch.as_tensor(x).requires_grad_(True)
-        else:
-            x = x.cpu().detach().clone().requires_grad_(True)
+    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        if self.iters > 0:
+            # Avoid modifying the original embedding
+            x = x.clone()
         optimizer = self.optimizer_cls((x,), lr=self.lr)
         with tqdm(desc="topograd", total=self.iters) as pbar:
             for _ in range(self.iters):
@@ -145,22 +114,21 @@ class TopoGradCluster:
                 pbar.update()
 
         clusters, pers_pairs = tomato(
-            x.detach().numpy(),
+            x.detach().cpu().numpy(),
             k_kde=self.k_kde,
             k_rips=self.k_rips,
             scale=self.scale,
-            threshold=self.merge_threshold,
+            threshold=self.threshold,
         )
         cluster_labels = np.empty(x.shape[0])
         for k, v in enumerate(clusters.values()):
             cluster_labels[v] = k
         self.labels = cluster_labels
-        self.pers_pairs = pers_pairs
+        self.pers_pairs = torch.as_tensor(pers_pairs, device=x.device)
 
-        return self
+        cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.long)
+        centroids = x[list(clusters.keys())]
+        soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
+        hard_labels = cluster_labels
 
-    def fit_predict(self, x: Tensor | np.ndarray) -> np.ndarray:
-        return self.fit(x).labels
-
-    def predict(self, x: Tensor) -> np.ndarray:
-        return self.labels
+        return hard_labels, soft_labels
