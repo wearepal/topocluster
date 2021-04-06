@@ -43,13 +43,11 @@ class Kmeans(Clusterer):
             raise AttributeError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
             hard_labels, centroids = run_kmeans_torch(
-                x.detach().cpu(),  # Requires a newer version of cuda that we have access to atm
+                x,
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
-            hard_labels = hard_labels.detach()
-            centroids = centroids.detach()
         else:
             hard_labels, centroids = run_kmeans_faiss(
                 x=x,
