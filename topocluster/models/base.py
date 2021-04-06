@@ -61,8 +61,7 @@ class Encoder(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
-        x, _ = batch
-        encoding = self.encoder(x)
+        encoding = self.encoder(batch.x)
         loss_dict = self.get_loss(encoding, batch=batch, prefix="val/")
         self.log_dict(loss_dict)
         return loss_dict
