@@ -38,7 +38,7 @@ class Tomato(Clusterer):
         fig, ax = plt.subplots(dpi=100)
         ax.scatter(self.pers_pairs[:, 0], self.pers_pairs[:, 1], s=15, c="blue")  # type: ignore[arg-type]
         ax.plot(np.array([0, 1]), np.array([0, 1]), c="black", alpha=0.6)  # type: ignore[call-arg]
-        ax.fill_between(np.array([0, 1], np.array([0, 1])))
+        ax.fill_between(np.array([0, 1]), np.array([0, 1]))
         ax.set_xlabel("Death")
         ax.set_ylabel("Birth")
         ax.set_title("Persistence Diagram")
