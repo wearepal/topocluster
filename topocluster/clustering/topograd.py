@@ -125,7 +125,7 @@ class TopoGrad(Tomato):
         for k, v in enumerate(clusters.values()):
             cluster_labels[v] = k
         self.labels = cluster_labels
-        self.pers_pairs = torch.as_tensor(pers_pairs, device=x.device)
+        self.pers_pairs = torch.as_tensor(pers_pairs)
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.long)
         centroids = x[list(clusters.keys())]
