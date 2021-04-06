@@ -186,7 +186,7 @@ class Experiment(pl.LightningModule):
         pl.seed_everything(seed=self.seed)
         self.encoder.build(self.datamodule)
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
-        # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         self.trainer.fit(self, datamodule=self.datamodule)
         self.trainer.test(self, datamodule=self.datamodule)
         # Manually call exit for multirun compatibility
