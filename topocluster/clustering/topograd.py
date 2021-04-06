@@ -72,12 +72,11 @@ class TopoGrad(Tomato):
         scale: float,
         threshold: float,
         iters: int = 0,
-        optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.AdamW,
         lr: float = 1e-3,
     ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.iters = iters
-        self.optimizer_cls = optimizer_cls
+        self.optimizer_cls = torch.optim.AdamW
         self.lr = lr
 
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:

@@ -46,6 +46,8 @@ class TopoGradConf:
     k_rips: int = MISSING
     scale: float = MISSING
     threshold: float = MISSING
+    iters: int = 0
+    lr: float = 0.001
 
 
 @dataclass
@@ -53,5 +55,5 @@ class KmeansConf:
     _target_: str = "topocluster.clustering.Kmeans"
     n_iter: int = MISSING
     k: Optional[int] = None
-    backend: Backends = Backends.FAISS
+    backend: Backends = Backends.TORCH
     verbose: bool = False
