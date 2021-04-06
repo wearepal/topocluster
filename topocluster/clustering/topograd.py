@@ -94,24 +94,25 @@ class TopoGrad(Tomato):
         return {"saliency_loss": loss}
 
     def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+        # Run topograd on the embedding (without backpropagating through the network)
         if self.iters > 0:
             # Avoid modifying the original embedding
-            x = x.clone()
-        optimizer = self.optimizer_cls((x,), lr=self.lr)
-        with tqdm(desc="topograd", total=self.iters) as pbar:
-            for _ in range(self.iters):
-                loss = topograd_loss(
-                    pc=x,
-                    k_kde=self.k_kde,
-                    k_rips=self.k_rips,
-                    scale=self.scale,
-                    destnum=self.destnum,
-                )
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                pbar.set_postfix(loss=loss.item())
-                pbar.update()
+            x = x.detach().clone()
+            optimizer = self.optimizer_cls((x,), lr=self.lr)
+            with tqdm(desc="topograd", total=self.iters) as pbar:
+                for _ in range(self.iters):
+                    loss = topograd_loss(
+                        pc=x,
+                        k_kde=self.k_kde,
+                        k_rips=self.k_rips,
+                        scale=self.scale,
+                        destnum=self.destnum,
+                    )
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    pbar.set_postfix(loss=loss.item())
+                    pbar.update()
 
         clusters, pers_pairs = tomato(
             x.detach().cpu().numpy(),
