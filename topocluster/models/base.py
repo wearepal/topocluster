@@ -53,9 +53,8 @@ class Encoder(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
-        x, _ = batch
-        encoding = self.encoder(x)
-        loss_dict = self.get_loss(encoding, x, prefix="train/")
+        encoding = self.encoder(batch.x)
+        loss_dict = self.get_loss(encoding, batch, prefix="train/")
         total_loss = cast(Tensor, sum(loss_dict.values()))
         self.log_dict(loss_dict)
         return total_loss
