@@ -24,7 +24,7 @@ def compute_optimal_assignments(
     labels_true: np.ndarray,
     num_classes: int | None = None,
     encode: bool = True,
-) -> tuple[float, dict[int, int]]:
+) -> dict[int, int]:
     """Find an assignment of cluster to class such that the overall accuracy is maximized."""
     # row_ind maps from class ID to cluster ID: cluster_id = row_ind[class_id]
     # col_ind maps from cluster ID to class ID: class_id = row_ind[cluster_id]
@@ -36,7 +36,6 @@ def compute_optimal_assignments(
         row_ind, col_ind, _ = lapjv(-cost_matrix)
     else:
         row_ind, col_ind = linear_sum_assignment(-cost_matrix)
-    best_acc = cost_matrix[row_ind, col_ind].sum() / labels_pred.shape[0]
     assignments = {}
     for class_id, cluster_id in enumerate(col_ind):
         if decodings_true is not None:
@@ -45,7 +44,7 @@ def compute_optimal_assignments(
             cluster_id = decodings_pred[cluster_id]
         assignments[cluster_id] = class_id
 
-    return best_acc, assignments
+    return assignments
 
 
 @numba.jit(nopython=True)

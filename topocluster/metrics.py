@@ -4,7 +4,10 @@ from __future__ import annotations
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from torch import Tensor
 
-from topocluster.clustering.utils import compute_optimal_assignments
+from topocluster.clustering.utils import (
+    compute_optimal_assignments,
+    encode_arr_with_dict,
+)
 
 __all__ = ["compute_metrics"]
 
@@ -24,16 +27,17 @@ def compute_metrics(
         f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
     }
 
-    total_acc, cluster_map = compute_optimal_assignments(
-        labels_true=subgroup_id, labels_pred=preds_np
-    )
+    cluster_map = compute_optimal_assignments(labels_true=subgroup_id, labels_pred=preds_np)
 
-    logging_dict[f"{prefix}/Cluster_Acc/Total"] = total_acc
+    num_hits_all = 0
     for i, (class_id, cluster_id) in enumerate(cluster_map.items()):
         class_mask = subgroup_id == class_id
         num_matches = class_mask.sum()
         if num_matches > 0:
-            subgroup_acc = (class_mask & (preds_np == cluster_id)).sum() / num_matches
+            num_hits = (class_mask & (preds_np == cluster_id)).sum()
+            subgroup_acc = num_hits / num_matches
             logging_dict[f"{prefix}/Cluster_Acc/{i}"] = subgroup_acc
+            num_hits_all += num_hits
+    logging_dict[f"{prefix}/Cluster_Acc/Total"] = num_hits_all / len(subgroup_id)
 
     return logging_dict
