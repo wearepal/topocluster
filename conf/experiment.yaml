@@ -3,7 +3,7 @@ defaults:
   - clusterer: topograd
 
   - datamodule: umnist
-  - encoder: umnist
+  - encoder: umnist_ae
   - trainer: umnist
   - pretrainer: umnist
 
