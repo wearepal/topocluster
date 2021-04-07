@@ -80,11 +80,11 @@ class TopoGrad(Tomato):
         k_rips: int,
         scale: float,
         threshold: float,
-        iters: int = 0,
+        n_iter: int = 0,
         lr: float = 1e-3,
     ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
-        self.iters = iters
+        self.n_iter = n_iter
         self.optimizer_cls = torch.optim.AdamW
         self.lr = lr
 
@@ -104,12 +104,12 @@ class TopoGrad(Tomato):
     def __call__(self, x: Tensor, threshold: float | None = None) -> tuple[Tensor, Tensor]:
         threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)
-        if self.iters > 0:
+        if self.n_iter > 0:
             # Avoid modifying the original embedding
             x = x.detach().clone().requires_grad_(True)
             optimizer = self.optimizer_cls((x,), lr=self.lr)
-            with tqdm(desc="topograd", total=self.iters) as pbar:
-                for _ in range(self.iters):
+            with tqdm(desc="topograd", total=self.n_iter) as pbar:
+                for _ in range(self.n_iter):
                     loss = topograd_loss(
                         pc=x,
                         k_kde=self.k_kde,

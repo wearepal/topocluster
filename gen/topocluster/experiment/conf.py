@@ -28,3 +28,4 @@ class ExperimentConf:
     exp_group: Optional[str] = None
     train_eval_freq: int = 1
     checkpoint_path: Optional[str] = None
+    reduce: bool = False

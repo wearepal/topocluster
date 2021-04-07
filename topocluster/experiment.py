@@ -47,6 +47,7 @@ class Experiment(pl.LightningModule):
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
         checkpoint_path: Optional[str] = None,
+        reduce: bool = False,
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -59,6 +60,7 @@ class Experiment(pl.LightningModule):
         self.encoder = encoder
         self.clusterer = clusterer
         self.reducer = reducer
+        self.reduce = reduce
         # Trainers
         self.trainer = trainer
         self.pretrainer = pretrainer
@@ -140,7 +142,7 @@ class Experiment(pl.LightningModule):
         )
 
         self.print("Clustering using all data.")
-        if self.reducer is not None:
+        if self.reducer is not None and self.reduce:
             encodings = torch.as_tensor(
                 self.reducer.fit_transform(encodings.detach().cpu().numpy()),
                 device=encodings.device,
@@ -193,10 +195,11 @@ class Experiment(pl.LightningModule):
             monitor="val/total_loss",
             dirpath=self.artifacts_dir,
             save_top_k=1,
-            filename="best",
+            filename="pretrain_best",
             mode="max",
         )
         self.pretrainer.callbacks.append(checkpointer)
+        checkpointer.filename = "train_best"
         self.trainer.callbacks.append(checkpointer)
 
         # PRNG seeding

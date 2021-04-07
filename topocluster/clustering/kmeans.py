@@ -3,9 +3,7 @@ from enum import Enum, auto
 import time
 from typing import Optional
 
-import faiss
 import numpy as np
-from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
 
@@ -27,7 +25,7 @@ class Kmeans(Clusterer):
         self,
         n_iter: int,
         k: Optional[int] = None,
-        backend: Backends = Backends.TORCH,
+        backend: Backends = Backends.FAISS,
         verbose: bool = False,
     ):
         self.k = k
@@ -89,12 +87,14 @@ class Kmeans(Clusterer):
 
 
 def run_kmeans_torch(
-    x: torch.Tensor,
+    x: Tensor,
     num_clusters: int,
     n_iter: int = 10,
     verbose: bool = False,
 ) -> tuple[Tensor, Tensor]:
     x = x.flatten(start_dim=1)
+    from pykeops.torch import LazyTensor
+
     N, D = x.shape  # Number of samples, dimension of the ambient space
     use_cuda = x.is_cuda
     dtype = torch.float32 if use_cuda else torch.float64
@@ -143,6 +143,8 @@ def run_kmeans_faiss(
     n_iter: int,
     verbose: bool = False,
 ) -> tuple[Tensor, Tensor]:
+    import faiss
+
     x_np = x.detach().cpu().numpy()
     x_np = np.reshape(x_np, (x_np.shape[0], -1))
     _, d = x_np.shape
@@ -165,7 +167,7 @@ def run_kmeans_faiss(
         centroids = faiss.vector_float_to_array(kmeans.centroids)
         centroids = centroids.reshape(num_clusters, d)
     else:
-        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=20)
+        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=n_iter)
         kmeans.train(x_np)
         _, cluster_indexes = kmeans.index.search(x_np, 1)
         centroids = kmeans.centroids
