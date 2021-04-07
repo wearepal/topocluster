@@ -195,7 +195,7 @@ class UMNISTDataModule(VisionDataModule):
             all_data = MNIST(self.data_dir, train=True, download=True)
             val_data, train_data = prop_random_split(all_data, props=(self.val_pcnt,))
             self.train_data = DataTransformer(
-                BinarizedLabelDataset(self._undersample(train_data), threshold=self.threshold),  # type: ignore
+                BinarizedLabelDataset(train_data, threshold=self.threshold),  # type: ignore
                 self._transform(True),
             )
             self.val_data = DataTransformer(

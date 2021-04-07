@@ -90,7 +90,7 @@ class BinarizedLabelDataset(Dataset):
         x, y = self.dataset[index]
         y_bin = int(y >= self.threshold)
         s = y - y_bin * self.threshold
-        return x, s, y_bin
+        return x, y, y_bin
 
 
 def adaptive_collate(batch: list[Any]) -> Any:

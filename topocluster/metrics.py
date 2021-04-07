@@ -17,7 +17,8 @@ def compute_metrics(
     superclass_inf_np = superclass_inf.cpu().numpy()
     subgroup_inf_np = subgroup_inf.cpu().numpy()
 
-    subgroup_id = superclass_inf_np * num_subgroups + subgroup_inf_np
+    # subgroup_id = superclass_inf_np * num_subgroups + subgroup_inf_np
+    subgroup_id = subgroup_inf_np
 
     logging_dict = {
         f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),
