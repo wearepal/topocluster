@@ -39,7 +39,7 @@ class Tomato(Clusterer):
         ax.scatter(self.pers_pairs[:, 0], self.pers_pairs[:, 1], s=15, c="blue")  # type: ignore[arg-type]
         span = np.array([0, 1])
         ax.plot(span, span, c="black", alpha=0.6)  # type: ignore[call-arg]
-        ax.fill_between(span, span, 1, interpolate=True)
+        ax.fill_between(span, span, 1, interpolate=True, color="grey")
         ax.set_xlabel("Death")
         ax.set_ylabel("Birth")
         ax.set_title("Persistence Diagram")
