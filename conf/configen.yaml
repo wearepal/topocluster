@@ -36,6 +36,9 @@ configen:
     - name: torch.nn
       classes:
         - ReLU
+    - name: umap
+      classes:
+        - UMAP
     # - name: pytorch_lightning
     #   classes:
     #     - LightningDataModule

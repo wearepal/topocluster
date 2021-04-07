@@ -11,6 +11,7 @@ from pytorch_lightning.loggers import WandbLogger
 import torch
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
+from umap import UMAP
 import wandb
 
 from kit import implements
@@ -36,6 +37,7 @@ class Experiment(pl.LightningModule):
         clusterer: Clusterer,
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
+        reducer: Optional[UMAP],
         lr: float = 1.0e-3,
         weight_decay: float = 9,
         log_offline: bool = False,
@@ -56,6 +58,7 @@ class Experiment(pl.LightningModule):
         self.datamodule = datamodule
         self.encoder = encoder
         self.clusterer = clusterer
+        self.reducer = reducer
         # Trainers
         self.trainer = trainer
         self.pretrainer = pretrainer
@@ -137,6 +140,11 @@ class Experiment(pl.LightningModule):
         )
 
         self.print("Clustering using all data.")
+        if self.reducer is not None:
+            encodings = torch.as_tensor(
+                self.reducer.fit_transform(encodings.detach().cpu().numpy()),
+                device=encodings.device,
+            )
         preds = self.clusterer(encodings)[0]
         logging_dict = compute_metrics(
             preds=preds,

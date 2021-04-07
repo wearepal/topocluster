@@ -18,6 +18,7 @@ class ExperimentConf:
     clusterer: Any = MISSING  # Clusterer
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
+    reducer: Any = MISSING  # Optional[UMAP]
     lr: float = 0.001
     weight_decay: float = 9
     log_offline: bool = False
