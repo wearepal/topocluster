@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import math
 from typing import Any, Type
 
@@ -17,6 +18,8 @@ from topocluster.utils.torch_ops import compute_density_map, compute_rips
 from .tomato import Tomato, cluster, tomato
 
 __all__ = ["topograd_loss", "TopoGrad"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: int) -> Tensor:
@@ -45,6 +48,10 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
             ]
         )
     if not pd_pairs:
+        LOGGER.info(
+            "FIltering failed to yield any persistence pairs required for computation of "
+            "the topological loss. Returning 0 instead."
+        )
         return pc.new_zeros(())
     pd_pairs = torch.as_tensor(pd_pairs, device=pc.device)
     oripd = kde_dists_sorted[pd_pairs]
