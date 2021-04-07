@@ -45,6 +45,7 @@ class Encoder(pl.LightningModule):
             prefix += "/"
         loss_dict = self._get_loss(encoding=encoding, batch=batch)
         # Prepend the prefix to all keys of the loss dict
+        loss_dict[f"{prefix}/total_loss"] = cast(Tensor, sum(loss_dict.values()))
         return {prefix + key: value for key, value in loss_dict.items()}
 
     @implements(pl.LightningModule)

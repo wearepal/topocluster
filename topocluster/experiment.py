@@ -181,15 +181,15 @@ class Experiment(pl.LightningModule):
         self.pretrainer.logger = logger
         self.trainer.logger = logger
 
-        self.trainer.callbacks.append(
-            ModelCheckpoint(
-                monitor="val/total_loss",
-                dirpath=self.artifacts_dir,
-                save_top_k=1,
-                filename="best",
-                mode="max",
-            )
+        checkpointer = ModelCheckpoint(
+            monitor="val/total_loss",
+            dirpath=self.artifacts_dir,
+            save_top_k=1,
+            filename="best",
+            mode="max",
         )
+        self.pretrainer.callbacks.append(checkpointer)
+        self.trainer.callbacks.append(checkpointer)
 
         # PRNG seeding
         pl.seed_everything(seed=self.seed)
