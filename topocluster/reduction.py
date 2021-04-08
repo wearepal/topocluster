@@ -40,7 +40,8 @@ class UMAP(_UMAP, Reducer):
     @implements(Reducer)
     def fit(self, X: Tensor, y: Tensor | None) -> UMAP:
         X = X.detach().cpu().numpy()
-        y = y.detach().cpu().numpy()
+        if y is not None:
+            y = y.detach().cpu().numpy()
         super().fit(X, y)
 
         return self
