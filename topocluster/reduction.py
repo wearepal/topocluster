@@ -36,7 +36,7 @@ class NoReduce(Reducer):
         return X
 
 
-class UMAP(_UMAP, Reducer):
+class UMAP(Reducer, _UMAP):
     @implements(Reducer)
     def fit(self, X: Tensor, y: Tensor | None) -> UMAP:
         X = X.detach().cpu().numpy()
@@ -48,6 +48,6 @@ class UMAP(_UMAP, Reducer):
 
     @implements(Reducer)
     def transform(self, X: Tensor) -> Tensor:
-        X = X.detach().cpu().numpy()
-        X_transformed = _UMAP.transform(self, X)
+        X_np = X.detach().cpu().numpy()
+        X_transformed = _UMAP.transform(self, X_np)
         return torch.as_tensor(X_transformed, device=X.device)  # type: ignore
