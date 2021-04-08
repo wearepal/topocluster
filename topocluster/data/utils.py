@@ -69,21 +69,6 @@ class DataTransformer(Dataset):
         return tuple(data)
 
 
-class MaskedLabelDataset(Dataset):
-    def __init__(self, dataset: SizedDatasetProt, threshold: Optional[int] = None) -> None:
-        self.dataset = dataset
-        self.threshold = threshold
-
-    def __len__(self) -> int:
-        return len(self.dataset)
-
-    def __getitem__(self, index: int) -> tuple[Any, int]:
-        x, y = self.dataset[index]
-        if self.threshold is None or y >= self.threshold:
-            y = IGNORE_INDEX
-        return x, y
-
-
 class BinarizedLabelDataset(Dataset):
     def __init__(self, dataset: SizedDatasetProt, threshold: int) -> None:
         self.dataset = dataset

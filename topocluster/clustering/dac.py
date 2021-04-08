@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from topocluster.clustering.common import Clusterer
-from topocluster.data.utils import IGNORE_INDEX
 from topocluster.utils.torch_ops import dot_product, normalized_softmax
 
 __all__ = ["PlClusterer"]
@@ -33,23 +32,19 @@ class PlClusterer(Clusterer, nn.Module):
     ) -> dict[str, Tensor]:
         if prefix:
             prefix += "/"
-        y_labeled = y != IGNORE_INDEX
         pl_loss = self.pl_loss_fn(x, soft_labels)
-        purity_loss = F.cross_entropy(soft_labels[y_labeled], y[y_labeled])
+        purity_loss = F.cross_entropy(soft_labels[y], y[y])
         return {f"{prefix}pl_loss": pl_loss, f"{prefix}purity_loss": purity_loss}
 
 
 def cosine_and_bce(probs: Tensor, labels: Tensor) -> Tensor:
     """Cosine similarity and then binary cross entropy."""
     # cosine similarity
-    mask = labels == IGNORE_INDEX
-    probs = probs[mask]
-    labels = labels[mask]
 
     cosine_sim = dot_product(probs[:, None, :], probs).clamp(min=0, max=1)
     # binary cross entropy
     unreduced_loss = F.binary_cross_entropy(cosine_sim, labels, reduction="none")
-    return torch.mean(unreduced_loss * mask)
+    return torch.mean(unreduced_loss)
 
 
 class PlLoss(nn.Module, ABC):

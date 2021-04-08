@@ -14,7 +14,6 @@ from topocluster.clustering.utils import (
     l2_centroidal_distance,
 )
 from topocluster.data.datamodules import DataModule
-from topocluster.data.utils import IGNORE_INDEX
 from topocluster.models.base import Encoder
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
 
@@ -48,20 +47,6 @@ class Tomato(Clusterer):
 
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
         return {}
-
-    # def _get_loss(
-    #     self, x: Tensor, hard_labels: Tensor, soft_labels: Tensor, y: Tensor, prefix: str = ""
-    # ) -> Dict[str, Tensor]:
-    #     labeled = y != IGNORE_INDEX
-    #     _, cluster_map = compute_optimal_assignments(
-    #         labels_pred=hard_labels[labeled].cpu().detach().numpy(),
-    #         labels_true=y[labeled].cpu().detach().numpy(),
-    #         encode=True,
-    #     )
-    #     permute_inds = list(cluster_map.values())
-    #     soft_labels_permuted = soft_labels[labeled][:, permute_inds]
-    #     purity_loss = F.cross_entropy(soft_labels_permuted, y[labeled])
-    #     return {f"{prefix}purity_loss": purity_loss}
 
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         return None
