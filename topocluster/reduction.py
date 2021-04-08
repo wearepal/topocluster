@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.tensor import Tensor
 from umap import UMAP as _UMAP
@@ -42,12 +42,12 @@ class UMAP(_UMAP, Reducer):
         X = X.detach().cpu().numpy()
         if y is not None:
             y = y.detach().cpu().numpy()
-        super().fit(X, y)
+        _UMAP.fit(self, X, y)
 
         return self
 
     @implements(Reducer)
     def transform(self, X: Tensor) -> Tensor:
         X = X.detach().cpu().numpy()
-        X_transformed = super().transform(X)
+        X_transformed = _UMAP.transform(self, X)
         return torch.as_tensor(X_transformed, device=X.device)  # type: ignore
