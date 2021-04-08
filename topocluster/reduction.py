@@ -21,6 +21,10 @@ class Reducer(BaseEstimator, ABC):
     def transform(self, X: Tensor, y: Tensor | None = None) -> Tensor:
         ...
 
+    def fit_transform(self, X: Tensor, y: Tensor | None = None) -> Tensor:
+        self.fit(X, y)
+        return self.transform(X)
+
 
 class NoReduce(Reducer):
     @implements(Reducer)
