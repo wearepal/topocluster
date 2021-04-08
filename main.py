@@ -2,7 +2,7 @@ import hydra
 from hydra.utils import instantiate, to_absolute_path
 from omegaconf import OmegaConf
 
-from gen.pytorch_lightning.conf import TrainerConf
+from gen.pytorch_lightning.trainer.conf import TrainerConf
 from gen.topocluster.clustering.conf import (
     GMMConf,
     KmeansConf,
@@ -12,7 +12,7 @@ from gen.topocluster.clustering.conf import (
 from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
-from gen.umap.conf import UMAPConf
+from gen.topocluster.reduction.conf import NoReduceConf, UMAPConf
 from kit import SchemaRegistration
 
 sr = SchemaRegistration()
@@ -36,6 +36,7 @@ with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as gro
 
 with sr.new_group(group_name="schema/reducer", target_path="reducer") as group:
     group.add_option(name="umap", config_class=UMAPConf)
+    group.add_option(name="none", config_class=NoReduceConf)
 # Definne the 'trainer'/'pretrainer' groups - these are singleton (containing one schema) groups
 with sr.new_group(group_name="schema/trainer", target_path="trainer") as group:
     group.add_option(name="trainer", config_class=TrainerConf)

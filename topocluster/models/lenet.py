@@ -5,6 +5,7 @@ from torch import Tensor
 import torch
 import torch.nn as nn
 
+from kit import implements
 from topocluster.data.datamodules import VisionDataModule
 from topocluster.data.utils import Batch
 from topocluster.models.base import Encoder
@@ -17,6 +18,7 @@ class LeNet4(Encoder):
     Adapted from https://github.com/activatedgeek/LeNet-5
     """
 
+    @implements(Encoder)
     def _build(self, datamodule: VisionDataModule) -> nn.Module:
 
         encoder = nn.Sequential(
@@ -37,6 +39,7 @@ class LeNet4(Encoder):
         self.fc(encoder(torch.ones(datamodule.dims)[None]))
         return encoder
 
+    @implements(Encoder)
     def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
         logits = self.fc(encoding)
         targets = batch.y

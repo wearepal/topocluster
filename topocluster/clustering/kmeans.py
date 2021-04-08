@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from kit import implements
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
@@ -33,9 +34,11 @@ class Kmeans(Clusterer):
         self.backend = backend
         self.verbose = verbose
 
+    @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         self.k = datamodule.num_classes * datamodule.num_subgroups
 
+    @implements(Clusterer)
     def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
         if self.k is None:
             raise AttributeError("Value for 'k' not yet set.")
@@ -57,6 +60,7 @@ class Kmeans(Clusterer):
 
         return hard_labels, soft_labels
 
+    @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
         return {}
 

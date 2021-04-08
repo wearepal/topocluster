@@ -11,7 +11,6 @@ from pytorch_lightning.loggers import WandbLogger
 import torch
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
-from umap import UMAP
 import wandb
 
 from kit import implements
@@ -21,6 +20,7 @@ from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import Batch
 from topocluster.metrics import compute_metrics
 from topocluster.models.base import Encoder
+from topocluster.reduction import Reducer
 
 
 __all__ = ["Experiment"]
@@ -37,7 +37,7 @@ class Experiment(pl.LightningModule):
         clusterer: Clusterer,
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
-        reducer: Optional[UMAP],
+        reducer: Reducer,
         lr: float = 1.0e-3,
         weight_decay: float = 9,
         log_offline: bool = False,
@@ -47,7 +47,6 @@ class Experiment(pl.LightningModule):
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
         checkpoint_path: Optional[str] = None,
-        reduce: bool = False,
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -60,7 +59,6 @@ class Experiment(pl.LightningModule):
         self.encoder = encoder
         self.clusterer = clusterer
         self.reducer = reducer
-        self.reduce = reduce
         # Trainers
         self.trainer = trainer
         self.pretrainer = pretrainer
@@ -142,11 +140,7 @@ class Experiment(pl.LightningModule):
         )
 
         self.print("Clustering using all data.")
-        if self.reducer is not None and self.reduce:
-            encodings = torch.as_tensor(
-                self.reducer.fit_transform(encodings.detach().cpu().numpy()),
-                device=encodings.device,
-            )
+        encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)[0]
         logging_dict = compute_metrics(
             preds=preds,

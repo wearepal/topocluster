@@ -18,7 +18,7 @@ class ExperimentConf:
     clusterer: Any = MISSING  # Clusterer
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
-    reducer: Any = MISSING  # Optional[UMAP]
+    reducer: Any = MISSING  # Reducer
     lr: float = 0.001
     weight_decay: float = 9
     log_offline: bool = False
@@ -28,4 +28,3 @@ class ExperimentConf:
     exp_group: Optional[str] = None
     train_eval_freq: int = 1
     checkpoint_path: Optional[str] = None
-    reduce: bool = False

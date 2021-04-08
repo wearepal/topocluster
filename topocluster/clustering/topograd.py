@@ -1,15 +1,14 @@
 from __future__ import annotations
 import logging
 import math
-from typing import Any, Type
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import Tensor
-import torch.nn as nn
 from tqdm import tqdm
 
+from kit import implements
+from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
 from topocluster.models.base import Encoder
@@ -88,9 +87,11 @@ class TopoGrad(Tomato):
         self.optimizer_cls = torch.optim.AdamW
         self.lr = lr
 
+    @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         self.destnum = datamodule.num_subgroups * datamodule.num_classes
 
+    @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
         if not hasattr(self, "destnum"):
             raise AttributeError(
@@ -101,6 +102,7 @@ class TopoGrad(Tomato):
         )
         return {"saliency_loss": loss}
 
+    @implements(Clusterer)
     def __call__(self, x: Tensor, threshold: float | None = None) -> tuple[Tensor, Tensor]:
         threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)

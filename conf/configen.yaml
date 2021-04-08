@@ -36,10 +36,13 @@ configen:
     - name: torch.nn
       classes:
         - ReLU
-    - name: umap
+    - name: topocluster.reduction
       classes:
         - UMAP
-    # - name: pytorch_lightning
+        - NoReduce
+    - name: pytorch_lightning.core
+      classes:
+        - LightningDataModule
+    # - name: pytorch_lightning.trainer
     #   classes:
-    #     - LightningDataModule
     #     - Trainer
