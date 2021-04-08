@@ -1,7 +1,6 @@
 from __future__ import annotations
-from collections import namedtuple
 from functools import partial
-from typing import Any, Callable, Final, Optional, Protocol, Union
+from typing import Any, Callable, Final, NamedTuple, Optional, Protocol, Union
 
 from PIL import Image
 import torch
@@ -12,8 +11,8 @@ from torch.utils.data._utils.collate import (
     np_str_obj_array_pattern,
 )
 
+
 __all__ = [
-    "IGNORE_INDEX",
     "ImageDims",
     "MaskedLabelDataset",
     "Transform",
@@ -24,10 +23,17 @@ __all__ = [
 ]
 
 
-ImageDims = namedtuple("ImageDims", ["C", "H", "W"])
-Batch = namedtuple("Batch", ["x", "s", "y"])
+class ImageDims(NamedTuple):
+    C: int
+    H: int
+    W: int
+
+class Batch(NamedTuple):
+    x: Tensor
+    s: Tensor
+    y: Tensor
+
 Transform = Callable[[Union[Image.Image, Tensor]], Tensor]
-IGNORE_INDEX: Final = -100
 
 
 def _cast(collate_fn: Callable[[list[Any]], Any], cast_to: type, inputs: list[Any]):

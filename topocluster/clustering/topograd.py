@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from kit import implements
 from topocluster.clustering.common import Clusterer
-from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
 from topocluster.models.base import Encoder
 from topocluster.utils.torch_ops import compute_density_map, compute_rips

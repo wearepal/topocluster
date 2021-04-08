@@ -35,7 +35,7 @@ flake8 = "^3.8.4"
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ['py39']
 skip-string-normalization = true
 include = '\.pyi?$'
 exclude = '''

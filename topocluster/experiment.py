@@ -156,11 +156,11 @@ class Experiment(pl.LightningModule):
                     self.clusterer.plot()
                 )
             }
-            if self.clusterer.threshold < 1.0:
-                self.clusterer(encodings, threshold=1.0)
-                pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(
-                    self.clusterer.plot()
-                )
+            # if self.clusterer.threshold < 1.0:
+            #     self.clusterer(encodings, threshold=1.0)
+            #     pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(
+            #         self.clusterer.plot()
+            #     )
             plt.close("all")
 
             self.logger.experiment.log(pers_diagrams)
