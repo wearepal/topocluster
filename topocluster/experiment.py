@@ -141,7 +141,7 @@ class Experiment(pl.LightningModule):
 
         self.print("Clustering using all data.")
         encodings = self.reducer.fit_transform(encodings)
-        preds = self.clusterer(encodings)[0]
+        preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
             subgroup_inf=subgroup_inf,

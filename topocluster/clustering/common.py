@@ -26,5 +26,5 @@ class Clusterer:
         return {prefix + key: value for key, value in loss_dict.items()}
 
     @abstractmethod
-    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor) -> Tensor:
         ...

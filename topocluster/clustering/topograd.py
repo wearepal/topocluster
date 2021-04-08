@@ -103,7 +103,7 @@ class TopoGrad(Tomato):
         return {"saliency_loss": loss}
 
     @implements(Clusterer)
-    def __call__(self, x: Tensor, threshold: float | None = None) -> tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
         threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)
         if self.n_iter > 0:
@@ -139,8 +139,7 @@ class TopoGrad(Tomato):
         self.pers_pairs = torch.as_tensor(pers_pairs)
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.long)
-        centroids = x[list(clusters.keys())]
-        soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
-        hard_labels = cluster_labels
+        # centroids = x[list(clusters.keys())]
+        # soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
 
-        return hard_labels, soft_labels
+        return cluster_labels

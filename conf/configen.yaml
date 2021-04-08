@@ -29,10 +29,12 @@ configen:
         - UMNISTDataModule
     - name: topocluster.clustering
       classes:
-        - Tomato
-        - GMM
-        - TopoGrad
         - Kmeans
+        - Tomato
+        - TopoGrad
+        - GaussianMixture
+        - SpectralClustering
+        - AgglomerativeClustering
     - name: torch.nn
       classes:
         - ReLU

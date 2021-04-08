@@ -39,26 +39,24 @@ class Kmeans(Clusterer):
         self.k = datamodule.num_classes * datamodule.num_subgroups
 
     @implements(Clusterer)
-    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    def __call__(self, x: Tensor) -> Tensor:
         if self.k is None:
             raise AttributeError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
-            hard_labels, centroids = run_kmeans_torch(
+            hard_labels, _ = run_kmeans_torch(
                 x,
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
         else:
-            hard_labels, centroids = run_kmeans_faiss(
+            hard_labels, _ = run_kmeans_faiss(
                 x=x,
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
-        soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
-
-        return hard_labels, soft_labels
+        return hard_labels
 
     @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:

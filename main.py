@@ -4,8 +4,10 @@ from omegaconf import OmegaConf
 
 from gen.pytorch_lightning.trainer.conf import TrainerConf
 from gen.topocluster.clustering.conf import (
-    GMMConf,
+    AgglomerativeClusteringConf,
+    GaussianMixtureConf,
     KmeansConf,
+    SpectralClusteringConf,
     TomatoConf,
     TopoGradConf,
 )
@@ -29,10 +31,12 @@ with sr.new_group(group_name="schema/encoder", target_path="encoder") as group:
 
 with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as group:
     group.add_option(name="kmeans", config_class=KmeansConf)
-    group.add_option(name="gmm", config_class=GMMConf)
-    # group.add_option(name="plc", config_class=PlClustererConf)
     group.add_option(name="topograd", config_class=TopoGradConf)
     group.add_option(name="tomato", config_class=TomatoConf)
+    group.add_option(name="agglom", config_class=AgglomerativeClusteringConf)
+    group.add_option(name="gmm", config_class=GaussianMixtureConf)
+    group.add_option(name="spectral", config_class=SpectralClusteringConf)
+    # group.add_option(name="plc", config_class=PlClustererConf)
 
 with sr.new_group(group_name="schema/reducer", target_path="reducer") as group:
     group.add_option(name="umap", config_class=UMAPConf)
