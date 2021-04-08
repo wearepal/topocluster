@@ -1,13 +1,14 @@
 """Functions for computing metrics."""
 from __future__ import annotations
 
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import (
+    adjusted_mutual_info_score,
+    adjusted_rand_score,
+    normalized_mutual_info_score,
+)
 from torch import Tensor
 
-from topocluster.clustering.utils import (
-    compute_optimal_assignments,
-    encode_arr_with_dict,
-)
+from topocluster.clustering.utils import compute_optimal_assignments
 
 __all__ = ["compute_metrics"]
 
@@ -24,6 +25,7 @@ def compute_metrics(
 
     logging_dict = {
         f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),
+        f"{prefix}/AMI": adjusted_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
         f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
     }
 
