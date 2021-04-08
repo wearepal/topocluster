@@ -1,6 +1,6 @@
 from __future__ import annotations
 from functools import partial
-from typing import Any, Callable, Final, NamedTuple, Optional, Protocol, Union
+from typing import Any, Callable, NamedTuple, Protocol, Union
 
 from PIL import Image
 import torch
@@ -14,7 +14,6 @@ from torch.utils.data._utils.collate import (
 
 __all__ = [
     "ImageDims",
-    "MaskedLabelDataset",
     "Transform",
     "DataTransformer",
     "SizedDatasetProt",

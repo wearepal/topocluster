@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Mapping, Tuple, Union
+from typing import Any, Dict, List, Tuple
 import warnings
 
 import matplotlib.pyplot as plt
@@ -9,10 +9,7 @@ import torch
 from torch import Tensor
 import torch.nn.functional as F
 
-from topocluster.clustering.utils import (
-    compute_optimal_assignments,
-    l2_centroidal_distance,
-)
+from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
 from topocluster.models.base import Encoder
 from topocluster.utils.numpy_ops import compute_density_map, compute_rips
