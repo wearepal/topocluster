@@ -129,7 +129,7 @@ class TopoGrad(Tomato):
             k_kde=self.k_kde,
             k_rips=self.k_rips,
             scale=self.scale,
-            threshold=self.threshold,
+            threshold=threshold,
         )
         cluster_labels = np.empty(x.shape[0])
         for k, v in enumerate(clusters.values()):

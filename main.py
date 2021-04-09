@@ -1,3 +1,6 @@
+import logging
+import os
+
 import hydra
 from hydra.utils import instantiate, to_absolute_path
 from omegaconf import OmegaConf
@@ -16,6 +19,8 @@ from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
 from gen.topocluster.reduction.conf import NoReduceConf, UMAPConf
 from kit import SchemaRegistration
+
+LOGGER = logging.getLogger(__name__)
 
 sr = SchemaRegistration()
 sr.register(path="experiment_schema", config_class=ExperimentConf)
@@ -50,6 +55,7 @@ with sr.new_group(group_name="schema/pretrainer", target_path="pretrainer") as g
 
 @hydra.main(config_path="conf", config_name="experiment")
 def launcher(cfg: ExperimentConf) -> None:
+    LOGGER.info(f"Current working directory: f{os.getcwd()}")
     cfg.datamodule.data_dir = to_absolute_path(cfg.datamodule.data_dir)
     exp = instantiate(cfg, _recursive_=True)
     exp.start(OmegaConf.to_container(cfg, enum_to_str=True))

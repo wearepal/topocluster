@@ -28,7 +28,7 @@ __all__ = ["Experiment"]
 
 class Experiment(pl.LightningModule):
 
-    artifacts_dir: ClassVar[Path] = Path("artifacts_dir")
+    artifacts_dir: ClassVar[Path] = Path("artifacts")
 
     def __init__(
         self,
@@ -46,14 +46,12 @@ class Experiment(pl.LightningModule):
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
-        checkpoint_path: Optional[str] = None,
     ):
         super().__init__()
         self.log_offline = log_offline
         self.exp_group = exp_group
         self.seed = seed
         self.train_eval_freq = train_eval_freq
-        self.checkpoint_path = checkpoint_path
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
@@ -90,7 +88,7 @@ class Experiment(pl.LightningModule):
         return total_loss, loss_dict
 
     @implements(pl.LightningModule)
-    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor | None]:
+    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
         encoding = cast(Tensor, self.encoder(batch.x))
         res_dict = {
             "encoding": encoding,
@@ -150,20 +148,14 @@ class Experiment(pl.LightningModule):
             num_subgroups=self.datamodule.num_subgroups,
         )
 
-        if isinstance(self.clusterer, Tomato):
+        if isinstance(self.clusterer, Tomato) and self.clusterer.threshold == 1:
             pers_diagrams = {
                 f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
                     self.clusterer.plot()
                 )
             }
-            # if self.clusterer.threshold < 1.0:
-            #     self.clusterer(encodings, threshold=1.0)
-            #     pers_diagrams[f"{stage}/pers_diagram_[thresh=1.0]"] = wandb.Image(
-            #         self.clusterer.plot()
-            #     )
-            plt.close("all")
-
             self.logger.experiment.log(pers_diagrams)
+            plt.close("all")
 
         self.log_dict(logging_dict)
 
@@ -171,6 +163,7 @@ class Experiment(pl.LightningModule):
         self.datamodule.setup()
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
+        self.print(f"Artifacts directory located at {self.artifacts_dir.resolve()}")
 
         logger = WandbLogger(
             entity="predictive-analytics-lab",
@@ -185,16 +178,16 @@ class Experiment(pl.LightningModule):
         self.pretrainer.logger = logger
         self.trainer.logger = logger
 
-        checkpointer = ModelCheckpoint(
+        checkpointer_kwargs = dict(
             monitor="val/total_loss",
             dirpath=self.artifacts_dir,
             save_top_k=1,
-            filename="pretrain_best",
             mode="max",
         )
-        self.pretrainer.callbacks.append(checkpointer)
-        checkpointer.filename = "train_best"
-        self.trainer.callbacks.append(checkpointer)
+        self.pretrainer.callbacks.append(
+            ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best")
+        )
+        self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
 
         # PRNG seeding
         pl.seed_everything(seed=self.seed)
@@ -202,16 +195,6 @@ class Experiment(pl.LightningModule):
         self.encoder.build(self.datamodule)
         # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
-        # Load weights/hparams from checkpoint-path if provided
-        if self.checkpoint_path is not None:
-            self = self.load_from_checkpoint(
-                checkpoint_path=self.checkpoint_path,
-                datamodule=self.datamodule,
-                encoder=self.encoder,
-                clusterer=self.clusterer,
-                pretrainer=self.pretrainer,
-                trainer=self.trainer,
-            )
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Training phase
