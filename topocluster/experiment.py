@@ -137,7 +137,6 @@ class Experiment(pl.LightningModule):
             torch.cat(superclass_inf, dim=0),
         )
 
-        self.print("Clustering using all data.")
         encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
