@@ -55,7 +55,7 @@ with sr.new_group(group_name="schema/pretrainer", target_path="pretrainer") as g
 
 @hydra.main(config_path="conf", config_name="experiment")
 def launcher(cfg: ExperimentConf) -> None:
-    LOGGER.info(f"Current working directory: f{os.getcwd()}")
+    print(f"Current working directory: f{os.getcwd()}")
     cfg.datamodule.data_dir = to_absolute_path(cfg.datamodule.data_dir)
     exp = instantiate(cfg, _recursive_=True)
     exp.start(OmegaConf.to_container(cfg, enum_to_str=True))

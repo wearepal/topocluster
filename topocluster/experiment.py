@@ -163,7 +163,8 @@ class Experiment(pl.LightningModule):
         self.datamodule.setup()
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
-        self.print(f"Artifacts directory located at {self.artifacts_dir.resolve()}")
+        self.print(f"Current working directory: f{os.getcwd()}")
+        self.print(f"Artifacts directory located at: {self.artifacts_dir.resolve()}")
 
         logger = WandbLogger(
             entity="predictive-analytics-lab",
@@ -173,6 +174,7 @@ class Experiment(pl.LightningModule):
         )
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
+            self.print("-----\n" + repr(raw_config) + "\n-----")
             hparams.update(raw_config)
         logger.log_hyperparams(hparams)
         self.pretrainer.logger = logger
