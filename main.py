@@ -20,7 +20,6 @@ from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
 from gen.topocluster.reduction.conf import NoReduceConf, UMAPConf
 from kit import SchemaRegistration
 
-LOGGER = logging.getLogger(__name__)
 
 sr = SchemaRegistration()
 sr.register(path="experiment_schema", config_class=ExperimentConf)
