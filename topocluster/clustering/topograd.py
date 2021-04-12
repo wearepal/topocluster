@@ -97,10 +97,10 @@ class TopoGrad(Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
-        loss = topoclustergrad.apply(x, self.k_rips, self.k_kde, self.scale, self.destnum)
-        # loss = topograd_loss(
-        #     pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
-        # )
+        # loss = topoclustergrad.apply(x, self.k_rips, self.k_kde, self.scale, self.destnum)
+        loss = topograd_loss(
+            pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
+        )
         return {"saliency_loss": loss}
 
     @implements(Clusterer)
@@ -134,7 +134,5 @@ class TopoGrad(Tomato):
         self.pers_pairs = torch.as_tensor(pers_pairs)
 
         cluster_labels = torch.as_tensor(cluster_labels, dtype=torch.long)
-        # centroids = x[list(clusters.keys())]
-        # soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
 
         return cluster_labels
