@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from kit import implements
 from topocluster.clustering.common import Clusterer
+from topocluster.clustering.topograd_orig import topoclustergrad
 from topocluster.data.datamodules import DataModule
 from topocluster.models.base import Encoder
 from topocluster.utils.torch_ops import compute_density_map, compute_rips
@@ -96,9 +97,10 @@ class TopoGrad(Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
-        loss = topograd_loss(
-            pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
-        )
+        loss = topoclustergrad.apply(x, self.k_rips, self.k_kde, self.scale, self.destnum)
+        # loss = topograd_loss(
+        #     pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
+        # )
         return {"saliency_loss": loss}
 
     @implements(Clusterer)
@@ -111,13 +113,7 @@ class TopoGrad(Tomato):
             optimizer = self.optimizer_cls((x,), lr=self.lr)
             with tqdm(desc="topograd", total=self.n_iter) as pbar:
                 for _ in range(self.n_iter):
-                    loss = topograd_loss(
-                        pc=x,
-                        k_kde=self.k_kde,
-                        k_rips=self.k_rips,
-                        scale=self.scale,
-                        destnum=self.destnum,
-                    )
+                    loss = self.get_loss(x=x)["saliency_loss"]
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
