@@ -280,7 +280,7 @@ class topoclustergrad(torch.autograd.Function):
     @staticmethod
     def forward(ctx, pc, k1, k2, tau1, destnum):
 
-        pc = pc.detach().numpy()
+        pc = pc.detach().cpu().numpy()
         #         print(pc)
         f, I1 = approximate(pc, k2, tau1)
         #         print('this is f: ')
