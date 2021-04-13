@@ -107,7 +107,7 @@ def knn(
     X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
     D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
     indKNN = D_ij.argKmin(k, dim=1)  # Grid <-> Samples, (M**2, K) integer tensor
-    # Workaround for pykeops urrently not supporting differentiation through Kmin
+    # Workaround for pykeops currently not supporting differentiation through Kmin
     to_nn_alt = kernel(pc[:, None], pc[indKNN, :]).sum(-1)
 
     return to_nn_alt, indKNN
