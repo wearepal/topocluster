@@ -20,7 +20,7 @@ class ExperimentConf:
     pretrainer: Any = MISSING  # Trainer
     reducer: Any = MISSING  # Reducer
     lr: float = 0.001
-    weight_decay: float = 9
+    weight_decay: float = 0
     log_offline: bool = False
     seed: Optional[int] = 42
     enc_loss_w: float = 1.0
