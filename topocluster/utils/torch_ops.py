@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Callable, Tuple, Type, Union
+from typing import Any, Callable
 
 from pykeops.torch import LazyTensor
 import torch
@@ -53,7 +53,7 @@ def sample_concrete(logits: Tensor, temperature: float) -> Tensor:
         Tensor: Samples from a concrete distribution with the
         given temperature.
     """
-    Concrete: Union[Type[td.RelaxedBernoulli], Type[td.RelaxedOneHotCategorical]]
+    Concrete: type[td.RelaxedBernoulli]| type[td.RelaxedOneHotCategorical]
     if logits.dim() <= 1 or logits.size(1) <= 1:
         Concrete = td.RelaxedBernoulli
     else:
@@ -102,7 +102,7 @@ def compute_rips(pc: Tensor, k: int) -> Tensor:
 
 def knn(
     pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
     X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
     D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
