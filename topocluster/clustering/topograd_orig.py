@@ -166,9 +166,7 @@ def major(pc, k1, k2, tau1, destnum, learning_rate, epoch_num):
                     * (f[i[0]] - dest[0])
                     / tau1
                     / len(nochangepairs)
-                    * np.exp(
-                        -np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / tau1
-                    )
+                    * np.exp(-np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / tau1)
                 )
                 direction = pc[i[0]] - pc[I1[i[0]]]
                 pc[I1[i[0]]] = pc[I1[i[0]]] - learning_rate * multp(direction, coeff)
@@ -178,9 +176,7 @@ def major(pc, k1, k2, tau1, destnum, learning_rate, epoch_num):
                     * (f[i[1]] - dest[1])
                     / tau1
                     / len(nochangepairs)
-                    * np.exp(
-                        -np.linalg.norm(pc[i[1]] - pc[I1[i[1]]], axis=1) ** 2 / tau1
-                    )
+                    * np.exp(-np.linalg.norm(pc[i[1]] - pc[I1[i[1]]], axis=1) ** 2 / tau1)
                 )
                 direction1 = pc[i[1]] - pc[I1[i[1]]]
                 pc[I1[i[1]]] = pc[I1[i[1]]] - learning_rate * multp(direction1, coeff1)
@@ -279,6 +275,7 @@ def rips_graph(point_cloud, k):
 class topoclustergrad(torch.autograd.Function):
     @staticmethod
     def forward(ctx, pc, k1, k2, tau1, destnum):
+        ctx.device = pc.device
 
         pc = pc.detach().cpu().numpy()
         #         print(pc)
@@ -349,7 +346,7 @@ class topoclustergrad(torch.autograd.Function):
             torch.tensor(f),
             torch.tensor(sorted_idxs1),
         )
-        return torch.tensor(weakdist + strongdist)
+        return torch.tensor(weakdist + strongdist, device=ctx.device)
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -404,9 +401,7 @@ class topoclustergrad(torch.autograd.Function):
                     / dist
                     * (f[i[0]] - dest[0])
                     / tau1
-                    * np.exp(
-                        -np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / tau1
-                    )
+                    * np.exp(-np.linalg.norm(pc[i[0]] - pc[I1[i[0]]], axis=1) ** 2 / tau1)
                 )
                 direction = pc[i[0]] - pc[I1[i[0]]]
                 grad_input[I1[i[0]]] += multp(direction, coeff)
@@ -416,9 +411,7 @@ class topoclustergrad(torch.autograd.Function):
                     * (f[i[1]] - dest[1])
                     / tau1
                     / len(nochangepairs)
-                    * np.exp(
-                        -np.linalg.norm(pc[i[1]] - pc[I1[i[1]]], axis=1) ** 2 / tau1
-                    )
+                    * np.exp(-np.linalg.norm(pc[i[1]] - pc[I1[i[1]]], axis=1) ** 2 / tau1)
                 )
                 direction1 = pc[i[1]] - pc[I1[i[1]]]
                 grad_input[I1[i[1]]] += multp(direction1, coeff1)
@@ -429,7 +422,13 @@ class topoclustergrad(torch.autograd.Function):
         #         print(pc)
         #         print(sorted_idxs1)
         #         print(torch.tensor(grad_input,dtype = torch.float64))
-        return torch.tensor(grad_input, dtype=torch.float64), None, None, None, None
+        return (
+            torch.tensor(grad_input, dtype=torch.float64, device=ctx.device),
+            None,
+            None,
+            None,
+            None,
+        )
 
 
 def newI1(I1, sortrule):
