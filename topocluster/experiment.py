@@ -39,7 +39,7 @@ class Experiment(pl.LightningModule):
         pretrainer: pl.Trainer,
         reducer: Reducer,
         lr: float = 1.0e-3,
-        weight_decay: float = 9,
+        weight_decay: float = 0,
         log_offline: bool = False,
         seed: Optional[int] = 42,
         enc_loss_w: float = 1.0,
