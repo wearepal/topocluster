@@ -27,4 +27,4 @@ class ExperimentConf:
     clust_loss_w: float = 1.0
     exp_group: Optional[str] = None
     train_eval_freq: int = 1
-    enc_freeze_depth: int = 0
+    enc_freeze_depth: Optional[int] = 0
