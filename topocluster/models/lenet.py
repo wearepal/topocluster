@@ -19,7 +19,7 @@ class LeNet4(Encoder):
     """
 
     @implements(Encoder)
-    def _build(self, datamodule: VisionDataModule) -> nn.Module:
+    def _build(self, datamodule: VisionDataModule) -> tuple[nn.Module, int]:
 
         encoder = nn.Sequential(
             nn.LazyConv2d(6, kernel_size=(5, 5)),
@@ -36,8 +36,8 @@ class LeNet4(Encoder):
         self.fc = nn.LazyLinear(logits_dim)
         self.criterion = nn.CrossEntropyLoss() if logits_dim > 2 else nn.BCEWithLogitsLoss()
         # Lazy initialization
-        self.fc(encoder(torch.ones(datamodule.dims)[None]))
-        return encoder
+        self.fc(latent_dim := encoder(torch.ones(datamodule.dims)[None]))
+        return encoder, latent_dim
 
     @implements(Encoder)
     def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:

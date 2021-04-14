@@ -38,6 +38,7 @@ class TopoGradConf:
     threshold: float = MISSING
     n_iter: int = 0
     lr: float = 0.001
+    add_bias: bool = False
 
 
 @dataclass

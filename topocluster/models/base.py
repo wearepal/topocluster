@@ -20,17 +20,18 @@ class Encoder(pl.LightningModule):
     """Base class for AutoEncoder models."""
 
     encoder: nn.Module
+    latent_dim: int
 
     def __init__(self, lr: float = 1.0e-3) -> None:
         super().__init__()
         self.lr = lr
 
     @abstractmethod
-    def _build(self, datamodule: DataModule) -> nn.Module:
+    def _build(self, datamodule: DataModule) -> tuple[nn.Module, int]:
         ...
 
     def build(self, datamodule: DataModule) -> None:
-        self.encoder = self._build(datamodule)
+        self.encoder, self.latent_dim = self._build(datamodule)
 
     @implements(nn.Module)
     def forward(self, inputs: Tensor) -> Tensor:
