@@ -36,6 +36,13 @@ class Encoder(pl.LightningModule):
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
 
+    @implements(pl.LightningModule)
+    def freeze(self, depth: int | None = None) -> None:
+        for param in list(self.encoder.parameters())[:depth]:
+            param.requires_grad = False
+
+        self.eval()
+
     @abstractmethod
     def _get_loss(self, encoding: Tensor, batch: Batch, prefix: str = "") -> dict[str, Tensor]:
         ...

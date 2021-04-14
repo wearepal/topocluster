@@ -46,6 +46,7 @@ class Experiment(pl.LightningModule):
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1,
+        enc_freeze_depth: int = 0,
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -66,6 +67,7 @@ class Experiment(pl.LightningModule):
         # Pre-factors
         self.enc_loss_w = enc_loss_w
         self.clust_loss_w = clust_loss_w
+        self.enc_freeze_depth = enc_freeze_depth
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
@@ -199,6 +201,8 @@ class Experiment(pl.LightningModule):
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Training phase
+        if self.enc_freeze_depth:
+            self.encoder.freeze(depth=self.enc_freeze_depth)
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
