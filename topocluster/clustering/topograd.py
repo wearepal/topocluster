@@ -118,7 +118,9 @@ class TopoGrad(Tomato, nn.Module):
             x = x.detach()
             if self.add_bias is None:
                 x = x.clone().requires_grad_(True)
-            optimizer = self.optimizer_cls((x,), lr=self.lr)
+                optimizer = self.optimizer_cls((x,), lr=self.lr)
+            else:
+                optimizer = self.optimizer_cls((self.bias,), lr=self.lr)
             with tqdm(desc="topograd", total=self.n_iter) as pbar:
                 for _ in range(self.n_iter):
                     loss = self.get_loss(x=x)["saliency_loss"]
