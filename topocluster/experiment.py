@@ -85,7 +85,7 @@ class Experiment(pl.LightningModule):
         if self.clust_loss_w > 0:
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
-            total_loss += self.enc_loss_w * sum(clust_loss_dict.values())
+            total_loss += self.clust_loss_w * sum(clust_loss_dict.values())
         loss_dict[f"{stage}/total_loss"] = total_loss
         return total_loss, loss_dict
 
