@@ -5,6 +5,7 @@
 # flake8: noqa
 
 from dataclasses import dataclass, field
+from omegaconf import MISSING
 from typing import Any
 
 
@@ -53,3 +54,9 @@ class UMAPConf:
 @dataclass
 class NoReduceConf:
     _target_: str = "topocluster.reduction.NoReduce"
+
+
+@dataclass
+class RandomProjConf:
+    _target_: str = "topocluster.reduction.RandomProj"
+    proj_dim: int = MISSING

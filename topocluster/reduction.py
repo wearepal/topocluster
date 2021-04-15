@@ -3,19 +3,19 @@ from abc import ABC, abstractmethod
 
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
+import torch.nn as nn
 from torch.tensor import Tensor
 from umap import UMAP as _UMAP
 
 from kit import implements
 
 
-__all__ = ["Reducer", "NoReduce", "UMAP"]
+__all__ = ["Reducer", "NoReduce", "UMAP", "RandomProj"]
 
 
 class Reducer(BaseEstimator, ABC):
-    @abstractmethod
     def fit(self, X: Tensor, y: Tensor | None = None) -> Reducer:
-        ...
+        return self
 
     @abstractmethod
     def transform(self, X: Tensor, y: Tensor | None = None) -> Tensor:
@@ -51,3 +51,16 @@ class UMAP(Reducer, _UMAP):
         X_np = X.detach().cpu().numpy()
         X_transformed = _UMAP.transform(self, X_np)
         return torch.as_tensor(X_transformed, device=X.device)  # type: ignore
+
+
+class RandomProj(Reducer):
+
+    def __init__(self, proj_dim: int) -> None:
+        super().__init__()
+        self.proj_dim = proj_dim
+        self.proj_matrix = nn.Parameter(torch.randn(1, proj_dim), requires_grad=False)
+
+    @implements(Reducer)
+    def transform(self, X: Tensor) -> Tensor:
+        return X @ self.proj_matrix
+
