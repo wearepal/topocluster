@@ -106,7 +106,7 @@ class Experiment(pl.LightningModule):
         self,
         outputs: list[dict[str, Tensor]],
     ) -> None:
-        if (self.current_epoch % self.train_eval_freq) == 0:
+        if self.current_epoch > 0 and (not (self.current_epoch % self.train_eval_freq)):
             self._epoch_end(outputs=outputs, stage="train")
 
     @implements(pl.LightningModule)
