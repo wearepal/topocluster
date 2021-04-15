@@ -117,7 +117,7 @@ class TopoGrad(nn.Module, Tomato):
         if self.n_iter > 0:
             # Avoid modifying the original embedding
             x = x.detach()
-            if self.add_bias is None:
+            if self.bias is None:
                 x = x.clone().requires_grad_(True)
                 optimizer = self.optimizer_cls((x,), lr=self.lr)
             else:
@@ -131,6 +131,8 @@ class TopoGrad(nn.Module, Tomato):
                     pbar.set_postfix(loss=loss.item())
                     pbar.update()
 
+        if self.bias is not None:
+            x = x + self.bias
         clusters, pers_pairs = tomato(
             x.detach().cpu().numpy(),
             k_kde=self.k_kde,
