@@ -83,6 +83,7 @@ class TopoGrad(nn.Module, Tomato):
         lr: float = 1e-3,
         add_bias: bool = False
     ):
+        nn.Module.__init__(self)
         Tomato.__init__(self, k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.n_iter = n_iter
         self.optimizer_cls = torch.optim.AdamW
