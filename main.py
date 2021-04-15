@@ -16,7 +16,7 @@ from gen.topocluster.clustering.conf import (
 from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
-from gen.topocluster.reduction.conf import NoReduceConf, RandomProjConf, UMAPConf
+from gen.topocluster.reduction.conf import NoReduceConf, RandomProjectorConf, UMAPConf
 from kit import SchemaRegistration
 
 

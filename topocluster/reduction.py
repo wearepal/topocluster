@@ -9,7 +9,7 @@ from umap import UMAP as _UMAP
 from kit import implements
 
 
-__all__ = ["Reducer", "NoReduce", "UMAP", "RandomProj"]
+__all__ = ["Reducer", "NoReduce", "UMAP", "RandomProjector"]
 
 
 class Reducer(BaseEstimator, ABC):
@@ -52,7 +52,7 @@ class UMAP(Reducer, _UMAP):
         return torch.as_tensor(X_transformed, device=X.device)  # type: ignore
 
 
-class RandomProj(Reducer):
+class RandomProjector(Reducer):
 
     def __init__(self, proj_dim: int) -> None:
         super().__init__()

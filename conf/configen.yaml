@@ -42,7 +42,7 @@ configen:
       classes:
         - UMAP
         - NoReduce
-        - RandomProj
+        - RandomProjector
     - name: pytorch_lightning.core
       classes:
         - LightningDataModule
