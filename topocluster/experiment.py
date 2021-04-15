@@ -149,9 +149,7 @@ class Experiment(pl.LightningModule):
 
         if isinstance(self.clusterer, Tomato) and self.clusterer.threshold == 1:
             pers_diagrams = {
-                f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
-                    self.clusterer.plot()
-                )
+                f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": self.clusterer.plot()
             }
             self.logger.experiment.log(pers_diagrams)
             plt.close("all")
