@@ -44,7 +44,7 @@ with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as gro
 with sr.new_group(group_name="schema/reducer", target_path="reducer") as group:
     group.add_option(name="umap", config_class=UMAPConf)
     group.add_option(name="none", config_class=NoReduceConf)
-    group.add_option(name="rand", config_class=RandomProjConf)
+    group.add_option(name="rand", config_class=RandomProjectorConf)
 # Definne the 'trainer'/'pretrainer' groups - these are singleton (containing one schema) groups
 with sr.new_group(group_name="schema/trainer", target_path="trainer") as group:
     group.add_option(name="trainer", config_class=TrainerConf)
