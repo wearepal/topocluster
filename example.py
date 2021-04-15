@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn as nn
 
 from topocluster.clustering.topograd import TopoGrad
 
@@ -30,8 +31,11 @@ cov = [[0.7, 0], [0, 0.7]]
 
 pc_np = final
 pc = torch.tensor(pc_np, requires_grad=True)
-cl = TopoGrad(k_kde=30, k_rips=30, scale=0.1, n_iter=100, threshold=1, lr=0.01)
-cl.destnum = 4
+cl = TopoGrad(k_kde=30, k_rips=30, scale=0.1, n_iter=100, threshold=1, lr=0.01 )
+cl.destnum = 5
+cl.bias = nn.Parameter(torch.randn(pc.shape), requires_grad=True)
 cl(pc, threshold=1)
 cl.plot()
+print(cl.bias)
 plt.show()
+# print(cl(pc, threshold=0.8))

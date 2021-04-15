@@ -5,7 +5,6 @@ import math
 import numpy as np
 import torch
 from torch import Tensor
-import torch.nn as nn
 from tqdm import tqdm
 
 from kit import implements
@@ -70,7 +69,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     return weakdist + strongdist
 
 
-class TopoGrad(nn.Module, Tomato):
+class TopoGrad(Tomato):
     destnum: int
 
     def __init__(
@@ -81,21 +80,15 @@ class TopoGrad(nn.Module, Tomato):
         threshold: float,
         n_iter: int = 0,
         lr: float = 1e-3,
-        add_bias: bool = False
     ):
-        nn.Module.__init__(self)
-        Tomato.__init__(self, k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
+        super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.n_iter = n_iter
         self.optimizer_cls = torch.optim.AdamW
         self.lr = lr
-        self.add_bias = add_bias
-        self.register_parameter("bias", None)
 
     @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         self.destnum = datamodule.num_subgroups * datamodule.num_classes
-        if self.add_bias:
-            self.bias = nn.Parameter(torch.ones(encoder.latent_dim), requires_grad=True)
 
     @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
@@ -103,25 +96,20 @@ class TopoGrad(nn.Module, Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
-        if self.bias is not None:
-            x = x + self.bias
         loss = topograd_loss(
             pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
         )
         return {"saliency_loss": loss}
 
-    @implements(nn.Module)
-    def forward(self, x: Tensor, threshold: float | None = None) -> Tensor:
+    @implements(Clusterer)
+    def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
         threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)
         if self.n_iter > 0:
             # Avoid modifying the original embedding
             x = x.detach()
-            if self.bias is None:
-                x = x.clone().requires_grad_(True)
-                optimizer = self.optimizer_cls((x,), lr=self.lr)
-            else:
-                optimizer = self.optimizer_cls((self.bias,), lr=self.lr)
+            x = x.clone().requires_grad_(True)
+            optimizer = self.optimizer_cls((x,), lr=self.lr)
             with tqdm(desc="topograd", total=self.n_iter) as pbar:
                 for _ in range(self.n_iter):
                     loss = self.get_loss(x=x)["saliency_loss"]
@@ -131,8 +119,6 @@ class TopoGrad(nn.Module, Tomato):
                     pbar.set_postfix(loss=loss.item())
                     pbar.update()
 
-        if self.bias is not None:
-            x = x + self.bias
         clusters, pers_pairs = tomato(
             x.detach().cpu().numpy(),
             k_kde=self.k_kde,
