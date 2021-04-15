@@ -1,9 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator
 import torch
-import torch.nn as nn
 from torch.tensor import Tensor
 from umap import UMAP as _UMAP
 
@@ -58,9 +57,9 @@ class RandomProj(Reducer):
     def __init__(self, proj_dim: int) -> None:
         super().__init__()
         self.proj_dim = proj_dim
-        self.proj_matrix = nn.Parameter(torch.randn(1, proj_dim), requires_grad=False)
 
     @implements(Reducer)
     def transform(self, X: Tensor) -> Tensor:
-        return X @ self.proj_matrix
+        proj_matrix = torch.randn(X.shape[1], self.proj_dim, device=X.device)
+        return X @ proj_matrix
 
