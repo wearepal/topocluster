@@ -48,7 +48,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
         )
     if not pd_pairs:
         LOGGER.info(
-            "Filtering failed to yield any persistence pairs required for computation of "
+            "Filtering failed to yield sufficient persistence pairs for computation of "
             "the topological loss. Returning 0 instead."
         )
         return pc.new_zeros(())
