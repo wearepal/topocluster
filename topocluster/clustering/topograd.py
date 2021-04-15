@@ -70,7 +70,7 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     return weakdist + strongdist
 
 
-class TopoGrad(Tomato, nn.Module):
+class TopoGrad(nn.Module, Tomato):
     destnum: int
 
     def __init__(
