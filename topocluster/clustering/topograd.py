@@ -53,22 +53,23 @@ def topograd_loss(
             "Filtering failed to yield sufficient persistence pairs for computation of "
             "the topological loss. Returning 0 instead."
         )
-        return pc.new_zeros(())
-    pd_pairs = torch.as_tensor(pd_pairs, device=pc.device)
-    oripd = kde_dists_sorted[pd_pairs]
-    pers_idxs_sorted = torch.argsort(oripd[:, 0] - oripd[:, 1])
+        shrinking_loss = saliency_loss = pc.new_zeros(())
+    else:
+        pd_pairs = torch.as_tensor(pd_pairs, device=pc.device)
+        oripd = kde_dists_sorted[pd_pairs]
+        pers_idxs_sorted = torch.argsort(oripd[:, 0] - oripd[:, 1])
 
-    changing = pers_idxs_sorted[:-destnum]
-    nochanging = pers_idxs_sorted[-destnum:-1]
+        changing = pers_idxs_sorted[:-destnum]
+        nochanging = pers_idxs_sorted[-destnum:-1]
 
-    biggest = oripd[pers_idxs_sorted[-1]]
-    dest = torch.as_tensor([biggest[0], biggest[1]], device=pc.device)
-    changepairs = pd_pairs[changing]
-    nochangepairs = pd_pairs[nochanging]
-    pd11 = kde_dists_sorted[changepairs]
+        biggest = oripd[pers_idxs_sorted[-1]]
+        dest = torch.as_tensor([biggest[0], biggest[1]], device=pc.device)
+        changepairs = pd_pairs[changing]
+        nochangepairs = pd_pairs[nochanging]
+        pd11 = kde_dists_sorted[changepairs]
 
-    shrinking_loss = torch.sum(pd11[:, 0] - pd11[:, 1]) / math.sqrt(2)
-    saliency_loss = torch.sum(torch.norm(kde_dists_sorted[nochangepairs] - dest, dim=1))
+        shrinking_loss = torch.sum(pd11[:, 0] - pd11[:, 1]) / math.sqrt(2)
+        saliency_loss = torch.sum(torch.norm(kde_dists_sorted[nochangepairs] - dest, dim=1))
     return {"shrinking_loss": shrinking_loss, "saliency_loss": saliency_loss}
 
 
