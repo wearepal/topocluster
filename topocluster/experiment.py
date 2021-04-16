@@ -20,7 +20,7 @@ from topocluster.data.datamodules import DataModule
 from topocluster.data.utils import Batch
 from topocluster.metrics import compute_metrics
 from topocluster.models.base import Encoder
-from topocluster.reduction import Reducer
+from topocluster.reduction import RandomProjector, Reducer
 
 
 __all__ = ["Experiment"]
@@ -82,6 +82,10 @@ class Experiment(pl.LightningModule):
         loss_dict.update(enc_loss_dict)
         total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
         if self.clust_loss_w > 0:
+            # Random projection can be differentiated through so we make an exception to it
+            # during joint training
+            if isinstance(self.reducer, RandomProjector):
+                encoding = self.reducer.fit_transform(X=encoding)
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
             total_loss += self.clust_loss_w * sum(clust_loss_dict.values())

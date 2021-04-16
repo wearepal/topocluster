@@ -31,7 +31,7 @@ class NoReduce(Reducer):
         return self
 
     @implements(Reducer)
-    def transform(self, X: Tensor, y: Tensor | None = None) -> Tensor:
+    def transform(self, X: Tensor) -> Tensor:
         return X
 
 
