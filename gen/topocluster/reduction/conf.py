@@ -59,4 +59,4 @@ class NoReduceConf:
 @dataclass
 class RandomProjectorConf:
     _target_: str = "topocluster.reduction.RandomProjector"
-    proj_dim: int = MISSING
+    n_components: int = MISSING

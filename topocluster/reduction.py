@@ -53,13 +53,13 @@ class UMAP(Reducer, _UMAP):
 
 
 class RandomProjector(Reducer):
-    def __init__(self, proj_dim: int) -> None:
+    def __init__(self, n_components: int) -> None:
         super().__init__()
-        self.proj_dim = proj_dim
+        self.n_components = n_components
 
     @implements(Reducer)
     def transform(self, X: Tensor) -> Tensor:
         proj_matrix = torch.normal(
-            mean=0, std=1 / self.proj_dim, size=(X.shape[1], self.proj_dim), device=X.device
+            mean=0, std=1 / self.n_components, size=(X.shape[1], self.n_components), device=X.device
         )
         return X @ proj_matrix

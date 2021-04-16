@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import math
+from typing import cast
 
 import numpy as np
 import torch
@@ -20,7 +21,9 @@ __all__ = ["topograd_loss", "TopoGrad"]
 LOGGER = logging.getLogger(__name__)
 
 
-def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: int) -> Tensor:
+def topograd_loss(
+    pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: int
+) -> dict[str, Tensor]:
     kde_dists, _ = compute_density_map(pc, k_kde, scale)
 
     sorted_idxs = torch.argsort(kde_dists, descending=False)
@@ -64,9 +67,9 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     nochangepairs = pd_pairs[nochanging]
     pd11 = kde_dists_sorted[changepairs]
 
-    weakdist = torch.sum(pd11[:, 0] - pd11[:, 1]) / math.sqrt(2)
-    strongdist = torch.sum(torch.norm(kde_dists_sorted[nochangepairs] - dest, dim=1))
-    return weakdist + strongdist
+    shrinking_loss = torch.sum(pd11[:, 0] - pd11[:, 1]) / math.sqrt(2)
+    saliency_loss = torch.sum(torch.norm(kde_dists_sorted[nochangepairs] - dest, dim=1))
+    return {"shrinking_loss": shrinking_loss, "saliency_loss": saliency_loss}
 
 
 class TopoGrad(Tomato):
@@ -96,10 +99,9 @@ class TopoGrad(Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
-        loss = topograd_loss(
+        return topograd_loss(
             pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
         )
-        return {"saliency_loss": loss}
 
     @implements(Clusterer)
     def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
@@ -112,7 +114,7 @@ class TopoGrad(Tomato):
             optimizer = self.optimizer_cls((x,), lr=self.lr)
             with tqdm(desc="topograd", total=self.n_iter) as pbar:
                 for _ in range(self.n_iter):
-                    loss = self.get_loss(x=x)["saliency_loss"]
+                    loss = cast(Tensor, sum(self.get_loss(x=x)["saliency_loss"].values()))
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
