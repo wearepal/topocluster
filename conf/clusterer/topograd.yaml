@@ -5,4 +5,4 @@ k_rips: 50
 scale: 0.1
 threshold: 1.0
 sal_loss_w: 1.0
-shrink_loss_w = 1.0
+shrink_loss_w: 1.0
