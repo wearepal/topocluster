@@ -84,11 +84,15 @@ class TopoGrad(Tomato):
         threshold: float,
         n_iter: int = 0,
         lr: float = 1e-3,
+        sal_loss_w: float = 1.0,
+        shrink_loss_w: float = 1.0,
     ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.n_iter = n_iter
         self.optimizer_cls = torch.optim.AdamW
         self.lr = lr
+        self.sal_loss_w = sal_loss_w
+        self.shrink_loss_w = shrink_loss_w
 
     @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
@@ -100,9 +104,12 @@ class TopoGrad(Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
-        return topograd_loss(
+        loss_dict = topograd_loss(
             pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
         )
+        loss_dict["saliency_loss"] *= self.sal_loss_w
+        loss_dict["shrinking_loss"] *= self.shrink_loss_w
+        return loss_dict
 
     @implements(Clusterer)
     def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
@@ -115,7 +122,7 @@ class TopoGrad(Tomato):
             optimizer = self.optimizer_cls((x,), lr=self.lr)
             with tqdm(desc="topograd", total=self.n_iter) as pbar:
                 for _ in range(self.n_iter):
-                    loss = cast(Tensor, sum(self.get_loss(x=x)["saliency_loss"].values()))
+                    loss = cast(Tensor, sum(self.get_loss(x=x).values()))
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()

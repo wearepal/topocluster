@@ -38,6 +38,8 @@ class TopoGradConf:
     threshold: float = MISSING
     n_iter: int = 0
     lr: float = 0.001
+    sal_loss_w: float = 1.0
+    shrink_loss_w: float = 1.0
 
 
 @dataclass
