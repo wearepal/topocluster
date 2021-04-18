@@ -74,14 +74,14 @@ class DataModule(pl.LightningDataModule):
             drop_last=True,
             collate_fn=self._collate_fn,
         )
-        sampler = GreedyCoreSetSampler(
-            embed_depth=2,
-            dataloader=dl,
-            num_samples=self.train_batch_size,
-            oversampling_factor=4,
-            n_components=10,
-        )
-        dl.sampler = sampler
+        # sampler = GreedyCoreSetSampler(
+        #     embed_depth=2,
+        #     dataloader=dl,
+        #     num_samples=self.train_batch_size,
+        #     oversampling_factor=4,
+        #     n_components=10,
+        # )
+        # dl.sampler = sampler
         return dl
 
     @implements(pl.LightningDataModule)
