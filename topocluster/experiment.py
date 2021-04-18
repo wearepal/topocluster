@@ -171,46 +171,44 @@ class Experiment(pl.LightningModule):
         self.print(f"Current working directory: '{os.getcwd()}'")
         self.print(f"Artifacts directory created at: '{self.artifacts_dir.resolve()}'")
 
-        self.datamodule.train_dataloader()
+        logger = WandbLogger(
+            entity="predictive-analytics-lab",
+            project="topocluster",
+            offline=self.log_offline,
+            group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
+        )
+        hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
+        if raw_config is not None:
+            self.print("-----\n" + str(raw_config) + "\n-----")
+            hparams.update(raw_config)
+        logger.log_hyperparams(hparams)
+        self.pretrainer.logger = logger
+        self.trainer.logger = logger
 
-        # logger = WandbLogger(
-        #     entity="predictive-analytics-lab",
-        #     project="topocluster",
-        #     offline=self.log_offline,
-        #     group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
-        # )
-        # hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
-        # if raw_config is not None:
-        #     self.print("-----\n" + str(raw_config) + "\n-----")
-        #     hparams.update(raw_config)
-        # logger.log_hyperparams(hparams)
-        # self.pretrainer.logger = logger
-        # self.trainer.logger = logger
+        checkpointer_kwargs = dict(
+            monitor="val/total_loss",
+            dirpath=self.artifacts_dir,
+            save_top_k=1,
+            mode="max",
+        )
+        self.pretrainer.callbacks.append(
+            ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best")
+        )
+        self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
 
-        # checkpointer_kwargs = dict(
-        #     monitor="val/total_loss",
-        #     dirpath=self.artifacts_dir,
-        #     save_top_k=1,
-        #     mode="max",
-        # )
-        # self.pretrainer.callbacks.append(
-        #     ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best")
-        # )
-        # self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
-
-        # # PRNG seeding
-        # pl.seed_everything(seed=self.seed)
-        # # Build the encoder
-        # self.encoder.build(self.datamodule)
-        # # Build the clusterer
-        # self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
-        # # Pre-training phase
-        # self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
-        # # Training phase
-        # if self.enc_freeze_depth:
-        #     self.encoder.freeze(depth=self.enc_freeze_depth)
-        # self.trainer.fit(self, datamodule=self.datamodule)
-        # # Testing phase
-        # self.trainer.test(self, datamodule=self.datamodule)
-        # # Manually call exit for multirun compatibility
-        # logger.experiment.__exit__(None, 0, 0)
+        # PRNG seeding
+        pl.seed_everything(seed=self.seed)
+        # Build the encoder
+        self.encoder.build(self.datamodule)
+        # Build the clusterer
+        self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
+        # Pre-training phase
+        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        # Training phase
+        if self.enc_freeze_depth:
+            self.encoder.freeze(depth=self.enc_freeze_depth)
+        self.trainer.fit(self, datamodule=self.datamodule)
+        # Testing phase
+        self.trainer.test(self, datamodule=self.datamodule)
+        # Manually call exit for multirun compatibility
+        logger.experiment.__exit__(None, 0, 0)
