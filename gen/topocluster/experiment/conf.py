@@ -19,6 +19,7 @@ class ExperimentConf:
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
     reducer: Any = MISSING  # Reducer
+    sampler: Any = MISSING  # GreedyCoreSetSampler
     lr: float = 0.001
     weight_decay: float = 0
     log_offline: bool = False

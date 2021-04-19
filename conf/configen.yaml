@@ -43,6 +43,9 @@ configen:
         - UMAP
         - NoReduce
         - RandomProjector
+    - name: topocluster.data.sampling
+      classes:
+        - GreedyCoreSetSampler
     - name: pytorch_lightning.core
       classes:
         - LightningDataModule

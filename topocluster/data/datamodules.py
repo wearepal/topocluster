@@ -7,6 +7,7 @@ import torch
 from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
+from torch.utils.data.sampler import RandomSampler, Sampler
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
@@ -44,6 +45,7 @@ class DataModule(pl.LightningDataModule):
         test_batch_size: int = 1000,
         val_batch_size: int | None = None,
         num_workers: int = 0,
+        train_sampler: Sampler[int] | None = None
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -52,6 +54,7 @@ class DataModule(pl.LightningDataModule):
         self.val_batch_size = test_batch_size if val_batch_size is None else val_batch_size
         self.num_workers = num_workers
         self._collate_fn = cast_collation(adaptive_collate, Batch)
+        self.train_sampler = train_sampler
 
     @property
     @abstractmethod
@@ -64,8 +67,8 @@ class DataModule(pl.LightningDataModule):
         ...
 
     @implements(pl.LightningDataModule)
-    def train_dataloader(self, shuffle: bool = True) -> DataLoader:
-        dl = DataLoader(
+    def train_dataloader(self, shuffle: bool = True,) -> DataLoader:
+        return DataLoader(
             self.train_data,
             batch_size=self.train_batch_size,
             shuffle=shuffle,
@@ -73,16 +76,8 @@ class DataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             drop_last=True,
             collate_fn=self._collate_fn,
+            sampler=self.train_sampler
         )
-        # sampler = GreedyCoreSetSampler(
-        #     embed_depth=2,
-        #     dataloader=dl,
-        #     num_samples=self.train_batch_size,
-        #     oversampling_factor=4,
-        #     n_components=10,
-        # )
-        # dl.sampler = sampler
-        return dl
 
     @implements(pl.LightningDataModule)
     def val_dataloader(self) -> DataLoader:

@@ -14,6 +14,7 @@ from gen.topocluster.clustering.conf import (
     TopoGradConf,
 )
 from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
+from gen.topocluster.data.sampling.conf import GreedyCoreSetSamplerConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
 from gen.topocluster.reduction.conf import NoReduceConf, RandomProjectorConf, UMAPConf
@@ -45,6 +46,10 @@ with sr.new_group(group_name="schema/reducer", target_path="reducer") as group:
     group.add_option(name="umap", config_class=UMAPConf)
     group.add_option(name="none", config_class=NoReduceConf)
     group.add_option(name="rand", config_class=RandomProjectorConf)
+
+with sr.new_group(group_name="schema/sampler", target_path="sampler") as group:
+    group.add_option(name="greedy", config_class=GreedyCoreSetSamplerConf)
+
 # Definne the 'trainer'/'pretrainer' groups - these are singleton (containing one schema) groups
 with sr.new_group(group_name="schema/trainer", target_path="trainer") as group:
     group.add_option(name="trainer", config_class=TrainerConf)

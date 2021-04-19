@@ -17,6 +17,7 @@ from kit import implements
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.tomato import Tomato
 from topocluster.data.datamodules import DataModule
+from topocluster.data.sampling import GreedyCoreSetSampler
 from topocluster.data.utils import Batch
 from topocluster.metrics import compute_metrics
 from topocluster.models.base import Encoder
@@ -38,6 +39,7 @@ class Experiment(pl.LightningModule):
         trainer: pl.Trainer,
         pretrainer: pl.Trainer,
         reducer: Reducer,
+        sampler: GreedyCoreSetSampler,
         lr: float = 1.0e-3,
         weight_decay: float = 0,
         log_offline: bool = False,
@@ -68,6 +70,8 @@ class Experiment(pl.LightningModule):
         self.enc_loss_w = enc_loss_w
         self.clust_loss_w = clust_loss_w
         self.enc_freeze_depth = enc_freeze_depth
+
+        self.sampler = sampler
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
@@ -202,6 +206,9 @@ class Experiment(pl.LightningModule):
         self.encoder.build(self.datamodule)
         # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
+        # Build the sampler
+        self.sampler.build(dataloader=self.datamodule.train_dataloader(), trainer=self.trainer)
+        self.datamodule.train_sampler = self.sampler
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Training phase
@@ -210,5 +217,5 @@ class Experiment(pl.LightningModule):
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
-        # Manually call exit for multirun compatibility
+        # Manually invoke exit for multirun compatibility
         logger.experiment.__exit__(None, 0, 0)
