@@ -206,14 +206,14 @@ class Experiment(pl.LightningModule):
         self.encoder.build(self.datamodule)
         # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
-        # Build the sampler
-        self.sampler.build(dataloader=self.datamodule.train_dataloader(), trainer=self.trainer)
         self.datamodule.train_sampler = self.sampler
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Training phase
         if self.enc_freeze_depth:
             self.encoder.freeze(depth=self.enc_freeze_depth)
+        # Build the sampler - the sampler is only used for joint training
+        self.sampler.build(dataloader=self.datamodule.train_dataloader(), trainer=self.trainer)
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
