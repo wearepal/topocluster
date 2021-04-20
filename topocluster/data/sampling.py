@@ -1,9 +1,9 @@
 from __future__ import annotations
 import copy
-from typing import Iterator, Optional
+import math
+from typing import Iterator, List, Optional
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks.progress import ProgressBar
 from pytorch_lightning.trainer.trainer import Trainer
 from torch import Tensor
 import torch
@@ -14,11 +14,12 @@ from torch.utils.data.sampler import Sampler, SequentialSampler
 from kit import implements
 import pretrainedmodels
 from topocluster.reduction import RandomProjector
+from topocluster.utils.logging import EmbeddingProgbar
 
 __all__ = ["GreedyCoreSetSampler"]
 
 
-class GreedyCoreSetSampler(Sampler[int]):
+class GreedyCoreSetSampler(Sampler[List[int]]):
     r"""Constructs batches from 'oversampled' batches through greedy core-set approximation.
 
     Args:
@@ -51,9 +52,9 @@ class GreedyCoreSetSampler(Sampler[int]):
         if not isinstance(dataloader.sampler, SequentialSampler):
             raise ValueError("dataloader must have 'shuffle=False' for embedding-generation.")
         embedder = _Embedder(depth=self.embed_depth, n_components=self.n_components)
-        runner = _DatasetEmbedder(embedder=embedder)
+        runner = _DatasetEmbedderRunner(embedder=embedder)
         trainer = copy.deepcopy(trainer)
-        trainer.callbacks.append(_EmbeddingProgbar(trainer=trainer))
+        trainer.callbacks.append(EmbeddingProgbar(trainer=trainer))
         trainer.test(model=runner, test_dataloaders=dataloader, verbose=False)
         self.embeddings = runner.embeddings
         self.budget = dataloader.batch_size
@@ -70,31 +71,33 @@ class GreedyCoreSetSampler(Sampler[int]):
         return dist_mat
 
     @implements(Sampler)
-    def __iter__(self) -> Iterator[int]:
-        # Frist sample the 'oversampled' batch from which to construc the core-set
-        os_batch_idxs = torch.randperm(self.__len__())[: self._num_oversampled_samples]
-        # Compute the euclidean distance between all pairs in said batch
-        dists = self._get_dists(os_batch_idxs)
-        # greedy k-center core-set construction algorithm
-        unsampled_m = torch.ones_like(os_batch_idxs, dtype=torch.bool)
-        sampled_idxs = [int(os_batch_idxs[0])]
-        unsampled_m[0] = 0
+    def __iter__(self) -> Iterator[List[int]]:
+        while 1:
+            # Frist sample the 'oversampled' batch from which to construc the core-set
+            os_batch_idxs = torch.randperm(self.budget)[: self._num_oversampled_samples]
+            # Compute the euclidean distance between all pairs in said batch
+            dists = self._get_dists(os_batch_idxs)
+            # greedy k-center core-set construction algorithm
+            unsampled_m = torch.ones_like(os_batch_idxs, dtype=torch.bool)
+            sampled_idxs = [int(os_batch_idxs[0])]
+            unsampled_m[0] = 0
 
-        while len(sampled_idxs) < self.budget:
-            unsampled_idxs = os_batch_idxs[unsampled_m]
-            # p := argmax min_{i\inB}(d(x, x_i)); i.e. select the sample which maximizes the
-            # minimum distance (euclidean norm) to all previously selected samples
-            rel_idx = torch.argmax(
-                torch.min(dists[~unsampled_idxs][:, unsampled_idxs], dim=0).values
-            )
-            p = unsampled_idxs[rel_idx]
-            unsampled_m[unsampled_m.nonzero()[rel_idx]] = 0
-            sampled_idxs.append(int(p))
+            while len(sampled_idxs) < self.budget:
+                unsampled_idxs = os_batch_idxs[unsampled_m]
+                # p := argmax min_{i\inB}(d(x, x_i)); i.e. select the sample which maximizes the
+                # minimum distance (euclidean norm) to all previously selected samples
+                rel_idx = torch.argmax(
+                    torch.min(dists[~unsampled_idxs][:, unsampled_idxs], dim=0).values
+                )
+                p = unsampled_idxs[rel_idx]
+                unsampled_m[unsampled_m.nonzero()[rel_idx]] = 0
+                sampled_idxs.append(int(p))
 
-        return iter(sampled_idxs)
+            yield sampled_idxs
+            del dists, unsampled_m, sampled_idxs
 
     def __len__(self) -> int:
-        return self.budget
+        return int(math.inf)
 
 
 class _Embedder(nn.Module):
@@ -114,7 +117,7 @@ class _Embedder(nn.Module):
         return embedding
 
 
-class _DatasetEmbedder(pl.LightningModule):
+class _DatasetEmbedderRunner(pl.LightningModule):
     """Wrapper for extractor model."""
 
     embeddings: Tensor
@@ -139,19 +142,3 @@ class _DatasetEmbedder(pl.LightningModule):
     def get_embeddings(self) -> Tensor:
         """Get the data from the test pass."""
         return self.embeddings
-
-
-class _EmbeddingProgbar(ProgressBar):
-    """Custom Progress Bar."""
-
-    def __init__(
-        self, refresh_rate: int = 1, process_position: int = 0, trainer: pl.Trainer | None = None
-    ):
-        super().__init__(refresh_rate=refresh_rate, process_position=process_position)
-        self._trainer = trainer
-
-    @implements(ProgressBar)
-    def init_test_tqdm(self):
-        bar = super().init_test_tqdm()
-        bar.set_description("Generating embeddings")
-        return bar

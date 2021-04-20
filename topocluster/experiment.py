@@ -26,6 +26,7 @@ from topocluster.data.utils import Batch
 from topocluster.metrics import compute_metrics
 from topocluster.models.base import Encoder
 from topocluster.reduction import RandomProjector, Reducer
+from topocluster.utils.logging import EncodingProgbar
 
 
 __all__ = ["Experiment"]
@@ -67,7 +68,7 @@ class Experiment(pl.LightningModule):
         # Trainers
         self.trainer = trainer
         self._encoder_runner = copy.deepcopy(self.trainer)
-        self._encoder_runner.callbacks.append(_EncodingProgbar(trainer=self._encoder_runner))
+        self._encoder_runner.callbacks.append(EncodingProgbar(trainer=self._encoder_runner))
         self.pretrainer = pretrainer
         self.train_step = 0
         # Optimizer configuration
@@ -136,8 +137,8 @@ class Experiment(pl.LightningModule):
 
     def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
         dl_kwargs = {"shuffle": False} if stage == "train" else {}
-        train_sampler = self.datamodule.train_sampler
-        self.datamodule.train_sampler = None
+        train_sampler = self.datamodule.train_batch_sampler
+        self.datamodule.train_batch_sampler = None
         dataloader = cast(DataLoader, getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs))
         dataset_encoder = DatasetEncoderRunner(model=self.encoder)
         self._encoder_runner.test(
@@ -247,17 +248,3 @@ class DatasetEncoderRunner(pl.LightningModule):
         self.encoded_dataset = Batch(*(torch.cat(el, dim=0) for el in outputs_t))
 
 
-class _EncodingProgbar(ProgressBar):
-    """Custom Progress Bar."""
-
-    def __init__(
-        self, refresh_rate: int = 1, process_position: int = 0, trainer: pl.Trainer | None = None
-    ):
-        super().__init__(refresh_rate=refresh_rate, process_position=process_position)
-        self._trainer = trainer
-
-    @implements(ProgressBar)
-    def init_test_tqdm(self):
-        bar = super().init_test_tqdm()
-        bar.set_description("Encoding dataset")
-        return bar

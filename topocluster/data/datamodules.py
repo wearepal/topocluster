@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod, abstractstaticmethod
-from typing import ClassVar, cast
+from typing import ClassVar, List, cast
 
 import pytorch_lightning as pl
 import torch
@@ -45,7 +45,7 @@ class DataModule(pl.LightningDataModule):
         test_batch_size: int = 1000,
         val_batch_size: int | None = None,
         num_workers: int = 0,
-        train_sampler: Sampler[int] | None = None
+        train_batch_sampler: Sampler[List[int]] | None = None,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -54,7 +54,7 @@ class DataModule(pl.LightningDataModule):
         self.val_batch_size = test_batch_size if val_batch_size is None else val_batch_size
         self.num_workers = num_workers
         self._collate_fn = cast_collation(adaptive_collate, Batch)
-        self.train_sampler = train_sampler
+        self.train_batch_sampler = train_batch_sampler
 
     @property
     @abstractmethod
@@ -70,13 +70,13 @@ class DataModule(pl.LightningDataModule):
     def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         return DataLoader(
             self.train_data,
-            batch_size=self.train_batch_size,
-            shuffle=shuffle and self.train_sampler is None,
+            batch_size=self.train_batch_size if self.train_batch_sampler is None else None,
+            shuffle=shuffle and self.train_batch_sampler is None,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=self.train_batch_sampler is not None,
             collate_fn=self._collate_fn,
-            sampler=self.train_sampler
+            batch_sampler=self.train_batch_sampler,
         )
 
     @implements(pl.LightningDataModule)
