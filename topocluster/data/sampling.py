@@ -9,7 +9,7 @@ from torch import Tensor
 import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
-from torch.utils.data.sampler import Sampler
+from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from kit import implements
 import pretrainedmodels
@@ -45,11 +45,11 @@ class GreedyCoreSetSampler(Sampler[int]):
         self.n_components = n_components
 
     def build(self, dataloader: DataLoader, trainer: Trainer) -> None:
-        dataloader = copy.copy(dataloader)
+        assert dataloader.batch_size is not None
         # Shuffle needs to be set to False to ensure that the data is 'canonically' ordered
         # for construction of the lookup table
-        dataloader.shuffle = False
-        assert dataloader.batch_size is not None
+        if not isinstance(dataloader.sampler, SequentialSampler):
+            raise ValueError("dataloader must have 'shuffle=False' for embedding-generation.")
         embedder = _Embedder(depth=self.embed_depth, n_components=self.n_components)
         runner = _DatasetEmbedder(embedder=embedder)
         trainer = copy.deepcopy(trainer)

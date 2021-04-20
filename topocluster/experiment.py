@@ -212,7 +212,7 @@ class Experiment(pl.LightningModule):
         if self.enc_freeze_depth:
             self.encoder.freeze(depth=self.enc_freeze_depth)
         # Build the sampler - the sampler is only used for joint training
-        self.sampler.build(dataloader=self.datamodule.train_dataloader(), trainer=self.trainer)
+        self.sampler.build(dataloader=self.datamodule.train_dataloader(shuffle=False), trainer=self.trainer)
         self.datamodule.train_sampler = self.sampler
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
