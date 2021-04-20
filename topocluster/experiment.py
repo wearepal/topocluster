@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
+from torch.utils.data.dataloader import DataLoader
 import wandb
 
 from kit import implements
@@ -135,12 +136,16 @@ class Experiment(pl.LightningModule):
 
     def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
         dl_kwargs = {"shuffle": False} if stage == "train" else {}
+        train_sampler = self.datamodule.train_sampler
+        self.datamodule.train_sampler = None
+        dataloader = cast(DataLoader, getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs))
         dataset_encoder = DatasetEncoderRunner(model=self.encoder)
         self._encoder_runner.test(
             dataset_encoder,
-            test_dataloaders=getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs),
+            test_dataloaders=dataloader,
             verbose=False,
         )
+        self.datamodule.train_sampler = train_sampler
         encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
 
         encodings = self.reducer.fit_transform(encodings)

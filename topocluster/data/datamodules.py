@@ -67,7 +67,7 @@ class DataModule(pl.LightningDataModule):
         ...
 
     @implements(pl.LightningDataModule)
-    def train_dataloader(self, shuffle: bool = True,) -> DataLoader:
+    def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         return DataLoader(
             self.train_data,
             batch_size=self.train_batch_size,
