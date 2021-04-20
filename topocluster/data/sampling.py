@@ -84,7 +84,9 @@ class GreedyCoreSetSampler(Sampler[int]):
             unsampled_idxs = os_batch_idxs[unsampled_m]
             # p := argmax min_{i\inB}(d(x, x_i)); i.e. select the sample which maximizes the
             # minimum distance (euclidean norm) to all previously selected samples
-            rel_idx = torch.argmax(torch.min(dists[sampled_idxs][:, unsampled_idxs], dim=0).values)
+            rel_idx = torch.argmax(
+                torch.min(dists[~unsampled_idxs][:, unsampled_idxs], dim=0).values
+            )
             p = unsampled_idxs[rel_idx]
             unsampled_m[unsampled_m][rel_idx] = 0
             sampled_idxs.append(int(p))
