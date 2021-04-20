@@ -115,7 +115,7 @@ class Experiment(pl.LightningModule):
         return total_loss
 
     @implements(pl.LightningDataModule)
-    def on_batch_end(self):
+    def on_train_batch_end(self):
         eff_train_step = self.train_step + 1
         if eff_train_step > 1 and (not (eff_train_step % self.train_eval_freq)):
             self._evaluate(stage="train")
