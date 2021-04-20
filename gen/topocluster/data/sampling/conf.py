@@ -12,7 +12,6 @@ from typing import Optional
 @dataclass
 class GreedyCoreSetSamplerConf:
     _target_: str = "topocluster.data.sampling.GreedyCoreSetSampler"
-    budget: int = MISSING
     oversampling_factor: int = MISSING
     embed_depth: int = MISSING
     n_components: Optional[int] = 10
