@@ -67,7 +67,7 @@ class GreedyCoreSetSampler(Sampler[int]):
         dist_mat *= -2
         dist_mat += sq
         dist_mat += sq.t()
-        return torch.norm(dist_mat, dim=1)
+        return dist_mat
 
     @implements(Sampler)
     def __iter__(self) -> Iterator[int]:
