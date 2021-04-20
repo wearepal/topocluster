@@ -78,7 +78,6 @@ class Experiment(pl.LightningModule):
         self.enc_freeze_depth = enc_freeze_depth
         self.sampler = sampler
 
-
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
         return AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -94,7 +93,7 @@ class Experiment(pl.LightningModule):
             total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
         if self.clust_loss_w > 0:
             # Random projection can be differentiated through so we make an exception to it
-            # during joint training
+            # during end-to-end training
             if isinstance(self.reducer, RandomProjector):
                 encoding = self.reducer.fit_transform(X=encoding)
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
@@ -135,12 +134,12 @@ class Experiment(pl.LightningModule):
         return total_loss
 
     def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
-        dl_kwargs = {"shuffle": True} if stage == "train" else {}
-
+        dl_kwargs = {"shuffle": False} if stage == "train" else {}
         dataset_encoder = DatasetEncoderRunner(model=self.encoder)
         self._encoder_runner.test(
             dataset_encoder,
             test_dataloaders=getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs),
+            verbose=False,
         )
         encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
 
