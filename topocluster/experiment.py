@@ -164,7 +164,7 @@ class Experiment(pl.LightningModule):
                     self.clusterer.plot()
                 )
             }
-            self.log_dict(pers_diagrams)
+            self.logger.experiment.log(pers_diagrams)
             plt.close("all")
 
         self.log_dict(logging_dict)
