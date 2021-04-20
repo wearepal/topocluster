@@ -186,7 +186,7 @@ class Experiment(pl.LightningModule):
         self.trainer.logger = logger
 
         checkpointer_kwargs = dict(
-            monitor="val/total_loss",
+            monitor="train/total_loss",
             dirpath=self.artifacts_dir,
             save_top_k=1,
             mode="max",
