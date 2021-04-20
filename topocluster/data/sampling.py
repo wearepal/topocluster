@@ -55,8 +55,7 @@ class GreedyCoreSetSampler(Sampler[int]):
         trainer = copy.deepcopy(trainer)
         trainer.callbacks.append(_EmbeddingProgbar(trainer=trainer))
         trainer.test(model=runner, test_dataloaders=dataloader, verbose=False)
-        embeddings = runner.embeddings
-        self.dists = torch.norm(embeddings[None] - embeddings[:, None], dim=-1)
+        self.embeddings = runner.embeddings
         self.budget = dataloader.batch_size
         self._num_oversampled_samples = self.budget * self.oversampling_factor
 
@@ -64,6 +63,10 @@ class GreedyCoreSetSampler(Sampler[int]):
     def __iter__(self) -> Iterator[int]:
         # Frist sample the 'oversampled' batch from which to construc the core-set
         os_batch_idxs = torch.randperm(self.__len__())[: self._num_oversampled_samples]
+        # Compute the euclidean distance between all pairs in said batch
+        dists = torch.norm(
+            self.embeddings[os_batch_idxs][None] - self.embeddings[os_batch_idxs][:, None], dim=-1
+        )
         # greedy k-center core-set construction algorithm
         unsampled_m = torch.ones_like(os_batch_idxs, dtype=torch.bool)
         sampled_idxs = [int(os_batch_idxs[0])]
@@ -73,9 +76,7 @@ class GreedyCoreSetSampler(Sampler[int]):
             unsampled_idxs = os_batch_idxs[unsampled_m]
             # p := argmax min_{i\inB}(d(x, x_i)); i.e. select the sample which maximizes the
             # minimum distance (euclidean norm) to all previously selected samples
-            rel_idx = torch.argmax(
-                torch.min(self.dists[sampled_idxs][:, unsampled_idxs], dim=0).values
-            )
+            rel_idx = torch.argmax(torch.min(dists[sampled_idxs][:, unsampled_idxs], dim=0).values)
             p = unsampled_idxs[rel_idx]
             unsampled_m[unsampled_m][rel_idx] = 0
             sampled_idxs.append(int(p))
@@ -142,5 +143,5 @@ class _EmbeddingProgbar(ProgressBar):
     @implements(ProgressBar)
     def init_test_tqdm(self):
         bar = super().init_test_tqdm()
-        bar.set_description('Generating embeddings')
+        bar.set_description("Generating embeddings")
         return bar
