@@ -88,7 +88,7 @@ class GreedyCoreSetSampler(Sampler[int]):
                 torch.min(dists[~unsampled_idxs][:, unsampled_idxs], dim=0).values
             )
             p = unsampled_idxs[rel_idx]
-            unsampled_m[unsampled_m][rel_idx] = 0
+            unsampled_m[unsampled_m.nonzero()[rel_idx]] = 0
             sampled_idxs.append(int(p))
 
         return iter(sampled_idxs)
