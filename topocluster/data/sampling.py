@@ -3,6 +3,7 @@ import copy
 from typing import Iterator, Optional
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks.progress import ProgressBar
 from pytorch_lightning.trainer.trainer import Trainer
 from torch import Tensor
 import torch
@@ -51,6 +52,8 @@ class GreedyCoreSetSampler(Sampler[int]):
         assert dataloader.batch_size is not None
         embedder = _Embedder(depth=self.embed_depth, n_components=self.n_components)
         runner = _DatasetEmbedder(embedder=embedder)
+        trainer = copy.deepcopy(trainer)
+        trainer.callbacks.append(_EmbeddingProgbar(trainer=trainer))
         trainer.test(model=runner, test_dataloaders=dataloader, verbose=False)
         embeddings = runner.embeddings
         self.dists = torch.norm(embeddings[None] - embeddings[:, None], dim=-1)
@@ -125,3 +128,19 @@ class _DatasetEmbedder(pl.LightningModule):
     def get_embeddings(self) -> Tensor:
         """Get the data from the test pass."""
         return self.embeddings
+
+
+class _EmbeddingProgbar(ProgressBar):
+    """Custom Progress Bar."""
+
+    def __init__(
+        self, refresh_rate: int = 1, process_position: int = 0, trainer: pl.Trainer | None = None
+    ):
+        super().__init__(refresh_rate=refresh_rate, process_position=process_position)
+        self._trainer = trainer
+
+    @implements(ProgressBar)
+    def init_test_tqdm(self):
+        bar = super().init_test_tqdm()
+        bar.set_description('Generating embeddings')
+        return bar
