@@ -1,5 +1,6 @@
 # """Main training file"""
 from __future__ import annotations
+import copy
 import os
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Optional, cast
@@ -7,8 +8,10 @@ from typing import Any, ClassVar, Literal, Optional, cast
 from matplotlib import pyplot as plt
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks.progress import ProgressBar
 from pytorch_lightning.loggers import WandbLogger
 import torch
+import torch.nn as nn
 from torch.optim import AdamW, Optimizer
 from torch.tensor import Tensor
 import wandb
@@ -47,7 +50,7 @@ class Experiment(pl.LightningModule):
         enc_loss_w: float = 1.0,
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
-        train_eval_freq: int = 1,
+        train_eval_freq: int = 1000,
         enc_freeze_depth: Optional[int] = 0,
     ):
         super().__init__()
@@ -62,7 +65,10 @@ class Experiment(pl.LightningModule):
         self.reducer = reducer
         # Trainers
         self.trainer = trainer
+        self._encoder_runner = copy.deepcopy(self.trainer)
+        self._encoder_runner.callbacks.append(_EncodingProgbar(trainer=self._encoder_runner))
         self.pretrainer = pretrainer
+        self.train_step = 0
         # Optimizer configuration
         self.lr = lr
         self.weight_decay = weight_decay
@@ -70,8 +76,8 @@ class Experiment(pl.LightningModule):
         self.enc_loss_w = enc_loss_w
         self.clust_loss_w = clust_loss_w
         self.enc_freeze_depth = enc_freeze_depth
-
         self.sampler = sampler
+
 
     @implements(pl.LightningModule)
     def configure_optimizers(self) -> Optimizer:
@@ -79,12 +85,13 @@ class Experiment(pl.LightningModule):
 
     def _get_loss(
         self, encoding: Tensor, batch: Batch, stage: Literal["train", "val", "test"]
-    ) -> tuple[Tensor, dict[str, Tensor]]:
-        loss_dict = {}
-        total_loss = encoding.new_zeros(())
+    ) -> tuple[Tensor | None, dict[str, Tensor]]:
+        loss_dict: dict[str, Tensor] = {}
+        total_loss: Tensor | None = encoding.new_zeros(())
         enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
         loss_dict.update(enc_loss_dict)
-        total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
+        if self.enc_loss_w > 0:
+            total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
         if self.clust_loss_w > 0:
             # Random projection can be differentiated through so we make an exception to it
             # during joint training
@@ -93,59 +100,49 @@ class Experiment(pl.LightningModule):
             clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
             total_loss += self.clust_loss_w * sum(clust_loss_dict.values())
-        loss_dict[f"{stage}/total_loss"] = total_loss
+        if not total_loss.requires_grad:
+            total_loss = None
+        else:
+            loss_dict[f"{stage}/total_loss"] = total_loss
         return total_loss, loss_dict
 
     @implements(pl.LightningModule)
-    def training_step(self, batch: Batch, batch_idx: int) -> dict[str, Tensor]:
+    def training_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = cast(Tensor, self.encoder(batch.x))
-        res_dict = {
-            "encoding": encoding,
-            "subgroup_inf": batch.s,
-            "superclass_inf": batch.y,
-        }
         total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
         self.log_dict(loss_dict)
-        res_dict["loss"] = total_loss
+        self.train_step += 1
+        return total_loss
 
-        return res_dict
-
-    @implements(pl.LightningModule)
-    def training_epoch_end(
-        self,
-        outputs: list[dict[str, Tensor]],
-    ) -> None:
-        eff_epoch = self.current_epoch + 1
-        if eff_epoch > 1 and (not (eff_epoch % self.train_eval_freq)):
-            self._epoch_end(outputs=outputs, stage="train")
+    @implements(pl.LightningDataModule)
+    def on_batch_end(self):
+        eff_train_step = self.train_step + 1
+        if eff_train_step > 1 and (not (eff_train_step % self.train_eval_freq)):
+            self._evaluate(stage="train")
 
     @implements(pl.LightningModule)
-    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor:
+    def validation_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = self.encoder(batch.x)
         total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="val")
         self.log_dict(loss_dict, on_epoch=True)
         return total_loss
 
     @implements(pl.LightningModule)
-    def test_step(self, batch: Batch, batch_idx: int) -> Tensor:
+    def test_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = self.encoder(batch.x)
         total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="test")
         self.log_dict(loss_dict, on_epoch=True)
         return total_loss
 
-    def _epoch_end(
-        self, outputs: list[dict[str, Tensor]], stage: Literal["train", "val", "test"]
-    ) -> None:
-        encodings, subgroup_inf, superclass_inf = [], [], []
-        for step_outputs in outputs:
-            encodings.append(step_outputs["encoding"])
-            subgroup_inf.append(step_outputs["subgroup_inf"])
-            superclass_inf.append(step_outputs["superclass_inf"])
-        encodings, subgroup_inf, superclass_inf = (
-            torch.cat(encodings, dim=0),
-            torch.cat(subgroup_inf, dim=0),
-            torch.cat(superclass_inf, dim=0),
+    def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
+        dl_kwargs = {"shuffle": True} if stage == "train" else {}
+
+        dataset_encoder = DatasetEncoderRunner(model=self.encoder)
+        self._encoder_runner.test(
+            dataset_encoder,
+            test_dataloaders=getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs),
         )
+        encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
 
         encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)
@@ -212,10 +209,51 @@ class Experiment(pl.LightningModule):
         if self.enc_freeze_depth:
             self.encoder.freeze(depth=self.enc_freeze_depth)
         # Build the sampler - the sampler is only used for joint training
-        self.sampler.build(dataloader=self.datamodule.train_dataloader(shuffle=False), trainer=self.trainer)
+        self.sampler.build(
+            dataloader=self.datamodule.train_dataloader(shuffle=False), trainer=self.trainer
+        )
         self.datamodule.train_sampler = self.sampler
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
         # Manually invoke exit for multirun compatibility
         logger.experiment.__exit__(None, 0, 0)
+
+
+class DatasetEncoderRunner(pl.LightningModule):
+    """Wrapper for extractor model."""
+
+    encoded_dataset: Batch
+
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    @implements(nn.Module)
+    def forward(self, x: Tensor) -> Tensor:
+        return self.model(x)
+
+    @implements(pl.LightningModule)
+    def test_step(self, batch: Batch, batch_idx: int) -> Batch:
+        return Batch(self(batch.x), *batch[1:])
+
+    @implements(pl.LightningModule)
+    def test_epoch_end(self, outputs: list[Batch]) -> None:
+        outputs_t = tuple(zip(*outputs))
+        self.encoded_dataset = Batch(*(torch.cat(el, dim=0) for el in outputs_t))
+
+
+class _EncodingProgbar(ProgressBar):
+    """Custom Progress Bar."""
+
+    def __init__(
+        self, refresh_rate: int = 1, process_position: int = 0, trainer: pl.Trainer | None = None
+    ):
+        super().__init__(refresh_rate=refresh_rate, process_position=process_position)
+        self._trainer = trainer
+
+    @implements(ProgressBar)
+    def init_test_tqdm(self):
+        bar = super().init_test_tqdm()
+        bar.set_description("Encoding dataset")
+        return bar
