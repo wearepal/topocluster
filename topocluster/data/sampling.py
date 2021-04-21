@@ -98,8 +98,8 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
             yield sampled_idxs
             del dists, unsampled_m, sampled_idxs
 
-    def __len__(self) -> float:
-        return math.inf
+    def __len__(self) -> int:
+        return 1
 
 
 class _Embedder(nn.Module):
