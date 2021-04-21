@@ -18,12 +18,14 @@ class ExperimentConf:
     clusterer: Any = MISSING  # Clusterer
     trainer: Any = MISSING  # Trainer
     pretrainer: Any = MISSING  # Trainer
+    reducer: Any = MISSING  # Reducer
+    sampler: Any = MISSING  # GreedyCoreSetSampler
     lr: float = 0.001
-    weight_decay: float = 9
+    weight_decay: float = 0
     log_offline: bool = False
     seed: Optional[int] = 42
     enc_loss_w: float = 1.0
     clust_loss_w: float = 1.0
     exp_group: Optional[str] = None
-    train_eval_freq: int = 1
-    checkpoint_path: Optional[str] = None
+    train_eval_freq: int = 1000
+    enc_freeze_depth: Optional[int] = 0

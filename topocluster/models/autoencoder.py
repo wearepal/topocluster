@@ -1,9 +1,7 @@
 """Autoencoders"""
 from __future__ import annotations
 from abc import abstractmethod
-from typing import cast
 
-import pytorch_lightning as pl
 from torch import Tensor
 import torch.nn as nn
 
@@ -28,12 +26,15 @@ class AutoEncoder(Encoder):
         self.loss_fn = nn.MSELoss()
 
     @abstractmethod
+    @implements(Encoder)
     def _build(self, input_shape: int | ImageDims) -> tuple[nn.Module, nn.Module]:
         ...
 
+    @implements(Encoder)
     def build(self, input_shape: int | ImageDims) -> None:
         self.encoder, self.decoder = self._build(input_shape)
 
+    @implements(Encoder)
     def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
         return {"recon_loss": self.loss_fn(self.decoder(encoding), batch.x)}
 

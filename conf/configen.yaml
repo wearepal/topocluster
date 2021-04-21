@@ -29,14 +29,26 @@ configen:
         - UMNISTDataModule
     - name: topocluster.clustering
       classes:
-        - Tomato
-        - GMM
-        - TopoGrad
         - Kmeans
+        - Tomato
+        - TopoGrad
+        - GaussianMixture
+        - SpectralClustering
+        - AgglomerativeClustering
     - name: torch.nn
       classes:
         - ReLU
-    # - name: pytorch_lightning
+    - name: topocluster.reduction
+      classes:
+        - UMAP
+        - NoReduce
+        - RandomProjector
+    - name: topocluster.data.sampling
+      classes:
+        - GreedyCoreSetSampler
+    - name: pytorch_lightning.core
+      classes:
+        - LightningDataModule
+    # - name: pytorch_lightning.trainer
     #   classes:
-    #     - LightningDataModule
     #     - Trainer

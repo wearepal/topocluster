@@ -3,12 +3,11 @@ from enum import Enum, auto
 import time
 from typing import Optional
 
-import faiss
 import numpy as np
-from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
 
+from kit import implements
 from topocluster.clustering.common import Clusterer
 from topocluster.clustering.utils import l2_centroidal_distance
 from topocluster.data.datamodules import DataModule
@@ -27,7 +26,7 @@ class Kmeans(Clusterer):
         self,
         n_iter: int,
         k: Optional[int] = None,
-        backend: Backends = Backends.TORCH,
+        backend: Backends = Backends.FAISS,
         verbose: bool = False,
     ):
         self.k = k
@@ -35,30 +34,31 @@ class Kmeans(Clusterer):
         self.backend = backend
         self.verbose = verbose
 
+    @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
         self.k = datamodule.num_classes * datamodule.num_subgroups
 
-    def __call__(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    @implements(Clusterer)
+    def __call__(self, x: Tensor) -> Tensor:
         if self.k is None:
             raise AttributeError("Value for 'k' not yet set.")
         if self.backend == Backends.TORCH:
-            hard_labels, centroids = run_kmeans_torch(
+            hard_labels, _ = run_kmeans_torch(
                 x,
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
         else:
-            hard_labels, centroids = run_kmeans_faiss(
+            hard_labels, _ = run_kmeans_faiss(
                 x=x,
                 num_clusters=self.k,
                 n_iter=self.n_iter,
                 verbose=self.verbose,
             )
-        soft_labels = l2_centroidal_distance(x=x, centroids=centroids)
+        return hard_labels
 
-        return hard_labels, soft_labels
-
+    @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:
         return {}
 
@@ -89,12 +89,14 @@ class Kmeans(Clusterer):
 
 
 def run_kmeans_torch(
-    x: torch.Tensor,
+    x: Tensor,
     num_clusters: int,
     n_iter: int = 10,
     verbose: bool = False,
 ) -> tuple[Tensor, Tensor]:
     x = x.flatten(start_dim=1)
+    from pykeops.torch import LazyTensor
+
     N, D = x.shape  # Number of samples, dimension of the ambient space
     use_cuda = x.is_cuda
     dtype = torch.float32 if use_cuda else torch.float64
@@ -143,6 +145,8 @@ def run_kmeans_faiss(
     n_iter: int,
     verbose: bool = False,
 ) -> tuple[Tensor, Tensor]:
+    import faiss
+
     x_np = x.detach().cpu().numpy()
     x_np = np.reshape(x_np, (x_np.shape[0], -1))
     _, d = x_np.shape
@@ -165,7 +169,7 @@ def run_kmeans_faiss(
         centroids = faiss.vector_float_to_array(kmeans.centroids)
         centroids = centroids.reshape(num_clusters, d)
     else:
-        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=20)
+        kmeans = faiss.Kmeans(d=d, k=num_clusters, verbose=verbose, niter=n_iter)
         kmeans.train(x_np)
         _, cluster_indexes = kmeans.index.search(x_np, 1)
         centroids = kmeans.centroids

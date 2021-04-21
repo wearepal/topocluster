@@ -6,6 +6,8 @@ defaults:
   - encoder: umnist_ae
   - trainer: umnist
   - pretrainer: umnist
+  - reducer: umap
+  - sampler: greedy
 
 log_offline: False
 seed: 42

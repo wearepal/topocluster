@@ -1,7 +1,6 @@
 from __future__ import annotations
-from collections import namedtuple
 from functools import partial
-from typing import Any, Callable, Final, Optional, Protocol, Union
+from typing import Any, Callable, NamedTuple, Protocol, Union
 
 from PIL import Image
 import torch
@@ -12,10 +11,9 @@ from torch.utils.data._utils.collate import (
     np_str_obj_array_pattern,
 )
 
+
 __all__ = [
-    "IGNORE_INDEX",
     "ImageDims",
-    "MaskedLabelDataset",
     "Transform",
     "DataTransformer",
     "SizedDatasetProt",
@@ -24,10 +22,17 @@ __all__ = [
 ]
 
 
-ImageDims = namedtuple("ImageDims", ["C", "H", "W"])
-Batch = namedtuple("Batch", ["x", "s", "y"])
+class ImageDims(NamedTuple):
+    C: int
+    H: int
+    W: int
+
+class Batch(NamedTuple):
+    x: Tensor
+    s: Tensor
+    y: Tensor
+
 Transform = Callable[[Union[Image.Image, Tensor]], Tensor]
-IGNORE_INDEX: Final = -100
 
 
 def _cast(collate_fn: Callable[[list[Any]], Any], cast_to: type, inputs: list[Any]):
@@ -61,21 +66,6 @@ class DataTransformer(Dataset):
         if self.transforms is not None:
             data = (self.transforms(data[0]),) + data[1:]
         return tuple(data)
-
-
-class MaskedLabelDataset(Dataset):
-    def __init__(self, dataset: SizedDatasetProt, threshold: Optional[int] = None) -> None:
-        self.dataset = dataset
-        self.threshold = threshold
-
-    def __len__(self) -> int:
-        return len(self.dataset)
-
-    def __getitem__(self, index: int) -> tuple[Any, int]:
-        x, y = self.dataset[index]
-        if self.threshold is None or y >= self.threshold:
-            y = IGNORE_INDEX
-        return x, y
 
 
 class BinarizedLabelDataset(Dataset):

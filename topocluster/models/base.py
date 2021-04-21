@@ -20,21 +20,29 @@ class Encoder(pl.LightningModule):
     """Base class for AutoEncoder models."""
 
     encoder: nn.Module
+    latent_dim: int
 
     def __init__(self, lr: float = 1.0e-3) -> None:
         super().__init__()
         self.lr = lr
 
     @abstractmethod
-    def _build(self, datamodule: DataModule) -> nn.Module:
+    def _build(self, datamodule: DataModule) -> tuple[nn.Module, int]:
         ...
 
     def build(self, datamodule: DataModule) -> None:
-        self.encoder = self._build(datamodule)
+        self.encoder, self.latent_dim = self._build(datamodule)
 
     @implements(nn.Module)
     def forward(self, inputs: Tensor) -> Tensor:
         return self.encoder(inputs)
+
+    @implements(pl.LightningModule)
+    def freeze(self, depth: int | None = None) -> None:
+        for param in list(self.encoder.parameters())[:depth]:
+            param.requires_grad = False
+
+        self.eval()
 
     @abstractmethod
     def _get_loss(self, encoding: Tensor, batch: Batch, prefix: str = "") -> dict[str, Tensor]:
@@ -45,7 +53,7 @@ class Encoder(pl.LightningModule):
             prefix += "/"
         loss_dict = self._get_loss(encoding=encoding, batch=batch)
         # Prepend the prefix to all keys of the loss dict
-        loss_dict[f"{prefix}/total_loss"] = cast(Tensor, sum(loss_dict.values()))
+        loss_dict["total_loss"] = cast(Tensor, sum(loss_dict.values()))
         return {prefix + key: value for key, value in loss_dict.items()}
 
     @implements(pl.LightningModule)

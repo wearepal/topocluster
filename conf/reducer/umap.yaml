@@ -1,4 +1,6 @@
-n_neighbors: 30
-n_components: 5
+defaults:
+  - /schema/reducer: umap
+n_neighbors: 15
+n_components: 2
 min_dist: 0.0
 metric: "euclidean"

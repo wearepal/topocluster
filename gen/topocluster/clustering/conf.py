@@ -12,6 +12,15 @@ from typing import Optional
 
 
 @dataclass
+class KmeansConf:
+    _target_: str = "topocluster.clustering.Kmeans"
+    n_iter: int = MISSING
+    k: Optional[int] = None
+    backend: Backends = Backends.FAISS
+    verbose: bool = False
+
+
+@dataclass
 class TomatoConf:
     _target_: str = "topocluster.clustering.Tomato"
     k_kde: int = 100
@@ -21,8 +30,21 @@ class TomatoConf:
 
 
 @dataclass
-class GMMConf:
-    _target_: str = "topocluster.clustering.GMM"
+class TopoGradConf:
+    _target_: str = "topocluster.clustering.TopoGrad"
+    k_kde: int = MISSING
+    k_rips: int = MISSING
+    scale: float = MISSING
+    threshold: float = MISSING
+    n_iter: int = 0
+    lr: float = 0.001
+    sal_loss_w: float = 1.0
+    shrink_loss_w: float = 1.0
+
+
+@dataclass
+class GaussianMixtureConf:
+    _target_: str = "topocluster.clustering.GaussianMixture"
     n_components: Any = 1
     covariance_type: Any = "full"
     tol: Any = 0.001
@@ -40,20 +62,33 @@ class GMMConf:
 
 
 @dataclass
-class TopoGradConf:
-    _target_: str = "topocluster.clustering.TopoGrad"
-    k_kde: int = MISSING
-    k_rips: int = MISSING
-    scale: float = MISSING
-    threshold: float = MISSING
-    iters: int = 0
-    lr: float = 0.001
+class SpectralClusteringConf:
+    _target_: str = "topocluster.clustering.SpectralClustering"
+    n_clusters: Any = 8
+    eigen_solver: Any = None
+    n_components: Any = None
+    random_state: Any = None
+    n_init: Any = 10
+    gamma: Any = 1.0
+    affinity: Any = "rbf"
+    n_neighbors: Any = 10
+    eigen_tol: Any = 0.0
+    assign_labels: Any = "kmeans"
+    degree: Any = 3
+    coef0: Any = 1
+    kernel_params: Any = None
+    n_jobs: Any = None
+    verbose: Any = False
 
 
 @dataclass
-class KmeansConf:
-    _target_: str = "topocluster.clustering.Kmeans"
-    n_iter: int = MISSING
-    k: Optional[int] = None
-    backend: Backends = Backends.TORCH
-    verbose: bool = False
+class AgglomerativeClusteringConf:
+    _target_: str = "topocluster.clustering.AgglomerativeClustering"
+    n_clusters: Any = 2
+    affinity: Any = "euclidean"
+    memory: Any = None
+    connectivity: Any = None
+    compute_full_tree: Any = "auto"
+    linkage: Any = "ward"
+    distance_threshold: Any = None
+    compute_distances: Any = False
