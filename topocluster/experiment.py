@@ -136,18 +136,27 @@ class Experiment(pl.LightningModule):
         return total_loss
 
     def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
+        # It's not strictly necessary to disable shuffling but pytorch-lightning complains if its
+        # enabled during 'testing'
         dl_kwargs = {"shuffle": False} if stage == "train" else {}
+        # Sampler needs to be set to None, meaning the default sequential/batch sampler combination
+        # is used, so that the full dataset is encoded (with no duplicates)
         train_batch_sampler = self.datamodule.train_batch_sampler
         self.datamodule.train_batch_sampler = None
         dataloader = cast(DataLoader, getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs))
+        # Encode the dataset
         dataset_encoder = DatasetEncoderRunner(model=self.encoder)
         self._encoder_runner.test(
             dataset_encoder,
             test_dataloaders=dataloader,
             verbose=False,
         )
+        # Reset the batch sampler to what it was before encoding
         self.datamodule.train_batch_sampler = train_batch_sampler
+        # Extract the encodings/associated labels from the dataset encoder
         encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
+        # Save the encodings to the artifacts directory
+        torch.save(encodings.detach().cpu(), self.artifacts_dir / f"{stage}_encodings.pt")
 
         encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)

@@ -21,4 +21,6 @@ clusterer = TopoGrad(k_kde=30, k_rips=30, scale=0.1, threshold=1, n_iter=100, lr
 clusterer.destnum = 4
 preds = clusterer(X)
 clusterer.plot()
-plt.show()
+# plt.show()
+torch.save(preds, "features.pt")
+print(torch.load("features.pt"))
