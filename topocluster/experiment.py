@@ -111,7 +111,7 @@ class Experiment(pl.LightningModule):
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = cast(Tensor, self.encoder(batch.x))
         total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
-        self.log_dict(loss_dict)
+        self.logger.experiment.log(loss_dict, step=self.train_step)
         self.train_step += 1
         return total_loss
 
@@ -188,7 +188,7 @@ class Experiment(pl.LightningModule):
             self.print("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         logger.log_hyperparams(hparams)
-        self.pretrainer.logger = logger
+        # self.pretrainer.logger = logger
         self.trainer.logger = logger
 
         checkpointer_kwargs = dict(
