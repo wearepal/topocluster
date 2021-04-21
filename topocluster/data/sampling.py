@@ -92,7 +92,6 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
                 unsampled_m[unsampled_m.nonzero()[rel_idx]] = 0
                 sampled_idxs.append(int(p))
 
-            assert len(set(sampled_idxs)) == self.budget
             yield sampled_idxs
             del dists, unsampled_m, sampled_idxs
 
