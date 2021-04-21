@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod, abstractstaticmethod
-from typing import ClassVar, List, cast
+from typing import Any, ClassVar, List, cast
 
 import pytorch_lightning as pl
 import torch
@@ -68,15 +68,19 @@ class DataModule(pl.LightningDataModule):
 
     @implements(pl.LightningDataModule)
     def train_dataloader(self, shuffle: bool = True) -> DataLoader:
+        dl_kwargs: dict[str, Any] = {
+            "shuffle": shuffle and self.train_batch_sampler is None,
+            "drop_last":self.train_batch_sampler is None
+        }
+        if self.train_batch_sampler is None:
+            dl_kwargs["batch_size"] = self.train_batch_size
         return DataLoader(
             self.train_data,
-            batch_size=self.train_batch_size if self.train_batch_sampler is None else None,
-            shuffle=shuffle and self.train_batch_sampler is None,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=self.train_batch_sampler is None,
             collate_fn=self._collate_fn,
             batch_sampler=self.train_batch_sampler,
+            **dl_kwargs
         )
 
     @implements(pl.LightningDataModule)
