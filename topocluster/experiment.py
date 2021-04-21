@@ -137,7 +137,7 @@ class Experiment(pl.LightningModule):
 
     def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
         dl_kwargs = {"shuffle": False} if stage == "train" else {}
-        train_sampler = self.datamodule.train_batch_sampler
+        train_batch_sampler = self.datamodule.train_batch_sampler
         self.datamodule.train_batch_sampler = None
         dataloader = cast(DataLoader, getattr(self.datamodule, f"{stage}_dataloader")(**dl_kwargs))
         dataset_encoder = DatasetEncoderRunner(model=self.encoder)
@@ -146,7 +146,7 @@ class Experiment(pl.LightningModule):
             test_dataloaders=dataloader,
             verbose=False,
         )
-        self.datamodule.train_sampler = train_sampler
+        self.datamodule.train_batch_sampler = train_batch_sampler
         encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
 
         encodings = self.reducer.fit_transform(encodings)
@@ -217,7 +217,7 @@ class Experiment(pl.LightningModule):
         self.sampler.build(
             dataloader=self.datamodule.train_dataloader(shuffle=False), trainer=self.trainer
         )
-        self.datamodule.train_sampler = self.sampler
+        self.datamodule.train_batch_sampler = self.sampler
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
