@@ -7,13 +7,12 @@ import torch
 from torch.tensor import Tensor
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
-from torch.utils.data.sampler import RandomSampler, Sampler
+from torch.utils.data.sampler import Sampler
 from torchvision import transforms
 from torchvision.datasets import MNIST
 
 from kit import implements
 from kit.torch import prop_random_split
-from topocluster.data.sampling import GreedyCoreSetSampler
 from topocluster.data.utils import (
     Batch,
     BinarizedLabelDataset,
@@ -26,6 +25,7 @@ from topocluster.data.utils import (
 
 __all__ = [
     "DataModule",
+    "MNISTDataModule",
     "UMNISTDataModule",
     "VisionDataModule",
 ]
@@ -70,7 +70,7 @@ class DataModule(pl.LightningDataModule):
     def train_dataloader(self, shuffle: bool = True) -> DataLoader:
         dl_kwargs: dict[str, Any] = {
             "shuffle": shuffle and self.train_batch_sampler is None,
-            "drop_last":self.train_batch_sampler is None
+            "drop_last": self.train_batch_sampler is None,
         }
         if self.train_batch_sampler is None:
             dl_kwargs["batch_size"] = self.train_batch_size
@@ -125,6 +125,69 @@ class VisionDataModule(DataModule):
             test_batch_size=test_batch_size,
             num_workers=num_workers,
         )
+
+
+class MNISTDataModule(VisionDataModule):
+    def __init__(
+        self,
+        data_dir: str = "./",
+        train_batch_size: int = 256,
+        test_batch_size: int = 1000,
+        num_workers: int = 0,
+        val_pcnt: float = 0.2,
+    ):
+        super().__init__(
+            data_dir=data_dir,
+            train_batch_size=train_batch_size,
+            test_batch_size=test_batch_size,
+            num_workers=num_workers,
+        )
+        self.val_pcnt = val_pcnt
+
+    @staticmethod
+    def _transform() -> transforms.Compose:
+        transform_ls = [transforms.Resize((32, 32)), transforms.Normalize((0.1307,), (0.3081,))]
+        # test_transform_list.insert(0, ))
+        return transforms.Compose(transform_ls)
+
+    @property
+    def num_classes(self) -> int:
+        return 2
+
+    @property
+    def num_subgroups(self) -> int:
+        return 5
+
+    @implements(pl.LightningDataModule)
+    def prepare_data(self) -> None:
+        # download
+        MNIST(self.data_dir, train=True, download=True)
+        MNIST(self.data_dir, train=False, download=True)
+
+    @implements(pl.LightningDataModule)
+    def setup(self, stage: str | None = None) -> None:
+        # Assign Train/val split(s) for use in Dataloaders
+        if stage == "fit" or stage is None:
+            all_data = BinarizedLabelDataset(
+                MNIST(self.data_dir, train=True, download=True, transform=self._transform()),
+                threshold=5,
+            )
+            self.val_data, self.train_data = prop_random_split(all_data, props=(self.val_pcnt,))
+            sample = cast(Tensor, self.train_data[0][0])
+            self.dims = ImageDims(*sample.shape)
+
+        # Assign Test split(s) for use in Dataloaders
+        if stage == "test" or stage is None:
+            self.test_data = BinarizedLabelDataset(
+                MNIST(
+                    self.data_dir,
+                    train=False,
+                    download=True,
+                    transform=self._transform(),
+                ),
+                threshold=5,
+            )
+            self.dims = ImageDims(*getattr(self, "dims", self.test_data[0][0].shape))
 
 
 class UMNISTDataModule(VisionDataModule):

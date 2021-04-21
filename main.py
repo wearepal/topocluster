@@ -13,7 +13,10 @@ from gen.topocluster.clustering.conf import (
     TomatoConf,
     TopoGradConf,
 )
-from gen.topocluster.data.datamodules.conf import UMNISTDataModuleConf
+from gen.topocluster.data.datamodules.conf import (
+    MNISTDataModuleConf,
+    UMNISTDataModuleConf,
+)
 from gen.topocluster.data.sampling.conf import GreedyCoreSetSamplerConf
 from gen.topocluster.experiment.conf import ExperimentConf
 from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
@@ -26,6 +29,7 @@ sr.register(path="experiment_schema", config_class=ExperimentConf)
 
 # Definne the 'datamodule' group
 with sr.new_group(group_name="schema/datamodule", target_path="datamodule") as group:
+    group.add_option(name="mnist", config_class=MNISTDataModuleConf)
     group.add_option(name="umnist", config_class=UMNISTDataModuleConf)
 
 # Definne the 'encoder' group

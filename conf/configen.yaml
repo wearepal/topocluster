@@ -26,6 +26,7 @@ configen:
         - LeNet4
     - name: topocluster.data.datamodules
       classes:
+        - MNISTDataModule
         - UMNISTDataModule
     - name: topocluster.clustering
       classes:

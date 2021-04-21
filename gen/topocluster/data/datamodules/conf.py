@@ -8,6 +8,16 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class MNISTDataModuleConf:
+    _target_: str = "topocluster.data.datamodules.MNISTDataModule"
+    data_dir: str = "./"
+    train_batch_size: int = 256
+    test_batch_size: int = 1000
+    num_workers: int = 0
+    val_pcnt: float = 0.2
+
+
+@dataclass
 class UMNISTDataModuleConf:
     _target_: str = "topocluster.data.datamodules.UMNISTDataModule"
     data_dir: str = "./"
