@@ -94,7 +94,7 @@ class Experiment(pl.LightningModule):
         if self.enc_loss_w > 0:
             total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
         if self.clust_loss_w > 0:
-            # Random projection can be differentiated through so we make an exception to it
+            # Random projection can be differentiated through so we make exception to it
             # during end-to-end training
             if isinstance(self.reducer, RandomProjector):
                 encoding = self.reducer.fit_transform(X=encoding)
