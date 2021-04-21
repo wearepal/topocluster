@@ -74,7 +74,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=shuffle and self.train_batch_sampler is None,
             pin_memory=True,
             num_workers=self.num_workers,
-            drop_last=self.train_batch_sampler is not None,
+            drop_last=self.train_batch_sampler is None,
             collate_fn=self._collate_fn,
             batch_sampler=self.train_batch_sampler,
         )
