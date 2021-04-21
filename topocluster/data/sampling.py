@@ -59,7 +59,7 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
         self.embeddings = runner.embeddings
         self.budget = dataloader.batch_size
         self._num_oversampled_samples = min(
-            self.budget * self.oversampling_factor, len(self.embeddings) + 1
+            self.budget * self.oversampling_factor, len(self.embeddings)
         )
 
     def _get_dists(self, batch_idxs: Tensor) -> Tensor:
@@ -85,10 +85,13 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
             unsampled_m[0] = 0
 
             while len(sampled_idxs) < self.budget:
+                unsampled_idxs = os_batch_idxs[unsampled_m]
                 # p := argmax min_{i\inB}(d(x, x_i)); i.e. select the sample which maximizes the
                 # minimum distance (euclidean norm) to all previously selected samples
-                rel_idx = torch.argmax(torch.min(dists[~unsampled_m][:, unsampled_m], dim=0).values)
-                p = [os_batch_idxs][unsampled_m][rel_idx]
+                rel_idx = torch.argmax(
+                    torch.min(dists[~unsampled_m][:, unsampled_idxs], dim=0).values
+                )
+                p = unsampled_idxs[rel_idx]
                 unsampled_m[unsampled_m.nonzero()[rel_idx]] = 0
                 sampled_idxs.append(int(p))
 
