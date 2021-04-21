@@ -36,8 +36,8 @@ class Tomato(Clusterer):
         span = np.array([0, 1])
         ax.plot(span, span, c="black", alpha=0.6)  # type: ignore[call-arg]
         ax.fill_between(span, span, 1, interpolate=True, color="grey")
-        ax.set_xlabel("Death")
-        ax.set_ylabel("Birth")
+        ax.set_ylabel("Death")
+        ax.set_xlabel("Birth")
         ax.set_title("Persistence Diagram")
 
         return fig
