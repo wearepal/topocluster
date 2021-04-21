@@ -8,7 +8,6 @@ from typing import Any, ClassVar, Literal, Optional, cast
 from matplotlib import pyplot as plt
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks.progress import ProgressBar
 from pytorch_lightning.loggers import WandbLogger
 import torch
 import torch.nn as nn
@@ -30,6 +29,8 @@ from topocluster.utils.logging import EncodingProgbar
 
 
 __all__ = ["Experiment"]
+
+Stage = Literal["train", "val", "test"]
 
 
 class Experiment(pl.LightningModule):
@@ -135,7 +136,7 @@ class Experiment(pl.LightningModule):
         self.log_dict(loss_dict, on_epoch=True)
         return total_loss
 
-    def _evaluate(self, stage: Literal["train", "val", "test"]) -> None:
+    def _encode_dataset(self, stage: Stage) -> Batch:
         # It's not strictly necessary to disable shuffling but pytorch-lightning complains if its
         # enabled during 'testing'
         dl_kwargs = {"shuffle": False} if stage == "train" else {}
@@ -154,10 +155,14 @@ class Experiment(pl.LightningModule):
         # Reset the batch sampler to what it was before encoding
         self.datamodule.train_batch_sampler = train_batch_sampler
         # Extract the encodings/associated labels from the dataset encoder
-        encodings, subgroup_inf, superclass_inf = dataset_encoder.encoded_dataset
+        return dataset_encoder.encoded_dataset
+        ...
+
+    def _evaluate(self, stage: Stage) -> None:
+        # Encode the dataset in preparation for clustering
+        encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage=stage)
         # Save the encodings to the artifacts directory
         torch.save(encodings.detach().cpu(), self.artifacts_dir / f"{stage}_encodings.pt")
-
         encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
@@ -219,6 +224,11 @@ class Experiment(pl.LightningModule):
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        # Save the encodings obtained from the encoder immediately after pre-training
+        encodings = self._encode_dataset(stage="train").x
+        torch.save(
+            encodings.detach().cpu(), self.artifacts_dir / "post_pretrain_train_encodings.pt"
+        )
         # Training phase
         if self.enc_freeze_depth:
             self.encoder.freeze(depth=self.enc_freeze_depth)
@@ -255,5 +265,3 @@ class DatasetEncoderRunner(pl.LightningModule):
     def test_epoch_end(self, outputs: list[Batch]) -> None:
         outputs_t = tuple(zip(*outputs))
         self.encoded_dataset = Batch(*(torch.cat(el, dim=0) for el in outputs_t))
-
-
