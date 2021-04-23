@@ -73,7 +73,7 @@ class ImageLogger(pl.Callback):
                 to_log = torch.cat([to_log, recons], dim=0).flatten(
                     start_dim=0, end_dim=1
                 )
-                str_title += "_images_and_recons"
+                str_title += "_images_&_recons"
             else:
                 str_title += "_images"
 
@@ -85,7 +85,6 @@ class ImageLogger(pl.Callback):
                 scale_each=self.scale_each,
                 pad_value=self.pad_value,
             )
-            str_title = f"{name}/{pl_module.__class__.__name__}_images"
             trainer.logger.experiment.log(
                 {str_title: wandb.Image(TF.to_pil_image(grid))},
                 commit=False,
