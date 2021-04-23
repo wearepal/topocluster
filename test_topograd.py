@@ -22,5 +22,5 @@ clusterer.destnum = 4
 preds = clusterer(X)
 clusterer.plot()
 # plt.show()
-torch.save(preds, "features.pt")
+torch.save({"x": preds, "y": y}, "features.pt")
 print(torch.load("features.pt"))

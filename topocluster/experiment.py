@@ -162,7 +162,11 @@ class Experiment(pl.LightningModule):
         # Encode the dataset in preparation for clustering
         encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage=stage)
         # Save the encodings to the artifacts directory
-        torch.save(encodings.detach().cpu(), self.artifacts_dir / f"{stage}_encodings.pt")
+        subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
+        torch.save(
+            {"encodings": encodings.detach().cpu(), "labels": subgroup_id},
+            self.artifacts_dir / f"{stage}_encodings.pt",
+        )
         encodings = self.reducer.fit_transform(encodings)
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
@@ -225,9 +229,12 @@ class Experiment(pl.LightningModule):
         # Pre-training phase
         self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Save the encodings obtained from the encoder immediately after pre-training
-        encodings = self._encode_dataset(stage="train").x
+        encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage="train")
+        # Save the encodings to the artifacts directory
+        subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
         torch.save(
-            encodings.detach().cpu(), self.artifacts_dir / "post_pretrain_train_encodings.pt"
+            {"encodings": encodings.detach().cpu(), "labels": subgroup_id},
+            self.artifacts_dir / f"post_pretrain_train_encodings.pt",
         )
         # Training phase
         if self.enc_freeze_depth:
