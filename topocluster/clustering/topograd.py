@@ -87,7 +87,7 @@ class TopoGrad(Tomato):
         lr: float = 1e-3,
         sal_loss_w: float = 1.0,
         shrink_loss_w: float = 1.0,
-        norm: bool = True,
+        normalize: bool = True,
     ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.n_iter = n_iter
@@ -95,7 +95,7 @@ class TopoGrad(Tomato):
         self.lr = lr
         self.sal_loss_w = sal_loss_w
         self.shrink_loss_w = shrink_loss_w
-        self.normalize = norm
+        self.normalize = normalize
 
     @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:

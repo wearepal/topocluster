@@ -40,7 +40,7 @@ class TopoGradConf:
     lr: float = 0.001
     sal_loss_w: float = 1.0
     shrink_loss_w: float = 1.0
-    norm: bool = True
+    normalize: bool = True
 
 
 @dataclass
