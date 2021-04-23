@@ -44,7 +44,7 @@ class ImageLogger(pl.Callback):
             img = img * torch.tensor(self.norm_values.std, device=img.device).view(
                 1, -1, 1, 1
             ) + torch.tensor(self.norm_values.mean, device=img.device).view(1, -1, 1, 1)
-        return img.clip.cpu(0, 1)
+        return img.clip(0, 1).cpu()
 
     def log_images(
         self,
