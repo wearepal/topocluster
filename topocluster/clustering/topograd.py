@@ -87,6 +87,7 @@ class TopoGrad(Tomato):
         lr: float = 1e-3,
         sal_loss_w: float = 1.0,
         shrink_loss_w: float = 1.0,
+        norm: bool = True,
     ):
         super().__init__(k_kde=k_kde, k_rips=k_rips, scale=scale, threshold=threshold)
         self.n_iter = n_iter
@@ -94,6 +95,7 @@ class TopoGrad(Tomato):
         self.lr = lr
         self.sal_loss_w = sal_loss_w
         self.shrink_loss_w = shrink_loss_w
+        self.normalize = norm
 
     @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
@@ -105,6 +107,8 @@ class TopoGrad(Tomato):
             raise AttributeError(
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
+        if self.normalize:
+            x = x / x.norm(dim=1)
         loss_dict = topograd_loss(
             pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
         )
@@ -129,6 +133,9 @@ class TopoGrad(Tomato):
                     optimizer.step()
                     pbar.set_postfix(loss=loss.item())
                     pbar.update()
+
+        if self.normalize:
+            x = x / x.norm(dim=1)
 
         clusters, pers_pairs = tomato(
             x.detach().cpu().numpy(),

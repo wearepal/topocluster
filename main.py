@@ -32,6 +32,7 @@ with sr.new_group(group_name="schema/datamodule", target_path="datamodule") as g
     group.add_option(name="mnist", config_class=MNISTDataModuleConf)
     group.add_option(name="umnist", config_class=UMNISTDataModuleConf)
 
+
 # Definne the 'encoder' group
 with sr.new_group(group_name="schema/encoder", target_path="encoder") as group:
     group.add_option(name="conv_ae", config_class=ConvAutoEncoderConf)
