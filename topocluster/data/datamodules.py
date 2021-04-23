@@ -80,7 +80,7 @@ class DataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             collate_fn=self._collate_fn,
             batch_sampler=self.train_batch_sampler,
-            **dl_kwargs
+            **dl_kwargs,
         )
 
     @implements(pl.LightningDataModule)

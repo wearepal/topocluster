@@ -27,10 +27,12 @@ class ImageDims(NamedTuple):
     H: int
     W: int
 
+
 class Batch(NamedTuple):
     x: Tensor
     s: Tensor
     y: Tensor
+
 
 Transform = Callable[[Union[Image.Image, Tensor]], Tensor]
 

@@ -53,7 +53,7 @@ def sample_concrete(logits: Tensor, temperature: float) -> Tensor:
         Tensor: Samples from a concrete distribution with the
         given temperature.
     """
-    Concrete: type[td.RelaxedBernoulli]| type[td.RelaxedOneHotCategorical]
+    Concrete: type[td.RelaxedBernoulli] | type[td.RelaxedOneHotCategorical]
     if logits.dim() <= 1 or logits.size(1) <= 1:
         Concrete = td.RelaxedBernoulli
     else:
