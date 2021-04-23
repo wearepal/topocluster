@@ -25,7 +25,7 @@ from topocluster.data.utils import Batch
 from topocluster.metrics import compute_metrics
 from topocluster.models.base import Encoder
 from topocluster.reduction import RandomProjector, Reducer
-from topocluster.utils.logging import EncodingProgbar
+from topocluster.utils.logging import EncodingProgbar, ImageLogger
 
 
 __all__ = ["Experiment"]
@@ -164,7 +164,7 @@ class Experiment(pl.LightningModule):
         # Save the encodings to the artifacts directory
         subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
         torch.save(
-            {"encodings": encodings.detach().cpu(), "labels": subgroup_id},
+            {"encodings": encodings.detach().cpu(), "labels": subgroup_id.detach().cpu()},
             self.artifacts_dir / f"{stage}_encodings.pt",
         )
         encodings = self.reducer.fit_transform(encodings)
@@ -206,7 +206,7 @@ class Experiment(pl.LightningModule):
             self.print("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         logger.log_hyperparams(hparams)
-        # self.pretrainer.logger = logger
+        self.pretrainer.logger = logger
         self.trainer.logger = logger
 
         checkpointer_kwargs = dict(
@@ -215,8 +215,11 @@ class Experiment(pl.LightningModule):
             save_top_k=1,
             mode="max",
         )
-        self.pretrainer.callbacks.append(
-            ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best")
+        self.pretrainer.callbacks.extend(
+            [
+                ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best"),
+                ImageLogger(norm_values=self.datamodule.norm_values),
+            ]
         )
         self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
 
@@ -233,7 +236,7 @@ class Experiment(pl.LightningModule):
         # Save the encodings to the artifacts directory
         subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
         torch.save(
-            {"encodings": encodings.detach().cpu(), "labels": subgroup_id},
+            {"encodings": encodings.detach().cpu(), "labels": subgroup_id.detach().cpu()},
             self.artifacts_dir / "post_pretrain_train_encodings.pt",
         )
         # Training phase

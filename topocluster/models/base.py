@@ -45,7 +45,7 @@ class Encoder(pl.LightningModule):
         self.eval()
 
     @abstractmethod
-    def _get_loss(self, encoding: Tensor, batch: Batch, prefix: str = "") -> dict[str, Tensor]:
+    def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
         ...
 
     def get_loss(self, encoding: Tensor, batch: Batch, prefix: str = "") -> dict[str, Tensor]:

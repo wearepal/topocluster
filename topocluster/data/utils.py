@@ -13,13 +13,20 @@ from torch.utils.data._utils.collate import (
 
 
 __all__ = [
-    "ImageDims",
-    "Transform",
+    "Batch",
     "DataTransformer",
+    "NormalizationValues",
+    "ImageDims",
     "SizedDatasetProt",
+    "Transform",
     "adaptive_collate",
     "cast_collation",
 ]
+
+
+class NormalizationValues(NamedTuple):
+    mean: tuple[float, ...]
+    std: tuple[float, ...]
 
 
 class ImageDims(NamedTuple):

@@ -18,6 +18,7 @@ from topocluster.data.utils import (
     BinarizedLabelDataset,
     DataTransformer,
     ImageDims,
+    NormalizationValues,
     adaptive_collate,
     cast_collation,
 )
@@ -111,6 +112,9 @@ class DataModule(pl.LightningDataModule):
 class VisionDataModule(DataModule):
 
     dims: ImageDims
+    norm_values: ClassVar[NormalizationValues | None] = None
+
+
 
     def __init__(
         self,
@@ -147,7 +151,6 @@ class MNISTDataModule(VisionDataModule):
     @staticmethod
     def _transform() -> transforms.Compose:
         transform_ls = [transforms.Resize((32, 32)), transforms.Normalize((0.1307,), (0.3081,))]
-        # test_transform_list.insert(0, ))
         return transforms.Compose(transform_ls)
 
     @property
@@ -193,6 +196,7 @@ class MNISTDataModule(VisionDataModule):
 class UMNISTDataModule(VisionDataModule):
     undersampling_props: ClassVar[dict[str, float]] = {"8": 0.05}
     threshold: ClassVar[int] = 5
+    norm_values: ClassVar[NormalizationValues] = NormalizationValues(mean=(0.1307,), std=(0.3081,))
 
     def __init__(
         self,

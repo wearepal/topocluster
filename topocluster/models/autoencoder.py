@@ -36,7 +36,11 @@ class AutoEncoder(Encoder):
 
     @implements(Encoder)
     def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
-        return {"recon_loss": self.loss_fn(self.decoder(encoding), batch.x)}
+        recons = self.decoder(encoding)
+        return {"recon_loss": self.loss_fn(recons, batch.x)}
+
+    def reconstruct(self, x: Tensor) -> Tensor:
+        return self.decoder(self.encoder(x))
 
 
 class ConvAutoEncoder(AutoEncoder):

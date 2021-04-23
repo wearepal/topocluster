@@ -2,11 +2,103 @@ from __future__ import annotations
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.progress import ProgressBar
+import torch
+from torch import Tensor
+import torchvision
+import torchvision.transforms.functional as TF
 from tqdm import tqdm
+import wandb
 
 from kit import implements
+from topocluster.data.utils import Batch, NormalizationValues
+from topocluster.models.autoencoder import AutoEncoder
 
-__all__ = ["EncodingProgbar", "EmbeddingProgbar"]
+__all__ = ["EncodingProgbar", "EmbeddingProgbar", "ImageLogger"]
+
+
+class ImageLogger(pl.Callback):
+    """Log Images."""
+
+    def __init__(
+        self,
+        logging_freq: int = -1,
+        nrow: int = 8,
+        padding: int = 2,
+        normalize: bool = False,
+        scale_each: bool = False,
+        pad_value: int = 1,
+        norm_values: NormalizationValues | None = None,
+    ) -> None:
+        """Log images."""
+        super().__init__()
+        self.log_freq = logging_freq
+        self.nrow = nrow
+        self.padding = padding
+        self.normalize = normalize
+        self.scale_each = scale_each
+        self.pad_value = pad_value
+        self.norm_values = norm_values
+
+    def _denormalize(self, img: Tensor) -> Tensor:
+        if self.norm_values:
+            img = img.cpu() * torch.tensor(self.norm_values.std, device=img.device).view(
+                1, -1, 1, 1
+            ) + torch.tensor(self.norm_values.mean, device=img.device).view(1, -1, 1, 1)
+        return img.clip.cpu(0, 1)
+
+    def log_images(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        outputs: Tensor,
+        batch: Batch,
+        batch_idx: int,
+        dataloader_idx: int,
+        name: str,
+    ) -> None:
+        """Callback that logs images."""
+        if trainer.logger is None:
+            return
+        if (self.log_freq == -1 and batch_idx == 1) or (
+            self.log_freq > 0 and batch_idx % self.log_freq == 0
+        ):
+            img = batch.x.to(pl_module.device)
+
+            to_log = self._denormalize(img)
+
+            str_title = f"{name}/{pl_module.__class__.__name__}"
+            if isinstance(pl_module, AutoEncoder):
+                recons = pl_module.reconstruct(to_log)
+                to_log = torch.cat([to_log[None], recons[None]], dim=0).flatten(
+                    start_dim=0, end_dim=1
+                )
+                str_title += "_images_&_recons"
+            else:
+                str_title += "_images"
+
+            grid = torchvision.utils.make_grid(
+                tensor=to_log,
+                nrow=self.nrow,
+                padding=self.padding,
+                normalize=self.normalize,
+                scale_each=self.scale_each,
+                pad_value=self.pad_value,
+            )
+            str_title = f"{name}/{pl_module.__class__.__name__}_images"
+            trainer.logger.experiment.log(
+                {str_title: wandb.Image(TF.to_pil_image(grid))},
+                commit=False,
+            )
+
+    @implements(pl.Callback)
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
+        self.log_images(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx, "train")
+
+    @implements(pl.Callback)
+    def on_validation_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+    ):
+        self.log_images(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx, "val")
 
 
 class EncodingProgbar(ProgressBar):
