@@ -62,15 +62,15 @@ class ImageLogger(pl.Callback):
         if (self.log_freq == -1 and batch_idx == 1) or (
             self.log_freq > 0 and batch_idx % self.log_freq == 0
         ):
-            img = batch.x.to(pl_module.device)[:self.nrow]
+            imgs = batch.x.to(pl_module.device)[:self.nrow]
 
-            to_log = self._denormalize(img)
+            to_log = self._denormalize(imgs)
 
             str_title = f"{name}/{pl_module.__class__.__name__}"
             if isinstance(pl_module, AutoEncoder):
                 with torch.no_grad():
-                    recons = self._denormalize(pl_module.reconstruct(img))
-                to_log = torch.cat([to_log[None], recons[None]], dim=0).flatten(
+                    recons = self._denormalize(pl_module.reconstruct(imgs))
+                to_log = torch.cat([to_log, recons], dim=0).flatten(
                     start_dim=0, end_dim=1
                 )
                 str_title += "_images_&_recons"
@@ -79,7 +79,7 @@ class ImageLogger(pl.Callback):
 
             grid = torchvision.utils.make_grid(
                 tensor=to_log,
-                nrow=self.nrow,
+                nrow=imgs.size(0),
                 padding=self.padding,
                 normalize=self.normalize,
                 scale_each=self.scale_each,
