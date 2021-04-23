@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.progress import ProgressBar
@@ -54,7 +55,7 @@ class ImageLogger(pl.Callback):
         batch: Batch,
         batch_idx: int,
         dataloader_idx: int,
-        name: str,
+        prefix: str,
     ) -> None:
         """Callback that logs images."""
         if trainer.logger is None:
@@ -62,17 +63,15 @@ class ImageLogger(pl.Callback):
         if (self.log_freq == -1 and batch_idx == 1) or (
             self.log_freq > 0 and batch_idx % self.log_freq == 0
         ):
-            imgs = batch.x.to(pl_module.device)[:self.nrow]
+            imgs = batch.x.to(pl_module.device)[: self.nrow]
 
             to_log = self._denormalize(imgs)
 
-            str_title = f"{name}/{pl_module.__class__.__name__}"
+            str_title = f"{prefix}/{pl_module.__class__.__name__}"
             if isinstance(pl_module, AutoEncoder):
                 with torch.no_grad():
                     recons = self._denormalize(pl_module.reconstruct(imgs))
-                to_log = torch.cat([to_log, recons], dim=0).flatten(
-                    start_dim=0, end_dim=1
-                )
+                to_log = torch.cat([to_log, recons], dim=0).flatten(start_dim=0, end_dim=1)
                 str_title += "_images_&_recons"
             else:
                 str_title += "_images"
@@ -91,14 +90,44 @@ class ImageLogger(pl.Callback):
             )
 
     @implements(pl.Callback)
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx):
-        self.log_images(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx, "train")
+    def on_train_batch_end(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        outputs: list[Any],
+        batch: Batch,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        self.log_images(
+            trainer=trainer,
+            pl_module=pl_module,
+            outputs=outputs,
+            batch=batch,
+            batch_idx=batch_idx,
+            dataloader_idx=dataloader_idx,
+            prefix="train",
+        )
 
     @implements(pl.Callback)
     def on_validation_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
-    ):
-        self.log_images(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx, "val")
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        outputs: list[Any],
+        batch: Batch,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        self.log_images(
+            trainer=trainer,
+            pl_module=pl_module,
+            outputs=outputs,
+            batch=batch,
+            batch_idx=batch_idx,
+            dataloader_idx=dataloader_idx,
+            prefix="val",
+        )
 
 
 class EncodingProgbar(ProgressBar):
