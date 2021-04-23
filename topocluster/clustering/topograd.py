@@ -108,7 +108,7 @@ class TopoGrad(Tomato):
                 "destnum has not yet been set. Please call 'build' before calling 'get_loss'"
             )
         if self.normalize:
-            x = x / x.norm(dim=1)
+            x = x / x.norm(dim=1, keepdim=True)
         loss_dict = topograd_loss(
             pc=x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, destnum=self.destnum
         )
@@ -135,7 +135,7 @@ class TopoGrad(Tomato):
                     pbar.update()
 
         if self.normalize:
-            x = x / x.norm(dim=1)
+            x = x / x.norm(dim=1, keepdim=True)
 
         clusters, pers_pairs = tomato(
             x.detach().cpu().numpy(),
