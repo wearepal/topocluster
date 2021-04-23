@@ -41,7 +41,7 @@ class ImageLogger(pl.Callback):
 
     def _denormalize(self, img: Tensor) -> Tensor:
         if self.norm_values:
-            img = img.cpu() * torch.tensor(self.norm_values.std, device=img.device).view(
+            img = img * torch.tensor(self.norm_values.std, device=img.device).view(
                 1, -1, 1, 1
             ) + torch.tensor(self.norm_values.mean, device=img.device).view(1, -1, 1, 1)
         return img.clip.cpu(0, 1)
