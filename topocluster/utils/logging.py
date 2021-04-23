@@ -62,7 +62,7 @@ class ImageLogger(pl.Callback):
         if (self.log_freq == -1 and batch_idx == 1) or (
             self.log_freq > 0 and batch_idx % self.log_freq == 0
         ):
-            img = batch.x.to(pl_module.device)
+            img = batch.x.to(pl_module.device)[:self.nrow]
 
             to_log = self._denormalize(img)
 
