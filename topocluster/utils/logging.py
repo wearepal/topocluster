@@ -69,7 +69,7 @@ class ImageLogger(pl.Callback):
             str_title = f"{name}/{pl_module.__class__.__name__}"
             if isinstance(pl_module, AutoEncoder):
                 with torch.no_grad():
-                    recons = pl_module.reconstruct(img).cpu()
+                    recons = self._denormalize(pl_module.reconstruct(img))
                 to_log = torch.cat([to_log[None], recons[None]], dim=0).flatten(
                     start_dim=0, end_dim=1
                 )
