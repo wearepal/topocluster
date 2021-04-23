@@ -1,6 +1,5 @@
 from __future__ import annotations
 import copy
-import math
 from typing import Iterator, List, Optional
 
 import pytorch_lightning as pl

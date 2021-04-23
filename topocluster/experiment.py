@@ -53,7 +53,7 @@ class Experiment(pl.LightningModule):
         enc_loss_w: float = 1.0,
         clust_loss_w: float = 1.0,
         exp_group: Optional[str] = None,
-        train_eval_freq: int = 1000,
+        train_eval_freq: Optional[int] = None,
         enc_freeze_depth: Optional[int] = 0,
     ):
         super().__init__()
@@ -118,9 +118,14 @@ class Experiment(pl.LightningModule):
 
     @implements(pl.LightningModule)
     def on_train_batch_end(self, *args: Any, **kwargs: Any) -> None:
-        eff_train_step = self.train_step + 1
-        if eff_train_step > 1 and (not (eff_train_step % self.train_eval_freq)):
-            self._evaluate(stage="train")
+        if self.train_eval_freq is not None:
+            eff_train_step = self.train_step + 1
+            if eff_train_step > 1 and (not (eff_train_step % self.train_eval_freq)):
+                self._evaluate(stage="train")
+
+    @implements(pl.LightningModule)
+    def on_fit_end(self) -> None:
+        self._evaluate(stage="train")
 
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
@@ -193,7 +198,7 @@ class Experiment(pl.LightningModule):
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
         self.print(f"Current working directory: '{os.getcwd()}'")
-        self.print(f"Artifacts directory created at: '{self.artifacts_dir.resolve()}'")
+        self.print(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
 
         logger = WandbLogger(
             entity="predictive-analytics-lab",
@@ -239,7 +244,7 @@ class Experiment(pl.LightningModule):
         # Training phase
         if self.enc_freeze_depth:
             self.encoder.freeze(depth=self.enc_freeze_depth)
-        # Build the sampler - the sampler is only used for joint training
+        # Build the sampler - the sampler is only used during training
         self.sampler.build(
             dataloader=self.datamodule.train_dataloader(shuffle=False), trainer=self.trainer
         )
@@ -247,7 +252,7 @@ class Experiment(pl.LightningModule):
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
-        # Manually invoke exit for multirun compatibility
+        # Manually invoke exit for multirun-compatibility
         logger.experiment.__exit__(None, 0, 0)
 
 
