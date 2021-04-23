@@ -234,7 +234,7 @@ class Experiment(pl.LightningModule):
         subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
         torch.save(
             {"encodings": encodings.detach().cpu(), "labels": subgroup_id},
-            self.artifacts_dir / f"post_pretrain_train_encodings.pt",
+            self.artifacts_dir / "post_pretrain_train_encodings.pt",
         )
         # Training phase
         if self.enc_freeze_depth:
