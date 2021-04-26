@@ -148,7 +148,7 @@ class MNISTDataModule(VisionDataModule):
 
     @staticmethod
     def _transform() -> transforms.Compose:
-        transform_ls = [transforms.Normalize((0.1307,), (0.3081,))]
+        transform_ls = [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         return transforms.Compose(transform_ls)
 
     @property

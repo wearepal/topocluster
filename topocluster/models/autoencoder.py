@@ -188,7 +188,7 @@ class ConvAutoEncoderMNIST(AutoEncoder):
                 in_channels=dm.dims.C, out_channels=32, kernel_size=5, stride=2, padding=2
             ),
             self._down_conv(in_channels=32, out_channels=64, kernel_size=5, stride=2, padding=2),
-            self._down_conv(in_channels=32, out_channels=128, kernel_size=3, stride=2, padding=1),
+            self._down_conv(in_channels=64, out_channels=128, kernel_size=3, stride=2, padding=0),
         ]
         encoder_ls.append(nn.Flatten())
         width = dm.dims.W // 2 ** 3
@@ -204,8 +204,8 @@ class ConvAutoEncoderMNIST(AutoEncoder):
                 out_channels=64,
                 kernel_size=3,
                 stride=2,
-                padding=1,
-                output_padding=1,
+                padding=0,
+                output_padding=0,
             ),
             self._up_conv(
                 in_channels=64,
@@ -213,7 +213,7 @@ class ConvAutoEncoderMNIST(AutoEncoder):
                 kernel_size=5,
                 stride=2,
                 padding=2,
-                output_padding=0,
+                output_padding=1,
             ),
             self._up_conv(
                 in_channels=32,
@@ -221,7 +221,7 @@ class ConvAutoEncoderMNIST(AutoEncoder):
                 kernel_size=5,
                 stride=2,
                 padding=2,
-                output_padding=0,
+                output_padding=1,
             ),
         )
         return nn.Sequential(*encoder_ls), decoder
