@@ -21,7 +21,11 @@ def compute_abs_subgroup_id(
 
 
 def compute_metrics(
-    preds: Tensor, subgroup_inf: Tensor, superclass_inf: Tensor, prefix: str, num_subgroups: int
+    preds: Tensor,
+    subgroup_inf: Tensor,
+    superclass_inf: Tensor,
+    num_subgroups: int,
+    prefix: str = "",
 ) -> dict[str, float]:
     # Convert from torch to numpy
     preds_np = preds.detach().cpu().numpy()
@@ -32,10 +36,12 @@ def compute_metrics(
         superclass_inf=superclass_inf_np, subgroup_inf=subgroup_inf_np, num_subgroups=num_subgroups
     )
 
+    if prefix:
+        prefix += "/"
     logging_dict = {
-        f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),
-        f"{prefix}/AMI": adjusted_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
-        f"{prefix}/NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
+        f"{prefix}ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),
+        f"{prefix}AMI": adjusted_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
+        f"{prefix}NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
     }
 
     cluster_map = compute_optimal_assignments(labels_true=subgroup_id, labels_pred=preds_np)
@@ -47,8 +53,8 @@ def compute_metrics(
         if num_matches > 0:
             num_hits = (class_mask & (preds_np == cluster_id)).sum()
             subgroup_acc = num_hits / num_matches
-            logging_dict[f"{prefix}/Cluster_Acc/{i}"] = subgroup_acc
+            logging_dict[f"{prefix}Cluster_Acc/{i}"] = subgroup_acc
             num_hits_all += num_hits
-    logging_dict[f"{prefix}/Cluster_Acc/Total"] = num_hits_all / len(subgroup_id)
+    logging_dict[f"{prefix}Cluster_Acc/Total"] = num_hits_all / len(subgroup_id)
 
     return logging_dict

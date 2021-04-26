@@ -90,7 +90,7 @@ class Experiment(pl.LightningModule):
     ) -> tuple[Tensor | None, dict[str, Tensor]]:
         loss_dict: dict[str, Tensor] = {}
         total_loss: Tensor | None = encoding.new_zeros(())
-        enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
+        enc_loss_dict = self.encoder.get_loss(encoding, batch)
         loss_dict.update(enc_loss_dict)
         if self.enc_loss_w > 0:
             total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
@@ -99,7 +99,7 @@ class Experiment(pl.LightningModule):
             # during end-to-end training
             if isinstance(self.reducer, RandomProjector):
                 encoding = self.reducer.fit_transform(X=encoding)
-            clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
+            clust_loss_dict = self.clusterer.get_loss(x=encoding)
             loss_dict.update(clust_loss_dict)
             total_loss += self.clust_loss_w * sum(clust_loss_dict.values())
         if not total_loss.requires_grad:
@@ -144,7 +144,7 @@ class Experiment(pl.LightningModule):
     def _encode_dataset(self, stage: Stage) -> Batch:
         # It's not strictly necessary to disable shuffling but pytorch-lightning complains if its
         # enabled during 'testing'
-        dl_kwargs = {"shuffle": False} if stage == "train" else {}
+        dl_kwargs = dict(shuffle=False) if stage == "train" else {}
         # Sampler needs to be set to None, meaning the default sequential/batch sampler combination
         # is used, so that the full dataset is encoded (with no duplicates)
         train_batch_sampler = self.datamodule.train_batch_sampler
@@ -185,7 +185,6 @@ class Experiment(pl.LightningModule):
             preds=preds,
             subgroup_inf=subgroup_inf,
             superclass_inf=superclass_inf,
-            prefix=stage,
             num_subgroups=self.datamodule.num_subgroups,
         )
 
@@ -207,19 +206,21 @@ class Experiment(pl.LightningModule):
         self.print(f"Current working directory: '{os.getcwd()}'")
         self.print(f"Artifacts directory created at: '{self.artifacts_dir.resolve()}'")
 
-        logger = WandbLogger(
+        logger_kwargs = dict(
             entity="predictive-analytics-lab",
             project="topocluster",
             offline=self.log_offline,
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
+        pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain")
+        train_logger = WandbLogger(**logger_kwargs, prefix="train")
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.print("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
-        logger.log_hyperparams(hparams)
-        self.pretrainer.logger = logger
-        self.trainer.logger = logger
+        train_logger.log_hyperparams(hparams)
+        self.pretrainer.logger = pretrain_logger
+        self.trainer.logger = train_logger
 
         checkpointer_kwargs = dict(
             monitor="train/total_loss",
