@@ -179,7 +179,7 @@ class Experiment(pl.LightningModule):
         encodings = self.reducer.fit_transform(encodings)
         if encodings.size(1) == 2:
             cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
-            self.logger.experiment.log({f"{stage}/cluster_viz": cluster_viz})
+            self.logger.experiment.log({f"{stage}/cluster_viz": wandb.Image(cluster_viz)})
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
