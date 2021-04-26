@@ -12,7 +12,7 @@ from topocluster.layers.misc import View
 from topocluster.models.base import Encoder
 
 
-__all__ = ["AutoEncoder", "ConvAutoEncoder"]
+__all__ = ["AutoEncoder", "ConvAutoEncoder", "ConvAutoEncoderMNIST"]
 
 
 class AutoEncoder(Encoder):
@@ -137,3 +137,91 @@ class ConvAutoEncoder(AutoEncoder):
         decoder = nn.Sequential(*decoder_ls)
 
         return encoder, decoder
+
+
+class ConvAutoEncoderMNIST(AutoEncoder):
+    def __init__(
+        self,
+        latent_dim: int,
+        lr: float = 1.0e-3,
+    ):
+        super().__init__(latent_dim=latent_dim, lr=lr)
+
+    def _down_conv(
+        self, in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int
+    ) -> nn.Sequential:
+        return nn.Sequential(
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+            ),
+            nn.ReLU(inplace=True),
+        )
+
+    def _up_conv(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        output_padding: int,
+    ) -> nn.Sequential:
+        return nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                output_padding=output_padding,
+            ),
+            nn.ReLU(inplace=True),
+        )
+
+    def _build(self, dm: VisionDataModule) -> tuple[nn.Sequential, nn.Sequential]:
+        encoder_ls: list[nn.Module] = [
+            self._down_conv(
+                in_channels=dm.dims.C, out_channels=32, kernel_size=5, stride=2, padding=2
+            ),
+            self._down_conv(in_channels=32, out_channels=64, kernel_size=5, stride=2, padding=2),
+            self._down_conv(in_channels=32, out_channels=128, kernel_size=3, stride=2, padding=1),
+        ]
+        encoder_ls.append(nn.Flatten())
+        width = dm.dims.W // 2 ** 3
+        height = dm.dims.H // 2 ** 3
+        flattened_size = 128 * height * width
+        encoder_ls.append(nn.Linear(flattened_size, self.latent_dim))
+
+        decoder = nn.Sequential(
+            nn.Linear(self.latent_dim, flattened_size),
+            View((128, height, width)),
+            self._up_conv(
+                in_channels=128,
+                out_channels=64,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                output_padding=1,
+            ),
+            self._up_conv(
+                in_channels=64,
+                out_channels=32,
+                kernel_size=5,
+                stride=2,
+                padding=2,
+                output_padding=0,
+            ),
+            self._up_conv(
+                in_channels=32,
+                out_channels=dm.dims.C,
+                kernel_size=5,
+                stride=2,
+                padding=2,
+                output_padding=0,
+            ),
+        )
+        return nn.Sequential(*encoder_ls), decoder

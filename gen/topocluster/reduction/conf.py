@@ -52,6 +52,26 @@ class UMAPConf:
 
 
 @dataclass
+class TSNEConf:
+    _target_: str = "topocluster.reduction.TSNE"
+    n_components: Any = 2
+    perplexity: Any = 30.0
+    early_exaggeration: Any = 12.0
+    learning_rate: Any = 200.0
+    n_iter: Any = 1000
+    n_iter_without_progress: Any = 300
+    min_grad_norm: Any = 1e-07
+    metric: Any = "euclidean"
+    init: Any = "random"
+    verbose: Any = 0
+    random_state: Any = None
+    method: Any = "barnes_hut"
+    angle: Any = 0.5
+    n_jobs: Any = None
+    square_distances: Any = "legacy"
+
+
+@dataclass
 class NoReduceConf:
     _target_: str = "topocluster.reduction.NoReduce"
 

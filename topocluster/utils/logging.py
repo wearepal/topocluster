@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Any
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.progress import ProgressBar
 import torch
@@ -14,7 +16,7 @@ from kit import implements
 from topocluster.data.utils import Batch, NormalizationValues
 from topocluster.models.autoencoder import AutoEncoder
 
-__all__ = ["EncodingProgbar", "EmbeddingProgbar", "ImageLogger"]
+__all__ = ["EncodingProgbar", "EmbeddingProgbar", "ImageLogger", "visualize_clusters"]
 
 
 class ImageLogger(pl.Callback):
@@ -160,3 +162,16 @@ class EmbeddingProgbar(ProgressBar):
         bar = super().init_test_tqdm()
         bar.set_description("Generating embeddings")
         return bar
+
+
+def visualize_clusters(encodings: Tensor | np.ndarray, labels: Tensor | np.ndarray) -> plt.Figure:
+    if isinstance(encodings, Tensor):
+        encodings = encodings.detach().cpu().numpy()
+    if isinstance(labels, Tensor):
+        labels = labels.detach().cpu().numpy()
+    if not encodings.ndim == 2 and encodings.shape[1] == 2:
+        raise ValueError("Encodings must be 2-dimensional vectors.")
+    cluster_viz, ax = plt.subplots(dpi=100)
+    ax.scatter(encodings[:, 0], encodings[:, 1], c=labels, cmap="tab10")  # type: ignore[arg-type]
+    ax.set_title("Cluster Visualization")
+    return cluster_viz

@@ -28,3 +28,10 @@ class ConvAutoEncoderConf:
 class LeNet4Conf:
     _target_: str = "topocluster.models.LeNet4"
     lr: float = 0.001
+
+
+@dataclass
+class ConvAutoEncoderMNISTConf:
+    _target_: str = "topocluster.models.ConvAutoEncoderMNIST"
+    latent_dim: int = MISSING
+    lr: float = 0.001

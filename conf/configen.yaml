@@ -24,6 +24,7 @@ configen:
         - AutoEncoder
         - ConvAutoEncoder
         - LeNet4
+        - ConvAutoEncoderMNIST
     - name: topocluster.data.datamodules
       classes:
         - MNISTDataModule
@@ -42,6 +43,7 @@ configen:
     - name: topocluster.reduction
       classes:
         - UMAP
+        - TSNE
         - NoReduce
         - RandomProjector
     - name: topocluster.data.sampling

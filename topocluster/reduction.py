@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from sklearn.base import BaseEstimator
+from sklearn.manifold import TSNE as _TSNE
 import torch
 from torch.tensor import Tensor
 from umap import UMAP as _UMAP
@@ -9,10 +10,12 @@ from umap import UMAP as _UMAP
 from kit import implements
 
 
-__all__ = ["Reducer", "NoReduce", "UMAP", "RandomProjector"]
+__all__ = ["Reducer", "NoReduce", "UMAP", "RandomProjector", "TSNE"]
 
 
 class Reducer(BaseEstimator, ABC):
+    n_components: int
+
     def fit(self, X: Tensor, y: Tensor | None = None) -> Reducer:
         return self
 
@@ -62,4 +65,18 @@ class RandomProjector(Reducer):
         proj_matrix = torch.normal(
             mean=0, std=1 / self.n_components, size=(X.shape[1], self.n_components), device=X.device
         )
+
         return X @ proj_matrix
+
+
+class TSNE(Reducer, _TSNE):
+    def fit(self, X: Tensor, y: Tensor | None) -> TSNE:
+        X = X.detach().cpu().numpy()
+        if y is not None:
+            y = y.detach().cpu().numpy()
+        self.embedding_ = torch.as_tensor(_TSNE._fit(self, X, y), device=X.device)
+        return self
+
+    @implements(Reducer)
+    def transform(self, X: Tensor) -> Tensor:
+        return torch.as_tensor(self.embedding_, device=X.device)  # type: ignore

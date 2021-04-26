@@ -22,10 +22,10 @@ from topocluster.clustering.tomato import Tomato
 from topocluster.data.datamodules import DataModule
 from topocluster.data.sampling import GreedyCoreSetSampler
 from topocluster.data.utils import Batch
-from topocluster.metrics import compute_metrics
+from topocluster.metrics import compute_abs_subgroup_id, compute_metrics
 from topocluster.models.base import Encoder
 from topocluster.reduction import RandomProjector, Reducer
-from topocluster.utils.logging import EncodingProgbar, ImageLogger
+from topocluster.utils.logging import EncodingProgbar, ImageLogger, visualize_clusters
 
 
 __all__ = ["Experiment"]
@@ -162,12 +162,19 @@ class Experiment(pl.LightningModule):
         # Encode the dataset in preparation for clustering
         encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage=stage)
         # Save the encodings to the artifacts directory
-        subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
+        abs_subgroup_id = compute_abs_subgroup_id(
+            superclass_inf=superclass_inf,
+            subgroup_inf=subgroup_inf,
+            num_subgroups=self.datamodule.num_subgroups,
+        )
         torch.save(
-            {"encodings": encodings.detach().cpu(), "labels": subgroup_id.detach().cpu()},
+            {"encodings": encodings.detach().cpu(), "labels": abs_subgroup_id.detach().cpu()},
             self.artifacts_dir / f"{stage}_encodings.pt",
         )
         encodings = self.reducer.fit_transform(encodings)
+        if encodings.size(1) == 2:
+            cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
+            self.logger.experiment.log({f"{stage}/cluster_viz": cluster_viz}, step=self.train_step)
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
@@ -234,9 +241,13 @@ class Experiment(pl.LightningModule):
         # Save the encodings obtained from the encoder immediately after pre-training
         encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage="train")
         # Save the encodings to the artifacts directory
-        subgroup_id = self.datamodule.num_subgroups * superclass_inf + subgroup_inf
+        abs_subgroup_id = compute_abs_subgroup_id(
+            superclass_inf=superclass_inf,
+            subgroup_inf=subgroup_inf,
+            num_subgroups=self.datamodule.num_subgroups,
+        )
         torch.save(
-            {"encodings": encodings.detach().cpu(), "labels": subgroup_id.detach().cpu()},
+            {"encodings": encodings.detach().cpu(), "labels": abs_subgroup_id.detach().cpu()},
             self.artifacts_dir / "post_pretrain_train_encodings.pt",
         )
         # Training phase

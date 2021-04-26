@@ -19,7 +19,11 @@ from gen.topocluster.data.datamodules.conf import (
 )
 from gen.topocluster.data.sampling.conf import GreedyCoreSetSamplerConf
 from gen.topocluster.experiment.conf import ExperimentConf
-from gen.topocluster.models.conf import ConvAutoEncoderConf, LeNet4Conf
+from gen.topocluster.models.conf import (
+    ConvAutoEncoderConf,
+    ConvAutoEncoderMNISTConf,
+    LeNet4Conf,
+)
 from gen.topocluster.reduction.conf import NoReduceConf, RandomProjectorConf, UMAPConf
 from kit import SchemaRegistration
 
@@ -35,6 +39,7 @@ with sr.new_group(group_name="schema/datamodule", target_path="datamodule") as g
 # Definne the 'encoder' group
 with sr.new_group(group_name="schema/encoder", target_path="encoder") as group:
     group.add_option(name="conv_ae", config_class=ConvAutoEncoderConf)
+    group.add_option(name="conv_ae_mnist", config_class=ConvAutoEncoderMNISTConf)
     group.add_option(name="lenet4", config_class=LeNet4Conf)
 
 with sr.new_group(group_name="schema/clusterer", target_path="clusterer") as group:

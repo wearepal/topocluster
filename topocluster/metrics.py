@@ -1,6 +1,7 @@
 """Functions for computing metrics."""
 from __future__ import annotations
 
+import numpy as np
 from sklearn.metrics import (
     adjusted_mutual_info_score,
     adjusted_rand_score,
@@ -10,7 +11,13 @@ from torch import Tensor
 
 from topocluster.clustering.utils import compute_optimal_assignments
 
-__all__ = ["compute_metrics"]
+__all__ = ["compute_metrics", "compute_abs_subgroup_id"]
+
+
+def compute_abs_subgroup_id(
+    superclass_inf: Tensor | np.ndarray, subgroup_inf: Tensor | np.ndarray, num_subgroups: int
+) -> Tensor | np.ndarray:
+    return superclass_inf * num_subgroups + subgroup_inf
 
 
 def compute_metrics(
@@ -21,7 +28,9 @@ def compute_metrics(
     superclass_inf_np = superclass_inf.cpu().numpy()
     subgroup_inf_np = subgroup_inf.cpu().numpy()
 
-    subgroup_id = superclass_inf_np * num_subgroups + subgroup_inf_np
+    subgroup_id = compute_abs_subgroup_id(
+        superclass_inf=superclass_inf_np, subgroup_inf=subgroup_inf_np, num_subgroups=num_subgroups
+    )
 
     logging_dict = {
         f"{prefix}/ARI": adjusted_rand_score(labels_true=subgroup_id, labels_pred=preds_np),

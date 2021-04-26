@@ -114,8 +114,6 @@ class VisionDataModule(DataModule):
     dims: ImageDims
     norm_values: ClassVar[NormalizationValues | None] = None
 
-
-
     def __init__(
         self,
         data_dir: str = "./",
@@ -150,7 +148,7 @@ class MNISTDataModule(VisionDataModule):
 
     @staticmethod
     def _transform() -> transforms.Compose:
-        transform_ls = [transforms.Resize((32, 32)), transforms.Normalize((0.1307,), (0.3081,))]
+        transform_ls = [transforms.Normalize((0.1307,), (0.3081,))]
         return transforms.Compose(transform_ls)
 
     @property
