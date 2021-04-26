@@ -164,6 +164,7 @@ class Experiment(pl.LightningModule):
         ...
 
     def _evaluate(self, stage: Stage) -> None:
+        logging_dict: dict[str, Any] = {}
         # Encode the dataset in preparation for clustering
         encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage=stage)
         # Save the encodings to the artifacts directory
@@ -179,26 +180,25 @@ class Experiment(pl.LightningModule):
         encodings = self.reducer.fit_transform(encodings)
         if encodings.size(1) == 2:
             cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
-            self.log(f"{stage}/cluster_viz", wandb.Image(cluster_viz))
+            logging_dict[f"{stage}/cluster_viz"] = wandb.Image(cluster_viz)
         preds = self.clusterer(encodings)
-        logging_dict = compute_metrics(
-            preds=preds,
-            subgroup_inf=subgroup_inf,
-            superclass_inf=superclass_inf,
-            num_subgroups=self.datamodule.num_subgroups,
-            prefix=stage,
+        logging_dict.update(
+            compute_metrics(
+                preds=preds,
+                subgroup_inf=subgroup_inf,
+                superclass_inf=superclass_inf,
+                num_subgroups=self.datamodule.num_subgroups,
+                prefix=stage,
+            )
         )
 
         if isinstance(self.clusterer, Tomato) and self.clusterer.threshold == 1:
-            pers_diagrams = {
-                f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]": wandb.Image(
-                    self.clusterer.plot()
-                )
-            }
-            self.log_dict(pers_diagrams)
-            plt.close("all")
+            logging_dict[f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]"] = wandb.Image(
+                self.clusterer.plot()
+            )
 
-        self.log_dict(logging_dict)
+        self.logger.experiment.log(logging_dict, step=self.train_step)
+        plt.close("all")
 
     def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
