@@ -79,6 +79,7 @@ class ImageLogger(pl.Callback):
                 str_title += "_images_&_recons"
             else:
                 str_title += "_images"
+            breakpoint()
 
             grid = torchvision.utils.make_grid(
                 tensor=to_log,
