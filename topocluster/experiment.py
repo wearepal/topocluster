@@ -232,7 +232,6 @@ class Experiment(pl.LightningModule):
         self.pretrainer.callbacks.extend(
             [
                 ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best"),
-                ImageLogger(norm_values=self.datamodule.norm_values),
             ]
         )
         self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
