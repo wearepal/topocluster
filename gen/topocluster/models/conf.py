@@ -13,6 +13,7 @@ class AutoEncoderConf:
     _target_: str = "topocluster.models.AutoEncoder"
     latent_dim: int = MISSING
     lr: float = 0.001
+    l2_normalization: bool = True
 
 
 @dataclass

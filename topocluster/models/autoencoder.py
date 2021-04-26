@@ -20,10 +20,11 @@ class AutoEncoder(Encoder):
 
     decoder: nn.Module
 
-    def __init__(self, latent_dim: int, lr: float = 1.0e-3) -> None:
+    def __init__(self, latent_dim: int, lr: float = 1.0e-3, l2_normalization: bool = True) -> None:
         super().__init__(lr=lr)
         self.latent_dim = latent_dim
         self.loss_fn = nn.MSELoss()
+        self.l2_normalization = l2_normalization
 
     @abstractmethod
     @implements(Encoder)
@@ -36,6 +37,8 @@ class AutoEncoder(Encoder):
 
     @implements(Encoder)
     def _get_loss(self, encoding: Tensor, batch: Batch) -> dict[str, Tensor]:
+        if self.l2_normalization:
+            encoding = encoding / encoding.norm(dim=1, keepdim=True)
         recons = self.decoder(encoding)
         return {"recon_loss": self.loss_fn(recons, batch.x)}
 
