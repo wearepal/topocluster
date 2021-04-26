@@ -112,7 +112,7 @@ class Experiment(pl.LightningModule):
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = cast(Tensor, self.encoder(batch.x))
         total_loss, loss_dict = self._get_loss(encoding=encoding, batch=batch, stage="train")
-        self.logger.experiment.log(loss_dict, step=self.train_step)
+        self.logger.experiment.log(loss_dict)
         self.train_step += 1
         return total_loss
 
@@ -179,7 +179,7 @@ class Experiment(pl.LightningModule):
         encodings = self.reducer.fit_transform(encodings)
         if encodings.size(1) == 2:
             cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
-            self.logger.experiment.log({f"{stage}/cluster_viz": cluster_viz}, step=self.train_step)
+            self.logger.experiment.log({f"{stage}/cluster_viz": cluster_viz})
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
@@ -194,10 +194,10 @@ class Experiment(pl.LightningModule):
                     self.clusterer.plot()
                 )
             }
-            self.logger.experiment.log(pers_diagrams, step=self.train_step)
+            self.logger.experiment.log(pers_diagrams)
             plt.close("all")
 
-        self.logger.experiment.log(logging_dict, step=self.train_step)
+        self.logger.experiment.log(logging_dict)
 
     def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
