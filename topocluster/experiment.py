@@ -90,7 +90,7 @@ class Experiment(pl.LightningModule):
     ) -> tuple[Tensor | None, dict[str, Tensor]]:
         loss_dict: dict[str, Tensor] = {}
         total_loss: Tensor | None = encoding.new_zeros(())
-        enc_loss_dict = self.encoder.get_loss(encoding, batch)
+        enc_loss_dict = self.encoder.get_loss(encoding, batch, prefix=stage)
         loss_dict.update(enc_loss_dict)
         if self.enc_loss_w > 0:
             total_loss += self.enc_loss_w * sum(enc_loss_dict.values())
@@ -99,7 +99,7 @@ class Experiment(pl.LightningModule):
             # during end-to-end training
             if isinstance(self.reducer, RandomProjector):
                 encoding = self.reducer.fit_transform(X=encoding)
-            clust_loss_dict = self.clusterer.get_loss(x=encoding)
+            clust_loss_dict = self.clusterer.get_loss(x=encoding, prefix=stage)
             loss_dict.update(clust_loss_dict)
             total_loss += self.clust_loss_w * sum(clust_loss_dict.values())
         if not total_loss.requires_grad:
@@ -179,13 +179,16 @@ class Experiment(pl.LightningModule):
         encodings = self.reducer.fit_transform(encodings)
         if encodings.size(1) == 2:
             cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
-            self.logger.experiment.log({f"{stage}/cluster_viz": wandb.Image(cluster_viz)})
+            self.logger.experiment.log(
+                {f"{stage}/cluster_viz": wandb.Image(cluster_viz)}, step=self.train_step
+            )
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
             subgroup_inf=subgroup_inf,
             superclass_inf=superclass_inf,
             num_subgroups=self.datamodule.num_subgroups,
+            prefix=stage,
         )
 
         if isinstance(self.clusterer, Tomato) and self.clusterer.threshold == 1:
@@ -194,10 +197,10 @@ class Experiment(pl.LightningModule):
                     self.clusterer.plot()
                 )
             }
-            self.logger.experiment.log(pers_diagrams)
+            self.logger.experiment.log(pers_diagrams, step=self.train_step)
             plt.close("all")
 
-        self.logger.experiment.log(logging_dict)
+        self.logger.experiment.log(logging_dict, step=self.train_step)
 
     def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
@@ -213,7 +216,7 @@ class Experiment(pl.LightningModule):
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
         pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain")
-        train_logger = WandbLogger(**logger_kwargs, prefix="train")
+        train_logger = WandbLogger(**logger_kwargs)
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.print("-----\n" + str(raw_config) + "\n-----")
