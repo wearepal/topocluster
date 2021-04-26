@@ -213,14 +213,14 @@ class Experiment(pl.LightningModule):
             offline=self.log_offline,
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
-        pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain", reinit=True)
+        # pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain", reinit=True)
         train_logger = WandbLogger(**logger_kwargs, reinit=True)
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.print("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         train_logger.log_hyperparams(hparams)
-        self.pretrainer.logger = pretrain_logger
+        # self.pretrainer.logger = pretrain_logger
         self.trainer.logger = train_logger
 
         checkpointer_kwargs = dict(
