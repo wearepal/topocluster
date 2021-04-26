@@ -122,6 +122,9 @@ class Experiment(pl.LightningModule):
         if eff_train_step > 1 and (not (eff_train_step % self.train_eval_freq)):
             self._evaluate(stage="train")
 
+    def on_fit_end(self) -> None:
+        self._evaluate(stage="train")
+
     @implements(pl.LightningModule)
     def validation_step(self, batch: Batch, batch_idx: int) -> Tensor | None:
         encoding = self.encoder(batch.x)
