@@ -223,7 +223,7 @@ class Experiment(pl.LightningModule):
         self.trainer.logger = train_logger
 
         checkpointer_kwargs = dict(
-            monitor="pretrain-val/total_loss",
+            monitor="val/total_loss",
             dirpath=self.artifacts_dir,
             save_top_k=1,
             mode="max",
@@ -268,7 +268,7 @@ class Experiment(pl.LightningModule):
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
         # Manually invoke exit for multirun compatibility
-        logger.experiment.__exit__(None, 0, 0)
+        train_logger.experiment.__exit__(None, 0, 0)
 
 
 class DatasetEncoderRunner(pl.LightningModule):
