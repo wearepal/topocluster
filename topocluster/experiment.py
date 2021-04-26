@@ -197,7 +197,7 @@ class Experiment(pl.LightningModule):
                 self.clusterer.plot()
             )
 
-        self.logger.experiment.log(logging_dict, step=self.train_step)
+        self.logger.experiment.log(logging_dict)
         plt.close("all")
 
     def start(self, raw_config: dict[str, Any] | None = None):
@@ -213,8 +213,8 @@ class Experiment(pl.LightningModule):
             offline=self.log_offline,
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
-        pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain")
-        train_logger = WandbLogger(**logger_kwargs)
+        pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain", reinit=True)
+        train_logger = WandbLogger(**logger_kwargs, reinit=True)
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.print("-----\n" + str(raw_config) + "\n-----")
@@ -268,8 +268,8 @@ class Experiment(pl.LightningModule):
         self.trainer.fit(self, datamodule=self.datamodule)
         # Testing phase
         self.trainer.test(self, datamodule=self.datamodule)
-        # Manually invoke exit for multirun compatibility
-        train_logger.experiment.__exit__(None, 0, 0)
+        # Manually invoke finish for multirun-compatibility
+        train_logger.experiment.finish()
 
 
 class DatasetEncoderRunner(pl.LightningModule):
