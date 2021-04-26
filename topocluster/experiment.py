@@ -179,9 +179,7 @@ class Experiment(pl.LightningModule):
         encodings = self.reducer.fit_transform(encodings)
         if encodings.size(1) == 2:
             cluster_viz = visualize_clusters(encodings=encodings, labels=abs_subgroup_id)
-            self.logger.experiment.log(
-                {f"{stage}/cluster_viz": wandb.Image(cluster_viz)}, step=self.train_step
-            )
+            self.log(f"{stage}/cluster_viz", wandb.Image(cluster_viz))
         preds = self.clusterer(encodings)
         logging_dict = compute_metrics(
             preds=preds,
@@ -197,10 +195,10 @@ class Experiment(pl.LightningModule):
                     self.clusterer.plot()
                 )
             }
-            self.logger.experiment.log(pers_diagrams, step=self.train_step)
+            self.log_dict(pers_diagrams)
             plt.close("all")
 
-        self.logger.experiment.log(logging_dict, step=self.train_step)
+        self.log_dict(logging_dict)
 
     def start(self, raw_config: dict[str, Any] | None = None):
         self.datamodule.setup()
