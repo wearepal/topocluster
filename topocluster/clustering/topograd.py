@@ -66,7 +66,8 @@ def topograd_loss(
         changepairs = pd_pairs[changing]
         nochangepairs = pd_pairs[nochanging]
         shrinking_loss = -(kde_dists_sorted[changepairs].diff(dim=1)).sum() / math.sqrt(2)
-        saliency_loss = torch.norm(kde_dists_sorted[nochangepairs] - dest.detach(), dim=1).sum()
+        saliency_loss = (kde_dists_sorted[nochangepairs]).diff(dim=1).sum() + dest.diff(dim=1)
+        # saliency_loss = torch.norm(kde_dists_sorted[nochangepairs] - dest.detach(), dim=1).sum()
 
     return {"shrinking_loss": shrinking_loss, "saliency_loss": saliency_loss}
 

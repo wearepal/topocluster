@@ -17,9 +17,9 @@ final[:, 0] = finalx
 final[:, 1] = finaly
 X = torch.as_tensor(final)
 
-threshold = 0.1
+threshold = 1.0
 clusterer = TopoGrad(k_kde=30, k_rips=30, scale=0.1, threshold=threshold, n_iter=100, lr=0.01)
-destnum = 4
+destnum = 5
 clusterer.destnum = destnum
 preds = clusterer(X)
 if threshold == 1:
