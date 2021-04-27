@@ -194,9 +194,7 @@ class Experiment(pl.LightningModule):
         )
 
         if isinstance(self.clusterer, Tomato) and self.clusterer.threshold == 1:
-            logging_dict[f"{stage}/pers_diagram_[thresh={self.clusterer.threshold}]"] = wandb.Image(
-                self.clusterer.plot()
-            )
+            logging_dict[f"{stage}/persistence_diagram"] = wandb.Image(self.clusterer.plot())
 
         self.logger.experiment.log(logging_dict)
         plt.close("all")
@@ -206,7 +204,7 @@ class Experiment(pl.LightningModule):
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
         self.print(f"Current working directory: '{os.getcwd()}'")
-        self.print(f"Artifacts directory created at: '{self.artifacts_dir.resolve()}'")
+        self.print(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
 
         logger_kwargs = dict(
             entity="predictive-analytics-lab",
