@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "topocluster"
 authors = ["Myles Bartlett, Chen Li"]
-description = "Quantifying Domain-shift with ALgebraic Topology"
+description = "Quantifying Domain-shift with Algebraic Topology"
 version = "0.0.1"
 
 [tool.poetry.dependencies]
@@ -27,6 +27,7 @@ scikit-learn = "^0.24.1"
 palkit = "^0.1.7"
 umap-learn = "^0.5.1"
 pretrainedmodels = "^0.7.4"
+fast-soft-sort = {git = "https://github.com/google-research/fast-soft-sort.git"}
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"

@@ -17,10 +17,12 @@ final[:, 0] = finalx
 final[:, 1] = finaly
 X = torch.as_tensor(final)
 
-clusterer = TopoGrad(k_kde=30, k_rips=30, scale=0.1, threshold=1, n_iter=100, lr=0.01)
-clusterer.destnum = 4
+threshold = 0.1
+clusterer = TopoGrad(k_kde=30, k_rips=30, scale=0.1, threshold=threshold, n_iter=100, lr=0.01)
+destnum = 4
+clusterer.destnum = destnum
 preds = clusterer(X)
-clusterer.plot()
-# plt.show()
-torch.save({"x": preds, "y": y}, "features.pt")
-print(torch.load("features.pt"))
+if threshold == 1:
+    clusterer.plot()
+    plt.show()
+print(preds.unique())
