@@ -55,19 +55,22 @@ def topograd_loss(
         )
         shrinking_loss = saliency_loss = pc.new_zeros(())
     else:
+        # Dimension 1 encodes birth-death (in that order) pairs
         pd_pairs = torch.as_tensor(pd_pairs, device=pc.device)
         oripd = kde_dists_sorted[pd_pairs]
         pers_idxs_sorted = torch.argsort(oripd[:, 0] - oripd[:, 1])
 
         changing = pers_idxs_sorted[:-destnum]
-        nochanging = pers_idxs_sorted[-destnum:-1]
+        nochanging = pers_idxs_sorted[-destnum:]
 
-        dest = oripd[pers_idxs_sorted[-1]]
         changepairs = pd_pairs[changing]
         nochangepairs = pd_pairs[nochanging]
-        shrinking_loss = -(kde_dists_sorted[changepairs].diff(dim=1)).sum() / math.sqrt(2)
-        saliency_loss = (kde_dists_sorted[nochangepairs]).diff(dim=1).sum() + dest.diff().sum()
-        # saliency_loss = torch.norm(kde_dists_sorted[nochangepairs] - dest.detach(), dim=1).sum()
+        # shrinking loss is the sum of squares of the distances to the diagonal
+        # of the points in the diagram
+        shrinking_loss = ((0.5 * kde_dists_sorted[changepairs].diff(dim=1)) ** 2).sum()
+        # Our saliency loss is the opposite of the sum of squares of the distances to the diagonal
+        # of the points in the diagram
+        saliency_loss = -((0.5 * kde_dists_sorted[nochangepairs].diff(dim=1)) ** 2).sum()
 
     return {"shrinking_loss": shrinking_loss, "saliency_loss": saliency_loss}
 
