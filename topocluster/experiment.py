@@ -55,6 +55,7 @@ class Experiment(pl.LightningModule):
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1000,
         enc_freeze_depth: Optional[int] = 0,
+        encoder_path: Optional[str] = "",
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -64,6 +65,8 @@ class Experiment(pl.LightningModule):
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
+        if encoder_path:
+            self.encoder.load_from_checkpoint(encoder_path)
         self.clusterer = clusterer
         self.reducer = reducer
         # Trainers

@@ -98,7 +98,7 @@ class TopoGrad(Tomato):
 
     @implements(Clusterer)
     def build(self, encoder: Encoder, datamodule: DataModule) -> None:
-        self.destnum = (datamodule.num_subgroups * datamodule.num_classes) - 1
+        self.destnum = datamodule.num_subgroups * datamodule.num_classes
 
     @implements(Clusterer)
     def _get_loss(self, x: Tensor) -> dict[str, Tensor]:

@@ -29,3 +29,4 @@ class ExperimentConf:
     exp_group: Optional[str] = None
     train_eval_freq: int = 1000
     enc_freeze_depth: Optional[int] = 0
+    encoder_path: Optional[str] = ""
