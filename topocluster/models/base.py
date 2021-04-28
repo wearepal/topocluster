@@ -25,6 +25,7 @@ class Encoder(pl.LightningModule):
     def __init__(self, lr: float = 1.0e-3) -> None:
         super().__init__()
         self.lr = lr
+        self.save_hyperparameters()
 
     @abstractmethod
     def _build(self, datamodule: DataModule) -> tuple[nn.Module, int]:

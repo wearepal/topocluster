@@ -65,7 +65,7 @@ class Experiment(pl.LightningModule):
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
-        self.encoder_path = encoder_path
+        self.encoder_checkpoint = encoder_path
         self.clusterer = clusterer
         self.reducer = reducer
         # Trainers
@@ -237,8 +237,8 @@ class Experiment(pl.LightningModule):
         # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
         # Pre-training phase
-        if self.encoder_path:
-            self.encoder.load_from_checkpoint(self.encoder_path)
+        if self.encoder_checkpoint:
+            self.encoder = self.encoder.load_from_checkpoint(self.encoder_checkpoint)
         else:
             self.pretrainer.callbacks.extend(
                 [
