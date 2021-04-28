@@ -2,11 +2,11 @@ defaults:
   - experiment_schema
   - clusterer: topograd
 
-  - datamodule: umnist
-  - encoder: umnist_ae
+  - datamodule: mnist
+  - encoder: mnist_ae
   - trainer: umnist
   - pretrainer: umnist
-  - reducer: umap
+  - reducer: none
   - sampler: greedy
 
 log_offline: False
