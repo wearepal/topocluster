@@ -67,10 +67,10 @@ def topograd_loss(
         nochangepairs = pd_pairs[nochanging]
         # shrinking loss is the sum of squares of the distances to the diagonal
         # of the points in the diagram
-        shrinking_loss = ((0.5 * kde_dists_sorted[changepairs].diff(dim=1)) ** 2).sum()
+        shrinking_loss = (kde_dists_sorted[changepairs].diff(dim=1)).abs().sum()
         # Our saliency loss is the opposite of the sum of squares of the distances to the diagonal
         # of the points in the diagram
-        saliency_loss = -((0.5 * kde_dists_sorted[nochangepairs].diff(dim=1)) ** 2).sum()
+        saliency_loss = -(kde_dists_sorted[nochangepairs].diff(dim=1)).abs().sum()
 
     return {"shrinking_loss": shrinking_loss, "saliency_loss": saliency_loss}
 
