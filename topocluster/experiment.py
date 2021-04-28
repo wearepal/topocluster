@@ -238,7 +238,7 @@ class Experiment(pl.LightningModule):
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
         # Pre-training phase
         if self.encoder_checkpoint:
-            self.encoder = self.encoder.load_from_checkpoint(self.encoder_checkpoint)
+            self.encoder.load_state_dict(torch.load(self.encoder_checkpoint))
         else:
             self.pretrainer.callbacks.extend(
                 [
