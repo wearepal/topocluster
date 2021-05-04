@@ -25,6 +25,7 @@ class AutoEncoder(Encoder):
         self.latent_dim = latent_dim
         self.loss_fn = nn.MSELoss()
         self.l2_normalization = l2_normalization
+        self.save_hyperparameters()
 
     @abstractmethod
     @implements(Encoder)
@@ -57,7 +58,8 @@ class ConvAutoEncoder(AutoEncoder):
         super().__init__(latent_dim=latent_dim, lr=lr)
         self.init_hidden_dims = init_hidden_dims
         self.num_stages = num_stages
-        self.act = nn.GELU()
+        self.save_hyperparameters()
+        self._act = nn.GELU()
 
     def _down_conv(
         self, in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int
@@ -70,7 +72,7 @@ class ConvAutoEncoder(AutoEncoder):
                 stride=stride,
                 padding=padding,
             ),
-            self.act,
+            self._act,
         )
 
     def _up_conv(
@@ -91,7 +93,7 @@ class ConvAutoEncoder(AutoEncoder):
                 padding=padding,
                 output_padding=output_padding,
             ),
-            self.act,
+            self._act,
         )
 
     @implements(AutoEncoder)
@@ -149,6 +151,7 @@ class ConvAutoEncoderMNIST(AutoEncoder):
         lr: float = 1.0e-3,
     ):
         super().__init__(latent_dim=latent_dim, lr=lr)
+        self.save_hyperparameters()
 
     def _down_conv(
         self, in_channels: int, out_channels: int, kernel_size: int, stride: int, padding: int

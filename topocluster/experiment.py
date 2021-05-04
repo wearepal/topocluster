@@ -55,6 +55,7 @@ class Experiment(pl.LightningModule):
         exp_group: Optional[str] = None,
         train_eval_freq: int = 1000,
         enc_freeze_depth: Optional[int] = 0,
+        encoder_path: Optional[str] = "",
     ):
         super().__init__()
         self.log_offline = log_offline
@@ -64,6 +65,7 @@ class Experiment(pl.LightningModule):
         # Components
         self.datamodule = datamodule
         self.encoder = encoder
+        self.encoder_checkpoint = encoder_path
         self.clusterer = clusterer
         self.reducer = reducer
         # Trainers
@@ -212,14 +214,12 @@ class Experiment(pl.LightningModule):
             offline=self.log_offline,
             group=self.clusterer.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
-        # pretrain_logger = WandbLogger(**logger_kwargs, prefix="pretrain", reinit=True)
         train_logger = WandbLogger(**logger_kwargs, reinit=True)
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.print("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         train_logger.log_hyperparams(hparams)
-        # self.pretrainer.logger = pretrain_logger
         self.trainer.logger = train_logger
 
         checkpointer_kwargs = dict(
@@ -227,11 +227,6 @@ class Experiment(pl.LightningModule):
             dirpath=self.artifacts_dir,
             save_top_k=1,
             mode="max",
-        )
-        self.pretrainer.callbacks.extend(
-            [
-                ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best"),
-            ]
         )
         self.trainer.callbacks.append(ModelCheckpoint(**checkpointer_kwargs, filename="train_best"))
 
@@ -242,7 +237,15 @@ class Experiment(pl.LightningModule):
         # Build the clusterer
         self.clusterer.build(encoder=self.encoder, datamodule=self.datamodule)
         # Pre-training phase
-        self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
+        if self.encoder_checkpoint:
+            self.encoder.load_state_dict(torch.load(self.encoder_checkpoint)["state_dict"])
+        else:
+            self.pretrainer.callbacks.extend(
+                [
+                    ModelCheckpoint(**checkpointer_kwargs, filename="pretrain_best"),
+                ]
+            )
+            self.pretrainer.fit(self.encoder, datamodule=self.datamodule)
         # Save the encodings obtained from the encoder immediately after pre-training
         encodings, subgroup_inf, superclass_inf = self._encode_dataset(stage="train")
         # Save the encodings to the artifacts directory
