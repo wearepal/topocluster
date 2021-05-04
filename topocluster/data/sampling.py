@@ -73,7 +73,7 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
     def __iter__(self) -> Iterator[List[int]]:
         # iterative forever (until some externally defined stopping-criterion is reached)
         while 1:
-            # Frist sample the 'oversampled' batch from which to construct the core-set
+            # First sample the 'oversampled' batch from which to construct the core-set
             os_batch_idxs = torch.randperm(self.budget)[: self._num_oversampled_samples]
             # Compute the euclidean distance between all pairs in said batch
             dists = self._get_dists(os_batch_idxs)
@@ -97,7 +97,7 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
                 rel_idx = torch.argmax(
                     torch.min(dists[~unsampled_m][:, unsampled_idxs], dim=0).values
                 )
-                # Retrieve the index corresponding to the previously-computed argmax index
+                # Retiieve the index corresponding to the previously-computed argmax index
                 to_sample = unsampled_idxs[rel_idx]
                 sampled_idxs.append(int(to_sample))
                 # Update the mask, which corresponds to moving the sampled index from the unsampled
