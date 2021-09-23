@@ -22,8 +22,8 @@ class SSLRelay(CdtRelay):
         self.datamodule.setup()
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
-        print(f"Current working directory: '{os.getcwd()}'")
-        print(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
+        self.log(f"Current working directory: '{os.getcwd()}'")
+        self.log(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
 
         logger_kwargs = dict(
             entity="predictive-analytics-lab",
@@ -34,7 +34,7 @@ class SSLRelay(CdtRelay):
         train_logger = WandbLogger(**logger_kwargs, reinit=True)
         hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
-            print("-----\n" + str(raw_config) + "\n-----")
+            self.log("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         train_logger.log_hyperparams(hparams)
         self.trainer.logger = train_logger
