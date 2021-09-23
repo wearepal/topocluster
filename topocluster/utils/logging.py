@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
+from kit import implements
 import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
@@ -10,11 +11,10 @@ from torch import Tensor
 import torchvision
 import torchvision.transforms.functional as TF
 from tqdm import tqdm
-import wandb
 
-from kit import implements
 from topocluster.data.utils import Batch, NormalizationValues
 from topocluster.models.autoencoder import AutoEncoder
+import wandb
 
 __all__ = ["EncodingProgbar", "EmbeddingProgbar", "ImageLogger", "visualize_clusters"]
 

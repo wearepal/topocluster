@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from abc import ABC, abstractmethod
 
-import torch
 from kit import implements
 from sklearn.base import BaseEstimator
 from sklearn.manifold import TSNE as _TSNE
+import torch
 from torch import Tensor
 from umap import UMAP as _UMAP
 

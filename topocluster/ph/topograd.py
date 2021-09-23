@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 import logging
 
 import attr
+from kit import implements
 import numpy as np
 import torch
-from kit import implements
 from torch import Tensor
 from tqdm import tqdm
 

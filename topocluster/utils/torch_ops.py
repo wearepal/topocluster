@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from typing import Any, Callable
 
-import torch
-import torch.distributions as td
 from pykeops.torch import LazyTensor
+import torch
 from torch import Tensor, jit
+import torch.distributions as td
 from torch.nn import functional as F
 
 __all__ = [

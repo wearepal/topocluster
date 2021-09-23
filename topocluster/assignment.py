@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from lapjv import lapjv
 import numba
 import numpy as np
-from lapjv import lapjv
 from scipy.optimize import linear_sum_assignment
 
 __all__ = [

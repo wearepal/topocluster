@@ -1,15 +1,14 @@
 from __future__ import annotations
-
 import copy
 import math
 from typing import Iterator, List, Optional
 
+from kit import implements
 import pretrainedmodels
 import pytorch_lightning as pl
 import torch
-import torch.nn as nn
-from kit import implements
 from torch import Tensor
+import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.sampler import Sampler, SequentialSampler
 

@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import NamedTuple, Sequence, cast
 
 import matplotlib.pyplot as plt
