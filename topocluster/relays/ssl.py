@@ -15,11 +15,10 @@ __all__ = [
 @attr.define(kw_only=True)
 class SSLRelay(CdtRelay):
     artifacts_dir: ClassVar[Path] = Path("artifacts")
-
     log_offline: bool = False
     exp_group: Optional[str] = None
 
-    def run(self, raw_config: dict[str, Any] | None = None):
+    def run(self, raw_config: dict[str, Any] | None = None) -> None:
         self.datamodule.setup()
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
