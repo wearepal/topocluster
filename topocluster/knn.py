@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 
-from pykeops.torch import LazyTensor
 import torch
 from torch import Tensor
 
@@ -23,6 +22,8 @@ def rbf(x: Tensor, y: Tensor, scale: float, dim: int = 1) -> Tensor:
 def knn(
     pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_l2sqr
 ) -> tuple[Tensor, Tensor]:
+    from pykeops.torch import LazyTensor
+
     G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
     X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)
     D_ij = kernel(G_i, X_j).sum(-1)  # (M**2, N) symbolic matrix of squared distances
