@@ -9,7 +9,7 @@ from sklearn.metrics import (
 )
 from torch import Tensor
 
-from topocluster.metrics import compute_optimal_assignments
+from topocluster.assignment import compute_optimal_assignments
 
 __all__ = ["clustering_metrics", "compute_abs_subgroup_id"]
 

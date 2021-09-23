@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import torch
 from torch import Tensor
 
+from topocluster.knn import knn, pairwise_l2sqr
 from topocluster.ph.utils import plot_persistence
-from topocluster.utils.torch_ops import knn, pairwise_l2sqr
 
 __all__ = ["MergeOutput", "zero_dim_merge", "tomato", "Tomato"]
 

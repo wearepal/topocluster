@@ -2,13 +2,10 @@ from __future__ import annotations
 import logging
 
 import attr
-from kit import implements
-import numpy as np
 import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from topocluster.clustering.common import Clusterer
 from topocluster.ph.clustering import Tomato, compute_density_map, compute_rips, tomato
 from zero_dim_ph import zero_dim_merge
 
@@ -108,7 +105,6 @@ class TopoGrad(Tomato):
         loss.shrinking *= self.shrink_loss_w
         return loss
 
-    @implements(Clusterer)
     def __call__(self, x: Tensor, *, threshold: float | None = None) -> Tensor:
         threshold = self.threshold if threshold is None else threshold
         # Run topograd on the embedding (without backpropagating through the network)
