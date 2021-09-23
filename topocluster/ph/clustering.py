@@ -51,7 +51,7 @@ def zero_dim_merge(
                 c_nbd_idxs = c_nbd_idxs[c_nbd_idxs != c_max_idx]
                 persistence = density_map[c_nbd_idxs] - density_map[ref_idx]
                 merge_mask = persistence < threshold
-                #  merge any neighbours below the peristence-threshold, with respeft to v_i, into c_max
+                #  merge any neighbours below the peristence-threshold, with respect to v_i, into c_max
                 if merge_mask.count_nonzero():
                     child_node_idxs = (root_idxs[:, None] == c_nbd_idxs[merge_mask][None]).nonzero(
                         as_tuple=True
