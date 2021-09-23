@@ -1,3 +1,0 @@
-defaults:
-  - /schema/clusterer: gmm
-max_iter: 100

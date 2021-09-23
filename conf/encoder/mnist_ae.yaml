@@ -1,4 +1,0 @@
-defaults:
-  - /schema/encoder: conv_ae_mnist
-latent_dim: 10
-lr: 1.e-3

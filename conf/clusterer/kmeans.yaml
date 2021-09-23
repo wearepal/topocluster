@@ -1,3 +1,0 @@
-defaults:
-  - /schema/clusterer: kmeans
-n_iter: 100

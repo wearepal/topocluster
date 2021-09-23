@@ -9,19 +9,20 @@ from sklearn.metrics import (
 )
 from torch import Tensor
 
-from topocluster.clustering.utils import compute_optimal_assignments
+from topocluster.metrics import compute_optimal_assignments
 
-__all__ = ["compute_metrics", "compute_abs_subgroup_id"]
+__all__ = ["clustering_metrics", "compute_abs_subgroup_id"]
 
 
 def compute_abs_subgroup_id(
-    superclass_inf: Tensor | np.ndarray, subgroup_inf: Tensor | np.ndarray, num_subgroups: int
+    superclass_inf: Tensor | np.ndarray, *, subgroup_inf: Tensor | np.ndarray, num_subgroups: int
 ) -> Tensor | np.ndarray:
     return superclass_inf * num_subgroups + subgroup_inf
 
 
-def compute_metrics(
+def clustering_metrics(
     preds: Tensor,
+    *,
     subgroup_inf: Tensor,
     superclass_inf: Tensor,
     num_subgroups: int,

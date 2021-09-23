@@ -1,21 +1,19 @@
 from __future__ import annotations
+
 from typing import Any, Callable
 
-from pykeops.torch import LazyTensor
 import torch
-from torch import Tensor, jit
 import torch.distributions as td
+from pykeops.torch import LazyTensor
+from torch import Tensor, jit
 from torch.nn import functional as F
 
 __all__ = [
     "RoundSTE",
-    "compute_density_map",
-    "compute_rips",
     "dot_product",
     "knn",
     "logit",
     "normalized_softmax",
-    "pairwise_L2sqr",
     "sample_concrete",
     "sum_except_batch",
     "to_discrete",
@@ -82,7 +80,7 @@ def normalized_softmax(logits: Tensor) -> Tensor:
     return unnormalized / unnormalized.norm(p=2, dim=-1, keepdim=True)
 
 
-def pairwise_L2sqr(tensor_a: Tensor, tensor_b: Tensor) -> Tensor:
+def pairwise_l2sqr(tensor_a: Tensor, tensor_b: Tensor) -> Tensor:
     return (tensor_a - tensor_b) ** 2
 
 
@@ -90,18 +88,8 @@ def rbf(x: Tensor, y: Tensor, scale: float, dim: int = 1) -> Tensor:
     return torch.exp(-torch.norm(x - y, dim=dim) ** 2 / scale)
 
 
-def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
-    dists, inds = knn(pc, k=k, kernel=pairwise_L2sqr)
-    dists = (-dists / scale).exp().sum(1) / (k * scale)
-    return dists / dists.max(), inds
-
-
-def compute_rips(pc: Tensor, k: int) -> Tensor:
-    return knn(pc=pc, k=k, kernel=pairwise_L2sqr)[1]
-
-
 def knn(
-    pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_L2sqr
+    pc: Tensor, k: int, kernel: Callable[[Tensor, Tensor], Tensor] = pairwise_l2sqr
 ) -> tuple[Tensor, Tensor]:
     G_i = LazyTensor(pc[:, None, :])  # (M**2, 1, 2)
     X_j = LazyTensor(pc[None, :, :])  # (1, N, 2)

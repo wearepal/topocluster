@@ -29,7 +29,7 @@ if threshold == 1:
     clusterer.plot()
     plt.show()
 print(preds.unique())
-print(clusterer.pers_pairs)
+print(clusterer.barcodes)
 
 
 # def _loss(pts: Tensor, plot: bool) -> Tensor:

@@ -1,5 +1,0 @@
-defaults:
-  - /schema/sampler: greedy
-oversampling_factor: 4
-embed_depth: 5
-n_components: 10
