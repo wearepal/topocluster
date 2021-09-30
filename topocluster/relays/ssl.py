@@ -1,11 +1,15 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, List, Optional, Type, Union
 
 import attr
-from conduit.relays import CdtRelay
+from conduit.data.datamodules import CdtDataModule
+from conduit.models import CdtModel
+import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
+from ranzen.hydra import Relay
+from ranzen.hydra.relay import Option
 
 __all__ = [
     "SSLRelay",
@@ -13,12 +17,34 @@ __all__ = [
 
 
 @attr.define(kw_only=True)
-class SSLRelay(CdtRelay):
+class SSLRelay(Relay):
     artifacts_dir: ClassVar[Path] = Path("artifacts")
     log_offline: bool = False
     exp_group: Optional[str] = None
 
-    def run(self, raw_config: dict[str, Any] | None = None) -> None:
+    datamodule: CdtDataModule
+    trainer: pl.Trainer
+    model: CdtModel
+    seed: Optional[int] = 42
+
+    @classmethod
+    def with_hydra(
+        cls,
+        root: Union[Path, str],
+        *,
+        datamodule: List[Union[Type[Any], Option]],
+        model: List[Union[Type[Any], Option]],
+        clear_cache: bool = False,
+    ) -> None:
+
+        configs = dict(
+            datamodule=datamodule,
+            model=model,
+            trainer=[Option(class_=pl.Trainer, name="trainer")],
+        )
+        super().with_hydra(root=root, clear_cache=clear_cache, **configs)
+
+    def run(self, raw_config=None) -> None:
         self.datamodule.setup()
         self.datamodule.prepare_data()
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)

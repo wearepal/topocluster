@@ -26,6 +26,8 @@ def zero_dim_merge(
     """Merging Data Using Topological Persistence.
     Fast persistence-based merging algorithm specialised for 0-dimensional homology.
     """
+    # Nornalize the density map such that the maximum value is 1
+    density_map = density_map / density_map.max()
     sort_idxs = density_map.argsort(descending=True)
     # precompose the pairwise inequalities
     pairwise_lt = density_map[None] < density_map[:, None]
