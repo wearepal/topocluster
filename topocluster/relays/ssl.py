@@ -8,8 +8,7 @@ from conduit.data.datamodules import CdtDataModule
 from conduit.models import CdtModel
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
-from ranzen.hydra import Relay
-from ranzen.hydra.relay import Option
+from ranzen.hydra.relay import Option, Relay
 
 __all__ = [
     "SSLRelay",
@@ -45,10 +44,9 @@ class SSLRelay(Relay):
         super().with_hydra(root=root, clear_cache=clear_cache, **configs)
 
     def run(self, raw_config=None) -> None:
-        self.datamodule.setup()
-        self.datamodule.prepare_data()
-        self.artifacts_dir.mkdir(exist_ok=True, parents=True)
         self.log(f"Current working directory: '{os.getcwd()}'")
+
+        self.artifacts_dir.mkdir(exist_ok=True, parents=True)
         self.log(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
 
         logger_kwargs = dict(
@@ -63,6 +61,12 @@ class SSLRelay(Relay):
             self.log("-----\n" + str(raw_config) + "\n-----")
             hparams.update(raw_config)
         train_logger.log_hyperparams(hparams)
+
+        if hasattr(self.datamodule, "root"):
+            self.datamodule.root = to_absolute_path(cfg.datamodule.root)  # type: ignore
+        self.datamodule.setup()
+        self.datamodule.prepare_data()
+
         self.trainer.logger = train_logger
         self.model.run(datamodule=self.datamodule, trainer=self.trainer, seed=self.seed, copy=False)
         # Manually invoke finish for multirun-compatibility
