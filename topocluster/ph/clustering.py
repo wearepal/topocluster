@@ -8,7 +8,7 @@ from torch import Tensor
 from topocluster.knn import knn, pnorm
 from topocluster.ph.utils import plot_persistence
 
-__all__ = ["MergeOutput", "zero_dim_merge", "tomato", "Tomato"]
+__all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
 
 
 class MergeOutput(NamedTuple):
@@ -17,7 +17,7 @@ class MergeOutput(NamedTuple):
     persistence_pairs: Tensor
 
 
-def zero_dim_merge(
+def merge_h0(
     neighbor_graph: Tensor | Sequence[Tensor],
     *,
     density_map: Tensor,
@@ -97,7 +97,7 @@ def tomato(pc: Tensor, k_kde: int, k_rips: int, scale: float, threshold: float) 
     """
     density_map, _ = compute_density_map(pc, k_kde, scale)
     _, rips_idxs = compute_rips(pc, k=k_rips)
-    return zero_dim_merge(neighbor_graph=rips_idxs, density_map=density_map, threshold=threshold)
+    return merge_h0(neighbor_graph=rips_idxs, density_map=density_map, threshold=threshold)
 
 
 class Tomato:
