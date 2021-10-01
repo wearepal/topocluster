@@ -32,6 +32,7 @@ def dtm_density(
     """
     Estimate the density based on the distance to the empirical measure defined by a point set.
 
+    :param k: Number of neighbors (possibly including the point itself).
     :param q: Order used to compute the distance to measure.
     :param kernel: Kernel used to compute the pairwise distances for k-nn search.
     :param normalize: Normalize the density so it corresponds to a probability measure on ℝᵈ.
@@ -41,6 +42,8 @@ def dtm_density(
         When the dimension is high, using it as an exponent can quickly lead to under- or overflows.
         We recommend using a small fixed value instead in those cases, even if it won't have the
         same nice theoretical properties as the dimension.
+
+    :param dim: Final exponent representing the dimension. Defaults to the dimension.
     """
     dim = pc.size(1) if dim is None else dim
     distances = knn(pc, k=k, return_distances=True, kernel=kernel).distances ** q
