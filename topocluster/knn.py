@@ -1,7 +1,7 @@
 from __future__ import annotations
-from typing import Any, Callable, NamedTuple, Union, overload
+from typing import NamedTuple, Union, overload
 
-from pykeops.torch import LazyTensor
+from pykeops.torch import LazyTensor  # type: ignore
 import torch
 from torch import Tensor
 from typing_extensions import Literal, Protocol
@@ -29,19 +29,19 @@ def pnorm(
         if p < 1:
             raise ValueError("If 'p' is an integer, it must be positive.")
         if p == 1:
-            return dists.abs().sum(dim)
+            return dists.abs().sum(dim)  # type: ignore
         norm = (dists ** p).sum(dim)
         if root:
-            norm = norm * (1 / p)
-        return norm
+            norm = norm * (1 / p)  # type: ignore
+        return norm  # type: ignore
     elif p == "inf":
         res = dists.min(dim)
     else:
         res = dists.max(dim)
     # torch.max returns a named tuple of (values, indices)
     if isinstance(res, tuple):
-        return res.values
-    return res
+        return res.values  # type: ignore
+    return res  # type: ignore
 
 
 def rbf(x: Tensor, y: Tensor, *, scale: float, dim: int = 1) -> Tensor:
