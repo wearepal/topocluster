@@ -41,7 +41,6 @@ def compute_optimal_assignments(
     return assignments
 
 
-@numba.jit(nopython=True)  # type: ignore
 def _get_index_mapping(arr: np.ndarray) -> tuple[dict[int, int], dict[int, int]]:
     encodings, decodings = {}, {}
     for i, val in enumerate(np.unique(arr)):

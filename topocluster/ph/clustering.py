@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 from torch import Tensor
 
-from topocluster.knn import knn, pairwise_l2sqr
+from topocluster.knn import knn, pnorm
 from topocluster.ph.utils import plot_persistence
 
 __all__ = ["MergeOutput", "zero_dim_merge", "tomato", "Tomato"]
@@ -75,13 +75,13 @@ def zero_dim_merge(
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
-    dists, inds = knn(pc, k=k, kernel=pairwise_l2sqr)
+    dists, inds = knn(pc, k=k, kernel=pnorm)
     dists = (-dists / scale).exp().sum(1) / (k * scale)
     return dists / dists.max(), inds
 
 
 def compute_rips(pc: Tensor, k: int) -> Tensor:
-    return knn(pc=pc, k=k, kernel=pairwise_l2sqr)[1]
+    return knn(pc=pc, k=k, kernel=pnorm)
 
 
 def tomato(pc: Tensor, k_kde: int, k_rips: int, scale: float, threshold: float) -> MergeOutput:
