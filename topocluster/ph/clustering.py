@@ -14,7 +14,7 @@ __all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
 class MergeOutput(NamedTuple):
     root_idxs: Tensor
     cluster_ids: Tensor
-    persistence_pairs: Tensor
+    barcode: Tensor
 
 
 def merge_h0(
@@ -35,12 +35,12 @@ def merge_h0(
     root_idxs = torch.arange(len(density_map), dtype=torch.long, device=density_map.device)
     # List of barcodes for each reference index
     persistence_pairs_ls: list[Tensor] = []
-    # Positional indexes for mapping from absolute index to rank
-    ranks = torch.empty_like(sort_idxs)
+    # Positional indexes for mapping from absolute index to time
+    filtration_times = torch.empty_like(sort_idxs)
 
-    for rank, ref_idx in enumerate(sort_idxs[1:], start=1):
+    for time, ref_idx in enumerate(sort_idxs[1:], start=1):
         ref_idx = cast(Tensor, ref_idx)
-        ranks[ref_idx] = rank
+        filtration_times[ref_idx] = time
         nbr_idxs = neighbor_graph[ref_idx]
         # neighbors of v_i with smaller indices (bigger p)
         ls_idxs = nbr_idxs[pairwise_lt[nbr_idxs, ref_idx]]
@@ -50,28 +50,30 @@ def merge_h0(
             c_max_idx = c_nbd_idxs = root_idxs[ls_idxs]
             if len(c_nbd_idxs) > 1:
                 c_max_idx = c_nbd_idxs[density_map[c_nbd_idxs].argmax()]
+                # Exclude the local optimum
                 c_nbd_idxs = c_nbd_idxs[c_nbd_idxs != c_max_idx]
+                # Compute the persistence (death-time - birth-time) of the components
                 persistence = density_map[c_nbd_idxs] - density_map[ref_idx]
                 merge_mask = persistence < threshold
                 #  merge any neighbours below the peristence-threshold, with respect to v_i, into c_max
                 if merge_mask.count_nonzero():
+                    # Look up the child indexes for each of the lower-star neighbors
                     child_node_idxs = (root_idxs[:, None] == c_nbd_idxs[merge_mask][None]).nonzero(
                         as_tuple=True
                     )[0]
+                    # Merge the lower-star neighbors and their descendents into c_max
                     root_idxs[child_node_idxs] = c_max_idx
 
-                birth_time = ranks[c_nbd_idxs]
-                death_time = ranks[ref_idx].expand(len(c_nbd_idxs))
+                birth_time = filtration_times[c_nbd_idxs]
+                death_time = filtration_times[ref_idx].expand(len(c_nbd_idxs))
                 persistence_pairs_ls.append(torch.stack((birth_time, death_time), dim=-1))
             # assign v_i to cluster c_max
             root_idxs[ref_idx] = c_max_idx
 
     _, cluster_ids = root_idxs.unique(return_inverse=True)
-    persistence_pairs = torch.cat(persistence_pairs_ls, dim=0)
+    barcode = torch.cat(persistence_pairs_ls, dim=0)
 
-    return MergeOutput(
-        root_idxs=root_idxs, cluster_ids=cluster_ids, persistence_pairs=persistence_pairs
-    )
+    return MergeOutput(root_idxs=root_idxs, cluster_ids=cluster_ids, barcode=barcode)
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
@@ -108,11 +110,11 @@ class Tomato:
         self.k_rips = k_rips
         self.scale = scale
         self.threshold = threshold
-        self.persistence_pairs: Tensor | None = None
+        self.barcode: Tensor | None = None
 
     def plot(self) -> None:
-        if self.persistence_pairs is not None:
-            plot_persistence(self.persistence_pairs)
+        if self.barcode is not None:
+            plot_persistence(self.barcode)
             plt.show()
 
     def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
@@ -121,6 +123,6 @@ class Tomato:
             x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=threshold
         )
 
-        self.persistence_pairs = output.persistence_pairs
+        self.barcode = output.barcode
 
         return output.cluster_ids

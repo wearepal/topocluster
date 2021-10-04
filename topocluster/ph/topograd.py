@@ -6,8 +6,13 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from topocluster.ph.clustering import Tomato, compute_density_map, compute_rips, tomato
-from zero_dim_ph import zero_dim_merge
+from topocluster.ph.clustering import (
+    Tomato,
+    compute_density_map,
+    compute_rips,
+    merge_h0,
+    tomato,
+)
 
 __all__ = ["topograd_loss", "TopoGrad"]
 
@@ -31,14 +36,14 @@ def topograd_loss(pc: Tensor, k_kde: int, k_rips: int, scale: float, destnum: in
     pc_sorted = pc[sorted_idxs]
     rips_idxs = compute_rips(pc_sorted, k_rips)
 
-    _, pers_pairs = zero_dim_merge(
+    barcode = merge_h0(
         density_map=kde_dists,
         neighbor_graph=rips_idxs,
         threshold=1.0,
-    )
+    ).barcode
 
-    pers_pairs = torch.as_tensor(pers_pairs, device=pc.device)
-    seen = pers_pairs[~torch.all(pers_pairs == -1, dim=1)]
+    barcode = torch.as_tensor(barcode, device=pc.device)
+    seen = barcode[~torch.all(barcode == -1, dim=1)]
 
     pd_pairs = []
     for i in torch.unique(seen[:, 0]):
@@ -126,6 +131,6 @@ class TopoGrad(Tomato):
             x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=threshold
         )
 
-        self.persistence_pairs = output.persistence_pairs
+        self.barcode = output.barcode
 
         return output.cluster_ids

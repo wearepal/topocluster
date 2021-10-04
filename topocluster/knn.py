@@ -32,7 +32,7 @@ def pnorm(
             return dists.abs().sum(dim)  # type: ignore
         norm = (dists ** p).sum(dim)
         if root:
-            norm = norm * (1 / p)  # type: ignore
+            norm = norm ** (1 / p)  # type: ignore
         return norm  # type: ignore
     elif p == "inf":
         res = dists.min(dim)
