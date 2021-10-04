@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import NamedTuple, Union, overload
+from functools import partial
+from typing import NamedTuple, Union, cast, overload
 
 from pykeops.torch import LazyTensor  # type: ignore
 import torch
 from torch import Tensor
+import torch.nn.functional as F
 from typing_extensions import Literal, Protocol
 
 __all__ = [
@@ -16,12 +18,34 @@ __all__ = [
 TensorType = Union[LazyTensor, Tensor]
 
 
+def _l2_normalize(tensor: TensorType, dim: int):
+    norm = (tensor ** 2).sum(dim) ** 2  # type: ignore
+    return tensor / norm
+
+
+def cosine_similarity(
+    tensor_a: TensorType,
+    tensor_b: TensorType,
+    *,
+    dim: int = -1,
+    normalize: bool = True,
+) -> Tensor:
+    if normalize:
+        tensor_a = _l2_normalize(tensor_a, dim=-1)
+        tensor_b = _l2_normalize(tensor_b, dim=-1)
+
+    return cast(Tensor, (tensor_a * tensor_b).sum(dim))
+
+
+NormType = Union[int, Literal["inf", "sup"]]
+
+
 def pnorm(
     tensor_a: TensorType,
     tensor_b: TensorType,
     *,
     dim: int = -1,
-    p: int | Literal["inf", "sup"] = 2,
+    p: NormType = 2,
     root: bool = True,
 ) -> Tensor:
     dists = tensor_a - tensor_b
@@ -62,9 +86,11 @@ class KnnOutput(NamedTuple):
 def knn(
     pc: Tensor,
     k: int,
-    kernel: DistKernel = ...,
+    kernel: Literal["pnorm", "cosine"] = ...,
+    backend: Literal["keops", "torch"] = "torch",
+    p: NormType = 2,
+    normalize: bool = True,
     return_distances: Literal[False] = ...,
-    backend: Literal["pykeops", "torch"] = ...,
 ) -> Tensor:
     ...
 
@@ -73,9 +99,11 @@ def knn(
 def knn(
     pc: Tensor,
     k: int,
-    kernel: DistKernel = ...,
+    kernel: Literal["pnorm", "cosine"] = ...,
+    backend: Literal["keops", "torch"] = "torch",
+    p: NormType = 2,
+    normalize: bool = True,
     return_distances: Literal[True] = ...,
-    backend: Literal["pykeops", "torch"] = ...,
 ) -> KnnOutput:
     ...
 
@@ -83,27 +111,36 @@ def knn(
 def knn(
     pc: Tensor,
     k: int,
-    kernel: DistKernel = pnorm,
+    kernel: Literal["pnorm", "cosine"] = "pnorm",
+    backend: Literal["keops", "torch"] = "torch",
+    p: NormType = 2,
+    normalize: bool = True,
     return_distances: bool = False,
-    backend: Literal["pykeops", "torch"] = "torch",
 ) -> Tensor | KnnOutput:
+
+    if kernel == "cosine":
+        kernel_fn = partial(cosine_similarity, normalize=False)
+        if normalize:
+            pc = F.normalize(pc, dim=1, p=2)
+    else:
+        kernel_fn = partial(pnorm, p=p)
 
     G_i = pc[:, None]  # (M**2, 1, 2)
     X_j = pc[None]  # (1, N, 2)
     distances = None
 
-    if backend == "pykeops":
+    if backend == "keops":
         G_i_lt = LazyTensor(G_i)  # (M**2, 1, 2)
         X_j_lt = LazyTensor(X_j)  # (1, N, 2)
         # symbolic matrix of squared distances
-        D_ij = kernel(G_i_lt, X_j_lt)  # (M**2, N)
+        D_ij = kernel_fn(G_i_lt, X_j_lt)  # (M**2, N)
         # Grid <-> Samples, (M**2, K) integer tensor
         indices = D_ij.argKmin(k, dim=1)  # type: ignore
         if return_distances:
             # Workaround for pykeops currently not supporting differentiation through Kmin
-            distances = kernel(pc[:, None], pc[indices, :])
+            distances = kernel_fn(pc[:, None], pc[indices, :])
     else:
-        D_ij = kernel(G_i, X_j)
+        D_ij = kernel_fn(G_i, X_j)
         values_indices = D_ij.topk(k, dim=1)
         indices = values_indices.indices
         if return_distances:
