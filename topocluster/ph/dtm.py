@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from topocluster.knn import DistKernel, knn, pnorm
+from topocluster.knn import Kernel, knn
 
 __all__ = ["DTM", "DTMDensity"]
 
@@ -19,7 +19,7 @@ class DTM:
         return dists.mean(-1) ** (1.0 / q)
 
     @staticmethod
-    def with_knn(pc: Tensor, *, k: int, q: int = 2, kernel: DistKernel = pnorm) -> Tensor:
+    def with_knn(pc: Tensor, *, k: int, q: int = 2, kernel: Kernel = "pnorm", p: int = 2) -> Tensor:
         """
         Computes the distance to the empirical measure defined by a point set.
 
@@ -27,7 +27,7 @@ class DTM:
         :param q: Order used to compute the distance to measure.
         :param kernel: Kernel used to compute the pairwise distances for k-nn search.
         """
-        distances = knn(pc, k=k, return_distances=True, kernel=kernel).distances
+        distances = knn(pc, k=k, return_distances=True, kernel=kernel, p=p).distances
         return DTM.from_dists(distances, q=q)
 
 
@@ -37,14 +37,14 @@ class DTMDensity:
         dists: Tensor,
         *,
         dim: int,
-        q: int = 2,
+        q: float | None = None,
         normalize: bool = False,
         weights: Tensor | None = None,
     ) -> Tensor:
         """
         Estimate the density based on the distance to the empirical measure defined by a point set.
 
-        :param q: Order used to compute the distance to measure.
+        :param q: Order used to compute the distance to measure; defaults to dim.
         :param kernel: Kernel used to compute the pairwise distances for k-nn search.
         :param normalize: Normalize the density so it corresponds to a probability measure on ℝᵈ.
             Only available for the Euclidean metric, defaults to False.
@@ -60,10 +60,14 @@ class DTMDensity:
         k = dists.size(1)
         if weights is None:
             weights = dists.new_full((k,), 1 / k)
-        dtm = (weights * dists).sum(-1)
+        if q is None:
+            q = dim
+
+        dtm = ((dists ** q) * weights).sum(-1)
         if normalize:
             dtm /= (torch.arange(1, k + 1, device=dists.device) ** (q / dim) * weights).sum()
         density = dtm ** (-dim / q)
+
         n_samples = len(dists)
         if normalize:
             import math
@@ -78,8 +82,9 @@ class DTMDensity:
         pc: Tensor,
         *,
         k: int,
-        q: int = 2,
-        kernel: DistKernel = pnorm,
+        q: float | None = None,
+        kernel: Kernel = "pnorm",
+        p: int = 2,
         normalize: bool = False,
         dim: int | None = None,
     ) -> Tensor:
@@ -100,5 +105,5 @@ class DTMDensity:
         :param dim: Final exponent representing the dimension. Defaults to the dimension.
         """
         dim = pc.size(1) if dim is None else dim
-        distances = knn(pc, k=k, return_distances=True, kernel=kernel).distances ** q
+        distances = knn(pc, k=k, return_distances=True, kernel=kernel, p=p).distances
         return DTMDensity.from_dists(dists=distances, q=q, dim=dim, normalize=normalize)

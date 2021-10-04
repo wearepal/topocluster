@@ -6,13 +6,9 @@ from pykeops.torch import LazyTensor  # type: ignore
 import torch
 from torch import Tensor
 import torch.nn.functional as F
-from typing_extensions import Literal, Protocol
+from typing_extensions import Literal
 
-__all__ = [
-    "knn",
-    "pnorm",
-    "rbf",
-]
+__all__ = ["knn", "pnorm", "rbf", "cosine_similarity", "Kernel"]
 
 
 TensorType = Union[LazyTensor, Tensor]
@@ -48,12 +44,10 @@ def pnorm(
     p: NormType = 2,
     root: bool = True,
 ) -> Tensor:
-    dists = tensor_a - tensor_b
+    dists = (tensor_a - tensor_b).abs()
     if isinstance(p, int):
         if p < 1:
             raise ValueError("If 'p' is an integer, it must be positive.")
-        if p == 1:
-            return dists.abs().sum(dim)  # type: ignore
         norm = (dists ** p).sum(dim)
         if root:
             norm = norm ** (1 / p)  # type: ignore
@@ -72,21 +66,19 @@ def rbf(x: Tensor, y: Tensor, *, scale: float, dim: int = 1) -> Tensor:
     return torch.exp(pnorm(x, y, p=2, root=False, dim=dim) / scale)
 
 
-class DistKernel(Protocol):
-    def __call__(self, tensor_a: TensorType, tensor_b: TensorType) -> Tensor:
-        ...
-
-
 class KnnOutput(NamedTuple):
     indices: Tensor
     distances: Tensor
+
+
+Kernel = Literal["pnorm", "cosine"]
 
 
 @overload
 def knn(
     pc: Tensor,
     k: int,
-    kernel: Literal["pnorm", "cosine"] = ...,
+    kernel: Kernel = ...,
     backend: Literal["keops", "torch"] = "torch",
     p: NormType = 2,
     normalize: bool = True,
@@ -99,7 +91,7 @@ def knn(
 def knn(
     pc: Tensor,
     k: int,
-    kernel: Literal["pnorm", "cosine"] = ...,
+    kernel: Kernel = ...,
     backend: Literal["keops", "torch"] = "torch",
     p: NormType = 2,
     normalize: bool = True,
@@ -111,7 +103,7 @@ def knn(
 def knn(
     pc: Tensor,
     k: int,
-    kernel: Literal["pnorm", "cosine"] = "pnorm",
+    kernel: Kernel = "pnorm",
     backend: Literal["keops", "torch"] = "torch",
     p: NormType = 2,
     normalize: bool = True,
@@ -123,7 +115,10 @@ def knn(
         if normalize:
             pc = F.normalize(pc, dim=1, p=2)
     else:
-        kernel_fn = partial(pnorm, p=p)
+        kwargs = {"p": p}
+        if normalize:
+            kwargs["root"] = True
+        kernel_fn = partial(pnorm, **kwargs)
 
     G_i = pc[:, None]  # (M**2, 1, 2)
     X_j = pc[None]  # (1, N, 2)
@@ -140,8 +135,9 @@ def knn(
             # Workaround for pykeops currently not supporting differentiation through Kmin
             distances = kernel_fn(pc[:, None], pc[indices, :])
     else:
+        # brute-force approach using torch.topk
         D_ij = kernel_fn(G_i, X_j)
-        values_indices = D_ij.topk(k, dim=1)
+        values_indices = D_ij.topk(k, dim=1, largest=False)
         indices = values_indices.indices
         if return_distances:
             distances = values_indices.values
