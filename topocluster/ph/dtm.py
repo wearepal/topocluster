@@ -39,11 +39,11 @@ class DTMDensity:
         dim: int,
         q: int = 2,
         normalize: bool = False,
+        weights: Tensor | None = None,
     ) -> Tensor:
         """
         Estimate the density based on the distance to the empirical measure defined by a point set.
 
-        :param k: Number of neighbors (possibly including the point itself).
         :param q: Order used to compute the distance to measure.
         :param kernel: Kernel used to compute the pairwise distances for k-nn search.
         :param normalize: Normalize the density so it corresponds to a probability measure on ℝᵈ.
@@ -55,11 +55,14 @@ class DTMDensity:
             same nice theoretical properties as the dimension.
 
         :param dim: Final exponent representing the dimension. Defaults to the dimension.
+        :param weights: weights of each of the k neighbors; should sum to 1.
         """
         k = dists.size(1)
-        dtm = dists.sum(-1)
+        if weights is None:
+            weights = dists.new_full((k,), 1 / k)
+        dtm = (weights * dists).sum(-1)
         if normalize:
-            dtm /= (torch.arange(1, k + 1) ** (q / dim)).sum()
+            dtm /= (torch.arange(1, k + 1, device=dists.device) ** (q / dim) * weights).sum()
         density = dtm ** (-dim / q)
         n_samples = len(dists)
         if normalize:
