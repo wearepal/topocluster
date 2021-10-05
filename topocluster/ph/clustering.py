@@ -59,7 +59,8 @@ def merge_h0(
                 persistence = p_c_nbd - p_vi
                 #  merge any neighbours below the peristence-threshold into c_max
                 merge_mask = persistence < threshold
-                if merge_mask.count_nonzero():
+                num_merges = int(merge_mask.count_nonzero())
+                if num_merges:
                     # Look up the child indexes for each of the upper-star neighbors.
                     child_node_idxs = (root_idxs[:, None] == c_nbd_idxs[merge_mask][None]).nonzero(
                         as_tuple=True
@@ -68,9 +69,9 @@ def merge_h0(
                     root_idxs[child_node_idxs] = c_max_idx
 
                     # record the birth/death times for the connected components
-                    # barcode_ls.append(
-                    #     torch.stack((p_c_nbd[merge_mask], p_vi.expand_as(merge_mask)), dim=-1)
-                    # )
+                    barcode_ls.append(
+                        torch.stack((p_c_nbd[merge_mask], p_vi.expand(num_merges)), dim=-1)
+                    )
             # assign v_i to cluster c_max
             root_idxs[i] = c_max_idx
 
