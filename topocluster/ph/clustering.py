@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import NamedTuple, Sequence, cast
+from typing import NamedTuple, Sequence
 
 import matplotlib.pyplot as plt
+from numpy.core.numeric import full_like
 import torch
 from torch import Tensor
 
-from topocluster.knn import knn, pnorm
+from topocluster.knn import knn
 from topocluster.ph.utils import plot_persistence
 
 __all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
@@ -13,7 +14,7 @@ __all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
 
 class MergeOutput(NamedTuple):
     root_idxs: Tensor
-    cluster_ids: Tensor
+    labels: Tensor
     barcode: Tensor
     tree: Tensor | None = None
 
@@ -23,12 +24,11 @@ def merge_h0(
     *,
     density_map: Tensor,
     threshold: float,
-    store_tree: bool = False
+    store_tree: bool = False,
 ) -> MergeOutput:
     """Merging Data Using Topological Persistence.
     Fast persistence-based merging algorithm specialised for 0-dimensional homology.
     """
-    # # Nornalize the density map such that the maximum value is 1
     sort_idxs = density_map.argsort(descending=True)
     # merging happens in a bottom-up fashion, meaning each node defines its own cluster
     root_idxs = torch.arange(len(density_map), dtype=torch.long, device=density_map.device)
@@ -38,50 +38,56 @@ def merge_h0(
     tree_ls = [root_idxs.clone()] if store_tree else None
     # Positional indexes for mapping from absolute index to time
     filtration_times = torch.empty_like(sort_idxs)
-    
 
     for t, i in enumerate(sort_idxs[1:], start=1):
         filtration_times[i] = t
+        # neighbors of v_i.
         nbr_idxs = neighbor_graph[i]
-        # neighbors of v_i with smaller indices (bigger p)
+        # neighbors of v_i with smaller indices (bigger p).
         ls_idxs = nbr_idxs[density_map[nbr_idxs] > density_map[i]]
         # check whether v_i is a local maximum of p
         if len(ls_idxs) > 0:
             # Find all clusters containing nodes in nbd.
             c_max_idx = c_nbd_idxs = root_idxs[ls_idxs]
+            p_vi = density_map[i]
             if len(c_nbd_idxs) > 1:
                 c_max_idx = c_nbd_idxs[density_map[c_nbd_idxs].argmax()]
                 # Exclude the local optimum as this will be the merging site.
                 c_nbd_idxs = c_nbd_idxs[c_nbd_idxs != c_max_idx]
                 # Compute the persistence (death-time - birth-time) of the components.
-                persistence = density_map[c_nbd_idxs] - density_map[i]
+                p_c_nbd = density_map[c_nbd_idxs]
+                persistence = p_c_nbd - p_vi
+                #  merge any neighbours below the peristence-threshold into c_max
                 merge_mask = persistence < threshold
-                #  merge any neighbours below the peristence-threshold, with respect to v_i, into c_max
                 if merge_mask.count_nonzero():
-                    # Look up the child indexes for each of the lower-star neighbors.
+                    # Look up the child indexes for each of the upper-star neighbors.
                     child_node_idxs = (root_idxs[:, None] == c_nbd_idxs[merge_mask][None]).nonzero(
                         as_tuple=True
                     )[0]
-                    # Merge the lower-star neighbors and their descendents into c_max.
+                    # Merge the upper-star neighbors and their descendents into c_max.
                     root_idxs[child_node_idxs] = c_max_idx
 
-                # record the birth/death times for the connected components
-                birth_time = filtration_times[c_nbd_idxs]
-                death_time = filtration_times[i].expand(len(c_nbd_idxs))
-                barcode_ls.append(torch.stack((birth_time, death_time), dim=-1))
-
+                    # record the birth/death times for the connected components
+                    # barcode_ls.append(
+                    #     torch.stack((p_c_nbd[merge_mask], p_vi.expand_as(merge_mask)), dim=-1)
+                    # )
             # assign v_i to cluster c_max
             root_idxs[i] = c_max_idx
 
-        # Extend the stored tree.
+        # Extend the merging tree.
         if tree_ls is not None:
             tree_ls.append(root_idxs.clone())
 
     tree = None if tree_ls is None else torch.stack(tree_ls, -1)
-    _, cluster_ids = root_idxs.unique(return_inverse=True)
-    barcode = torch.cat(barcode_ls, dim=0)
+    cluster_idxs, labels = root_idxs.unique(return_inverse=True)
 
-    return MergeOutput(root_idxs=root_idxs, cluster_ids=cluster_ids, barcode=barcode, tree=tree)
+    p_C = density_map[cluster_idxs]
+    p_min = density_map[sort_idxs[-1]].item()
+    # Record the birth-death pairs for the modes of the data
+    barcode_ls.append(torch.stack([p_C, torch.full_like(p_C, p_min)], dim=-1))
+    barcode = torch.cat(barcode_ls, dim=0).long()
+
+    return MergeOutput(root_idxs=root_idxs, labels=labels, barcode=barcode, tree=tree)
 
 
 # def merge_h0(
@@ -124,11 +130,11 @@ def merge_h0(
 #                 merge_mask = persistence < threshold
 #                 #  merge any neighbours below the peristence-threshold, with respect to v_i, into c_max
 #                 if merge_mask.count_nonzero():
-#                     # Look up the child indexes for each of the lower-star neighbors
+#                     # Look up the child indexes for each of the upper-star neighbors
 #                     child_node_idxs = (root_idxs[:, None] == c_nbd_idxs[merge_mask][None]).nonzero(
 #                         as_tuple=True
 #                     )[0]
-#                     # Merge the lower-star neighbors and their descendents into c_max
+#                     # Merge the upper-star neighbors and their descendents into c_max
 #                     root_idxs[child_node_idxs] = c_max_idx
 
 #                 # record the birth/death times for the connected components
@@ -139,11 +145,11 @@ def merge_h0(
 #             # assign v_i to cluster c_max
 #             root_idxs[ref_idx] = c_max_idx
 
-#     _, cluster_ids = root_idxs.unique(return_inverse=True)
+#     _, labels = root_idxs.unique(return_inverse=True)
 #     barcode = None
 #     # barcode = torch.cat(barcode_ls, dim=0)
 
-#     return MergeOutput(root_idxs=root_idxs, cluster_ids=cluster_ids, barcode=barcode)
+#     return MergeOutput(root_idxs=root_idxs, labels=labels, barcode=barcode)
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
@@ -195,4 +201,4 @@ class Tomato:
 
         self.barcode = output.barcode
 
-        return output.cluster_ids
+        return output.labels
