@@ -76,7 +76,7 @@ Kernel = Literal["pnorm", "cosine"]
 
 @overload
 def knn(
-    pc: Tensor,
+    x: Tensor,
     k: int,
     kernel: Kernel = ...,
     backend: Literal["keops", "torch"] = "torch",
@@ -89,7 +89,7 @@ def knn(
 
 @overload
 def knn(
-    pc: Tensor,
+    x: Tensor,
     k: int,
     kernel: Kernel = ...,
     backend: Literal["keops", "torch"] = "torch",
@@ -101,7 +101,7 @@ def knn(
 
 
 def knn(
-    pc: Tensor,
+    x: Tensor,
     k: int,
     kernel: Kernel = "pnorm",
     backend: Literal["keops", "torch"] = "torch",
@@ -113,15 +113,15 @@ def knn(
     if kernel == "cosine":
         kernel_fn = partial(cosine_similarity, normalize=False)
         if normalize:
-            pc = F.normalize(pc, dim=1, p=2)
+            x = F.normalize(x, dim=1, p=2)
     else:
         kwargs = {"p": p}
         if normalize:
             kwargs["root"] = True
         kernel_fn = partial(pnorm, **kwargs)
 
-    G_i = pc[:, None]  # (M**2, 1, 2)
-    X_j = pc[None]  # (1, N, 2)
+    G_i = x[:, None]  # (M**2, 1, 2)
+    X_j = x[None]  # (1, N, 2)
     distances = None
 
     if backend == "keops":
@@ -133,7 +133,7 @@ def knn(
         indices = D_ij.argKmin(k, dim=1)  # type: ignore
         if return_distances:
             # Workaround for pykeops currently not supporting differentiation through Kmin
-            distances = kernel_fn(pc[:, None], pc[indices, :])
+            distances = kernel_fn(x[:, None], x[indices, :])
     else:
         # brute-force approach using torch.topk
         D_ij = kernel_fn(G_i, X_j)
