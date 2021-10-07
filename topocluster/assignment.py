@@ -1,21 +1,21 @@
 from __future__ import annotations
+from torch import Tensor
 
 from lapjv import lapjv
-import numba
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 __all__ = [
-    "compute_optimal_assignments",
+    "optimal_assignment",
     "compute_cost_matrix",
     "encode_arr_with_dict",
 ]
 
 
-def compute_optimal_assignments(
-    labels_pred: np.ndarray,
+def optimal_assignment(
+    labels_pred: np.ndarray | Tensor,
     *,
-    labels_true: np.ndarray,
+    labels_true: np.ndarray | Tensor,
     num_classes: int | None = None,
     encode: bool = True,
 ) -> dict[int, int]:
@@ -30,18 +30,18 @@ def compute_optimal_assignments(
         _, col_ind, _ = lapjv(-cost_matrix)
     else:
         _, col_ind = linear_sum_assignment(-cost_matrix)
-    assignments = {}
-    for class_id, cluster_id in enumerate(col_ind):
+    label_map = {}
+    for label_true, label_pred in enumerate(col_ind):
         if decodings_true is not None:
-            class_id = decodings_true[class_id]
+            label_true = decodings_true[label_true]
         if decodings_pred is not None:
-            cluster_id = decodings_pred[cluster_id]
-        assignments[cluster_id] = class_id
+            label_pred = decodings_pred[label_pred]
+        label_map[label_pred] = label_true
 
-    return assignments
+    return label_map
 
 
-def _get_index_mapping(arr: np.ndarray) -> tuple[dict[int, int], dict[int, int]]:
+def _get_index_mapping(arr: np.ndarray | Tensor) -> tuple[dict[int, int], dict[int, int]]:
     encodings, decodings = {}, {}
     for i, val in enumerate(np.unique(arr)):
         encodings[val] = i
@@ -49,29 +49,28 @@ def _get_index_mapping(arr: np.ndarray) -> tuple[dict[int, int], dict[int, int]]
     return encodings, decodings
 
 
-def encode_arr_with_dict(arr: np.ndarray, encoding_dict: dict[int, int]) -> np.ndarray:
+def encode_arr_with_dict(arr: np.ndarray | Tensor, *, encoding_dict: dict[int, int]) -> np.ndarray:
     return np.vectorize(encoding_dict.__getitem__)(arr)
 
 
 def compute_cost_matrix(
-    labels_pred: np.ndarray,
+    labels_pred: np.ndarray | Tensor,
     *,
-    labels_true: np.ndarray,
+    labels_true: np.ndarray | Tensor,
     num_classes: int | None = None,
     encode: bool = True,
 ) -> tuple[np.ndarray, dict[int, int] | None, dict[int, int] | None]:
+    decodings_true, decodings_pred = None, None
     if encode and num_classes is None:
         encodings_pred, decodings_pred = _get_index_mapping(labels_pred)
         encodings_true, decodings_true = _get_index_mapping(labels_true)
-        labels_pred = encode_arr_with_dict(labels_pred, encodings_pred)
-        labels_true = encode_arr_with_dict(labels_true, encodings_true)
+        labels_pred = encode_arr_with_dict(labels_pred, encoding_dict=encodings_pred)
+        labels_true = encode_arr_with_dict(labels_true, encoding_dict=encodings_true)
         cost_matrix = np.zeros((len(encodings_true), len(encodings_pred)))
+    elif num_classes is None:
+        cost_matrix = np.zeros((len(np.unique(labels_true)), len(np.unique(labels_pred))))
     else:
-        if num_classes is None:
-            cost_matrix = np.zeros((len(np.unique(labels_true)), len(np.unique(labels_pred))))
-        else:
-            cost_matrix = np.zeros((num_classes, num_classes))
-        decodings_true, decodings_pred = None, None
+        cost_matrix = np.zeros((num_classes, num_classes))
 
     indices, counts = np.unique(np.stack([labels_true, labels_pred]), axis=1, return_counts=True)
     cost_matrix[tuple(indices)] += counts

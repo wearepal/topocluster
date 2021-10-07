@@ -44,8 +44,8 @@ def visualize_clusters(
     ax.set_yticks([])
     sns.despine(left=True, bottom=True, right=True)
 
-
     if legend:
+
         def _flip(items: Sequence, ncol: int):
             return itertools.chain(*[items[i::ncol] for i in range(ncol)])
 
@@ -113,7 +113,7 @@ def visualize_merging(image_dir: Path | str) -> None:
                 orientation="v",
                 key="-SLIDER-THRESHOLD-",
                 enable_events=True,
-                disable_number_display=True
+                disable_number_display=True,
             ),
         ],
     ]

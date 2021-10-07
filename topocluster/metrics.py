@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 from sklearn.metrics import (
     adjusted_mutual_info_score,
     adjusted_rand_score,
@@ -9,9 +10,23 @@ from sklearn.metrics import (
 )
 from torch import Tensor
 
-from topocluster.assignment import compute_optimal_assignments
+from topocluster.assignment import optimal_assignment
 
-__all__ = ["clustering_metrics", "compute_abs_subgroup_id"]
+__all__ = [
+    "clustering_accuracy",
+    "clustering_metrics",
+    "compute_abs_subgroup_id",
+]
+
+
+def clustering_accuracy(
+    labels_true: npt.NDArray[np.int_] | Tensor, labels_pred: npt.NDArray[np.int_] | Tensor
+) -> float:
+    label_map = optimal_assignment(labels_true=labels_true, labels_pred=labels_pred, encode=True)
+    num_hits = 0
+    for label_pred, label_true in label_map.items():
+        num_hits += ((labels_true == label_true) & (labels_pred == label_pred)).sum()
+    return float(num_hits / len(labels_true) * 100)
 
 
 def compute_abs_subgroup_id(
@@ -45,10 +60,10 @@ def clustering_metrics(
         f"{prefix}NMI": normalized_mutual_info_score(labels_true=subgroup_id, labels_pred=preds_np),  # type: ignore
     }
 
-    cluster_map = compute_optimal_assignments(labels_true=subgroup_id, labels_pred=preds_np)
+    cluster_map = optimal_assignment(labels_true=subgroup_id, labels_pred=preds_np)
 
     num_hits_all = 0
-    for i, (class_id, cluster_id) in enumerate(cluster_map.items()):
+    for i, (cluster_id, class_id) in enumerate(cluster_map.items()):
         class_mask = subgroup_id == class_id
         num_matches = class_mask.sum()
         if num_matches > 0:

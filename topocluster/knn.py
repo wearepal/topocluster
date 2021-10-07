@@ -1,69 +1,49 @@
 from __future__ import annotations
 from functools import partial
-from typing import NamedTuple, Union, cast, overload
+import math
+from typing import NamedTuple, cast, overload
 
-from pykeops.torch import LazyTensor  # type: ignore
 import torch
 from torch import Tensor
 import torch.nn.functional as F
 from typing_extensions import Literal
 
-__all__ = ["knn", "pnorm", "rbf", "cosine_similarity", "Kernel"]
-
-
-TensorType = Union[LazyTensor, Tensor]
-
-
-def _l2_normalize(tensor: TensorType, dim: int):
-    norm = (tensor ** 2).sum(dim) ** 2  # type: ignore
-    return tensor / norm
+__all__ = ["knn", "pnorm", "cosine_similarity", "Kernel"]
 
 
 def cosine_similarity(
-    tensor_a: TensorType,
-    tensor_b: TensorType,
+    tensor_a: Tensor,
+    tensor_b: Tensor,
     *,
     dim: int = -1,
     normalize: bool = True,
 ) -> Tensor:
     if normalize:
-        tensor_a = _l2_normalize(tensor_a, dim=-1)
-        tensor_b = _l2_normalize(tensor_b, dim=-1)
+        tensor_a = F.normalize(tensor_a, dim=dim, p=2)
+        tensor_b = F.normalize(tensor_b, dim=dim, p=2)
 
     return cast(Tensor, (tensor_a * tensor_b).sum(dim))
 
 
-NormType = Union[int, Literal["inf", "sup"]]
-
-
 def pnorm(
-    tensor_a: TensorType,
-    tensor_b: TensorType,
+    tensor_a: Tensor,
+    tensor_b: Tensor,
     *,
     dim: int = -1,
-    p: NormType = 2,
+    p: float,
     root: bool = True,
 ) -> Tensor:
     dists = (tensor_a - tensor_b).abs()
-    if isinstance(p, int):
-        if p < 1:
-            raise ValueError("If 'p' is an integer, it must be positive.")
+    if math.isinf(p):
+        if p > 0:
+            norm = dists.max(dim).values
+        else:
+            norm = dists.min(dim).values
+    else:
         norm = (dists ** p).sum(dim)
         if root:
             norm = norm ** (1 / p)  # type: ignore
-        return norm  # type: ignore
-    elif p == "inf":
-        res = dists.min(dim)
-    else:
-        res = dists.max(dim)
-    # torch.max returns a named tuple of (values, indices)
-    if isinstance(res, tuple):
-        return res.values  # type: ignore
-    return res  # type: ignore
-
-
-def rbf(x: Tensor, y: Tensor, *, scale: float, dim: int = 1) -> Tensor:
-    return torch.exp(pnorm(x, y, p=2, root=False, dim=dim) / scale)
+    return norm
 
 
 class KnnOutput(NamedTuple):
@@ -79,10 +59,10 @@ def knn(
     x: Tensor,
     k: int,
     kernel: Kernel = ...,
-    backend: Literal["keops", "torch"] = "torch",
-    p: NormType = 2,
-    normalize: bool = True,
     return_distances: Literal[False] = ...,
+    grad_enabled: bool = ...,
+    p: float = 2,
+    root: bool = False,
 ) -> Tensor:
     ...
 
@@ -92,10 +72,10 @@ def knn(
     x: Tensor,
     k: int,
     kernel: Kernel = ...,
-    backend: Literal["keops", "torch"] = "torch",
-    p: NormType = 2,
-    normalize: bool = True,
     return_distances: Literal[True] = ...,
+    grad_enabled: bool = ...,
+    p: float = 2,
+    root: bool = False,
 ) -> KnnOutput:
     ...
 
@@ -104,44 +84,47 @@ def knn(
     x: Tensor,
     k: int,
     kernel: Kernel = "pnorm",
-    backend: Literal["keops", "torch"] = "torch",
-    p: NormType = 2,
-    normalize: bool = True,
     return_distances: bool = False,
+    grad_enabled: bool = True,
+    p: float = 2,
+    root: bool = False,
 ) -> Tensor | KnnOutput:
+    import faiss
 
+    d = x.size(1)
     if kernel == "cosine":
-        kernel_fn = partial(cosine_similarity, normalize=False)
-        if normalize:
-            x = F.normalize(x, dim=1, p=2)
+        x = F.normalize(x, dim=1, p=2)
+        index = faiss.IndexFlat(d, faiss.METRIC_INNER_PRODUCT)
     else:
-        kwargs = {"p": p}
-        if normalize:
-            kwargs["root"] = True
-        kernel_fn = partial(pnorm, **kwargs)
+        index = faiss.IndexFlat(d, faiss.METRIC_Lp)
+        index.metric_arg = p
+    if x.is_cuda:
+        # use a single GPU
+        res = faiss.StandardGpuResources()  # type: ignore
+        # make it a flat GPU index
+        index = faiss.index_cpu_to_gpu(res, x.device.index, index)  # type: ignore
 
-    G_i = x[:, None]  # (M**2, 1, 2)
-    X_j = x[None]  # (1, N, 2)
-    distances = None
+    x_np = x.detach().cpu().numpy()
+    # add vectors to the index
+    index.add(x=x_np) # type: ignore
+    # search for the nearest k neighbors for each data-point
+    distances_np, indices_np = index.search(x=x_np, k=k)  # type: ignore
+    # Convert back from numpy to torch
+    indices = torch.as_tensor(indices_np, device=x.device)
 
-    if backend == "keops":
-        G_i_lt = LazyTensor(G_i)  # (M**2, 1, 2)
-        X_j_lt = LazyTensor(X_j)  # (1, N, 2)
-        # symbolic matrix of squared distances
-        D_ij = kernel_fn(G_i_lt, X_j_lt)  # (M**2, N)
-        # Grid <-> Samples, (M**2, K) integer tensor
-        indices = D_ij.argKmin(k, dim=1)  # type: ignore
-        if return_distances:
-            # Workaround for pykeops currently not supporting differentiation through Kmin
-            distances = kernel_fn(x[:, None], x[indices, :])
-    else:
-        # brute-force approach using torch.topk
-        D_ij = kernel_fn(G_i, X_j)
-        values_indices = D_ij.topk(k, dim=1, largest=False)
-        indices = values_indices.indices
-        if return_distances:
-            distances = values_indices.values
+    if return_distances:
+        if grad_enabled:
+            if kernel == "cosine":
+                kernel_fn = partial(cosine_similarity, normalize=False)
+            else:
+                kernel_fn = partial(pnorm, p=p, root=False)
+            distances = kernel_fn(x[:, None], x[indices, :], dim=-1)
+        else:
+            distances = torch.as_tensor(distances_np, device=x.device)
 
-    if distances is None:
-        return indices
-    return KnnOutput(indices=indices, distances=distances)
+        # Take the root of the distances to 'complete' the norm
+        if (kernel == "pnorm") and root and (not math.isinf(p)):
+            distances = distances ** (1 / p)
+
+        return KnnOutput(indices=indices, distances=distances)
+    return indices

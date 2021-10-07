@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import NamedTuple, Sequence
 
 import matplotlib.pyplot as plt
-from numpy.core.numeric import full_like
 import torch
 from torch import Tensor
 
@@ -44,11 +43,11 @@ def merge_h0(
         # neighbors of v_i.
         nbr_idxs = neighbor_graph[i]
         # neighbors of v_i with smaller indices (bigger p).
-        ls_idxs = nbr_idxs[density_map[nbr_idxs] > density_map[i]]
+        us_idxs = nbr_idxs[density_map[nbr_idxs] > density_map[i]]
         # check whether v_i is a local maximum of p
-        if len(ls_idxs) > 0:
+        if len(us_idxs) > 0:
             # Find all clusters containing nodes in nbd.
-            c_max_idx = c_nbd_idxs = root_idxs[ls_idxs]
+            c_max_idx = c_nbd_idxs = root_idxs[us_idxs]
             p_vi = density_map[i]
             if len(c_nbd_idxs) > 1:
                 c_max_idx = c_nbd_idxs[density_map[c_nbd_idxs].argmax()]
@@ -116,11 +115,11 @@ def merge_h0(
 
 #         nbr_idxs = neighbor_graph[ref_idx]
 #         # neighbors of v_i with smaller indices (bigger p)
-#         ls_idxs = nbr_idxs[density_map[nbr_idxs] > density_map[ref_idx]]
+#         us_idxs = nbr_idxs[density_map[nbr_idxs] > density_map[ref_idx]]
 #         # check whether v_i is a local maximum of p
-#         if len(ls_idxs) > 0:
+#         if len(us_idxs) > 0:
 #             # all clusters containing nodes in nbd
-#             c_max_idx = c_nbd_idxs = root_idxs[ls_idxs]
+#             c_max_idx = c_nbd_idxs = root_idxs[us_idxs]
 #             if len(c_nbd_idxs) > 1:
 #                 c_max_idx = c_nbd_idxs[density_map[c_nbd_idxs].argmax()]
 
