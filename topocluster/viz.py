@@ -38,7 +38,7 @@ def visualize_clusters(
     classes = np.unique(labels)
     num_classes = len(classes)
     fig, ax = plt.subplots(dpi=100, figsize=(6, 6))
-    cmap = ListedColormap(sns.color_palette("bright", num_classes).as_hex())  # type: ignore
+    cmap = ListedColormap(sns.color_palette("Spectral", num_classes).as_hex())  # type: ignore
     sc = ax.scatter(x[:, 0], x[:, 1], lw=0, s=40, c=labels_ls, cmap=cmap)
     ax.set_xticks([])
     ax.set_yticks([])

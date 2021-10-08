@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from topocluster.search import Kernel, KnnExact
+from topocluster.search import Knn
 
 __all__ = ["DTM", "DTMDensity"]
 
@@ -20,16 +20,21 @@ class DTM:
         return dists.mean(-1) ** (1.0 / q)
 
     @staticmethod
-    def with_knn(x: Tensor, *, k: int, q: int = 2, kernel: Kernel = "pnorm", p: int = 2) -> Tensor:
+    def with_knn(
+        x: Tensor,
+        *,
+        knn: Knn,
+        q: int = 2,
+    ) -> Tensor:
         """
         Computes the distance to the empirical measure defined by a point set.
 
         :param x: Point set to compute the empirical DTM measure for.
-        :param k: Number of neighbors (possibly including the point itself).
+        :param knn: k-NN searcher to use for computing the distances that serve as the basis
+            of the density estimate.
         :param q: Order used to compute the distance to measure.
-        :param kernel: Kernel used to compute the pairwise distances for k-nn search.
+        :param normalize: Whether to normalize the vectors for the k-nn search.
         """
-        knn = KnnExact(k=k, kernel=kernel, p=p)
         distances = knn(x, return_distances=True).distances
         return DTM.from_dists(distances, q=q)
 
@@ -84,10 +89,8 @@ class DTMDensity:
     def with_knn(
         x: Tensor,
         *,
-        k: int,
+        knn: Knn,
         q: float | None = None,
-        kernel: Kernel = "pnorm",
-        p: int = 2,
         normalize: bool = False,
         dim: int | None = None,
     ) -> Tensor:
@@ -95,13 +98,11 @@ class DTMDensity:
         Estimate the density based on the distance to the empirical measure defined by a point set.
 
         :param x: Point set from which to build the empirical density estimate.
-        :param k: Number of neighbors (possibly including the point itself).
         :param q: Order used to compute the distance to measure.
-        :param kernel: Kernel used to compute the pairwise distances for k-nn search.
-        :param p: Exponent used to compute the pairwise p-norms.
-            Only applicable when ``Kernel="pnorm"``.
-
-        :param normalize: Normalize the density so it corresponds to a probability measure on ℝᵈ.
+        :param knn: k-NN searcher to use for computing the distances that serve as the basis
+            of the density estimate.
+        :param normalize: Normalize the density so it corresponds to a probability measure
+            on ℝᵈ.
 
         .. note::
             When the dimension is high, using it as an exponent can quickly lead to under- or overflows.
@@ -111,6 +112,6 @@ class DTMDensity:
         :param dim: Final exponent representing the dimension. Defaults to the dimension.
         """
         dim = x.size(1) if dim is None else dim
-        knn = KnnExact(k=k, kernel=kernel, p=p)
         distances = knn(x, return_distances=True).distances
+
         return DTMDensity.from_dists(dists=distances, q=q, dim=dim, normalize=normalize)

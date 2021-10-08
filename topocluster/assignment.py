@@ -1,9 +1,9 @@
 from __future__ import annotations
-from torch import Tensor
 
 from lapjv import lapjv
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from torch import Tensor
 
 __all__ = [
     "optimal_assignment",
@@ -27,11 +27,11 @@ def optimal_assignment(
     )
 
     if cost_matrix.shape[0] == cost_matrix.shape[1]:
-        _, col_ind, _ = lapjv(-cost_matrix)
+        label_preds, _, _ = lapjv(-cost_matrix)
     else:
-        _, col_ind = linear_sum_assignment(-cost_matrix)
+        _, label_preds = linear_sum_assignment(-cost_matrix)
     label_map = {}
-    for label_true, label_pred in enumerate(col_ind):
+    for label_true, label_pred in enumerate(label_preds):
         if decodings_true is not None:
             label_true = decodings_true[label_true]
         if decodings_pred is not None:

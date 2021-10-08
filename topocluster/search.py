@@ -1,5 +1,5 @@
 from __future__ import annotations
-from functools import partial
+from abc import abstractmethod
 import math
 from typing import NamedTuple, cast, overload
 
@@ -12,12 +12,12 @@ import torch.nn.functional as F
 from typing_extensions import Literal
 
 __all__ = [
+    "Knn",
     "KnnExact",
     "KnnIVF",
     "KnnIVFPQ",
     "pnorm",
     "cosine_similarity",
-    "Kernel",
 ]
 
 
@@ -61,28 +61,28 @@ class KnnOutput(NamedTuple):
     distances: Tensor
 
 
-Kernel = Literal["pnorm", "cosine"]
-
-
 @attr.define(kw_only=True)
-class KnnExact(nn.Module):
-    # import faiss
-
+class Knn(nn.Module):
     k: int
-    kernel: Kernel = "pnorm"
     p: float = 2
     root: bool = False
+    normalize: bool = False
+    """
+    Whether to Lp-normalize the vectors for pairwise-distance computation.
+    .. note:: 
+        When vectors u and v are normalized to unit length, the Euclidean distance betwen them
+        is equal to ||u - v||^2 = (1-cos(u, v)), that is the Euclidean distance over the end-points
+        of u and v is a proper metric which gives the same ordering as the Cosine distance for
+        any comparison of vectors, and furthermore avoids the potentially expensive trigonometric
+        operations required to yield a proper metric.
+    """
 
     def __attrs_pre_init__(self):
         super().__init__()
 
+    @abstractmethod
     def _build_index(self, d: int) -> faiss.IndexFlat:
-        if self.kernel == "cosine":
-            index = faiss.IndexFlat(d, faiss.METRIC_INNER_PRODUCT)
-        else:
-            index = faiss.IndexFlat(d, faiss.METRIC_Lp)
-            index.metric_arg = self.p
-        return index
+        ...
 
     def _index_to_gpu(self, index: faiss.IndexFlat) -> faiss.GpuIndexFlat:  # type: ignore
         # use a single GPU
@@ -117,8 +117,8 @@ class KnnExact(nn.Module):
         if x.is_cuda:
             index = self._index_to_gpu(index=index)
 
-        if self.kernel == "cosine":
-            x = F.normalize(x, dim=1, p=2)
+        if self.normalize:
+            x = F.normalize(x, dim=1, p=self.p)
 
         x_np = x.detach().cpu().numpy()
         if not index.is_trained:
@@ -132,16 +132,12 @@ class KnnExact(nn.Module):
 
         if return_distances:
             if x.requires_grad:
-                if self.kernel == "cosine":
-                    kernel_fn = partial(cosine_similarity, normalize=False)
-                else:
-                    kernel_fn = partial(pnorm, p=self.p, root=False)
-                distances = kernel_fn(x[:, None], x[indices, :], dim=-1)
+                distances = pnorm(x[:, None], x[indices, :], dim=-1, p=self.p, root=False)
             else:
                 distances = torch.as_tensor(distances_np, device=x.device)
 
             # Take the root of the distances to 'complete' the norm
-            if (self.kernel == "pnorm") and self.root and (not math.isinf(self.p)):
+            if self.root and (not math.isinf(self.p)):
                 distances = distances ** (1 / self.p)
 
             return KnnOutput(indices=indices, distances=distances)
@@ -149,10 +145,19 @@ class KnnExact(nn.Module):
 
 
 @attr.define(kw_only=True)
+class KnnExact(Knn):
+    def _build_index(self, d: int) -> faiss.IndexFlat:
+        index = faiss.IndexFlat(d, faiss.METRIC_Lp)
+        index.metric_arg = self.p
+        return index
+
+
+@attr.define(kw_only=True)
 class KnnIVF(KnnExact):
-    ivf: bool = False
     nlist: int = 100
+    """Number of Voronoi cells to form with k-means clustering."""
     nprobe: int = 1
+    """Number of neighboring Voronoi cells to probe."""
 
     def _build_index(self, d: int) -> faiss.IndexIVFFlat:
         quantizer = super()._build_index(d=d)

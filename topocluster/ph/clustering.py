@@ -91,14 +91,14 @@ def merge_h0(
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
-    knn = search.KnnExact(k=k, kernel="pnorm")
+    knn = search.KnnExact(k=k, p=2)
     out = knn(pc, return_distances=True)
     dists = (-out.distances / scale).exp().sum(1) / (k * scale)
     return dists / dists.max(), out.indices
 
 
 def compute_rips(pc: Tensor, k: int) -> Tensor:
-    knn = search.KnnExact(k=k, kernel="pnorm")
+    knn = search.KnnExact(k=k, p=2)
     return knn(pc, return_distances=False)
 
 
