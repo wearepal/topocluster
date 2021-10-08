@@ -39,9 +39,9 @@ def pnorm(
     tensor_a: Tensor,
     tensor_b: Tensor,
     *,
-    dim: int = -1,
-    p: float,
+    p: float = 2,
     root: bool = True,
+    dim: int = -1,
 ) -> Tensor:
     dists = (tensor_a - tensor_b).abs()
     if math.isinf(p):
