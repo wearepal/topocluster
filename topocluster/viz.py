@@ -1,20 +1,20 @@
 from __future__ import annotations
-import itertools
-from typing import Sequence
-from torch import Tensor
-from matplotlib.colors import ListedColormap
 
 #!/usr/bin/env python
 import io
+import itertools
 import os
 from pathlib import Path
+from typing import Sequence
 
 from PIL import Image, ImageTk
 import PySimpleGUI as sg
+from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import seaborn as sns
+from torch import Tensor
 
 __all__ = ["visualize_clusters", "visualize_merging"]
 
@@ -136,5 +136,76 @@ def visualize_merging(image_dir: Path | str) -> None:
         image_idx = int(values["-SLIDER-THRESHOLD-"])  # type: ignore
         # update window with new image
         image_path = pred_image_dir / f"{image_idx}.png"
+        image_elem.update(data=get_img_data(image_path, first=True))
+    window.close()
+
+
+def visualize_merging_synth(image_dir: Path | str) -> None:
+    if isinstance(image_dir, str):
+        image_dir = Path(image_dir)
+    # We assume the image directory follows a particular structure
+    pred_image_paths: list[Path] = []
+    for ext in ("jpg", "jpeg", "png"):
+        # Glob images from child folders recusrively, excluding hidden files
+        pred_image_paths.extend(image_dir.glob(f"**/[!.]*.{ext}"))
+
+    num_files = len(pred_image_paths)  # number of iamges found
+
+    if num_files == 0:
+        sg.popup("No files in image directory.")
+        raise SystemExit()
+
+    def get_img_data(f, maxsize=(800, 800), first=False):
+        """Generate image data using PIL"""
+        img = Image.open(f)
+        img.thumbnail(maxsize)
+        if first:  # tkinter is inactive the first time
+            bio = io.BytesIO()
+            img.save(bio, format="PNG")
+            del img
+            return bio.getvalue()
+        return ImageTk.PhotoImage(img)
+
+    # make these 2 elements outside the layout as we want to "update" them later
+    # initialize to the first file in the list
+    image_path = image_dir / "0.png"
+    image_elem = sg.Image(data=get_img_data(image_path, first=True))
+
+    sg.theme("Material2")
+    # define layout, show and read the form
+    col = [[image_elem]]
+    col_files = [
+        [
+            sg.Text(u"\u03C4", key="_V2_", font=("Helvetica", 14), justification="center"),
+            sg.Slider(
+                range=(0, num_files - 1),
+                default_value=0,
+                size=(20, 10),
+                orientation="v",
+                key="-SLIDER-THRESHOLD-",
+                enable_events=True,
+                disable_number_display=True,
+            ),
+        ],
+    ]
+    layout = [[sg.Column(col_files), sg.Column(col)]]
+
+    window = sg.Window(
+        "Merging visualization",
+        layout=layout,
+        return_keyboard_events=True,
+        location=(0, 0),
+        use_default_focus=False,
+    )
+
+    # loop reading the user input and displaying image, filename
+    while True:
+        # read the form
+        event, values = window.read()  # type: ignore
+        if event in ("Exit", None):
+            break
+        image_idx = int(values["-SLIDER-THRESHOLD-"])  # type: ignore
+        # update window with new image
+        image_path = image_dir / f"{image_idx}.png"
         image_elem.update(data=get_img_data(image_path, first=True))
     window.close()

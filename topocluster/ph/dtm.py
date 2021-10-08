@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from topocluster.knn import Kernel, knn
+from topocluster.search import Kernel, KnnExact
 
 __all__ = ["DTM", "DTMDensity"]
 
@@ -29,7 +29,8 @@ class DTM:
         :param q: Order used to compute the distance to measure.
         :param kernel: Kernel used to compute the pairwise distances for k-nn search.
         """
-        distances = knn(x, k=k, return_distances=True, kernel=kernel, p=p).distances
+        knn = KnnExact(k=k, kernel=kernel, p=p)
+        distances = knn(x, return_distances=True).distances
         return DTM.from_dists(distances, q=q)
 
 
@@ -110,5 +111,6 @@ class DTMDensity:
         :param dim: Final exponent representing the dimension. Defaults to the dimension.
         """
         dim = x.size(1) if dim is None else dim
-        distances = knn(x, k=k, return_distances=True, kernel=kernel, p=p, normalize=True).distances
+        knn = KnnExact(k=k, kernel=kernel, p=p)
+        distances = knn(x, return_distances=True).distances
         return DTMDensity.from_dists(dists=distances, q=q, dim=dim, normalize=normalize)
