@@ -55,7 +55,7 @@ class ElevenNodes:
         self._NODE_LABELS = dict(zip(range(len(self.G.nodes)), density_map_ls))
         self._CMAP = np.array(sns.color_palette("Set3", len(self.density_map)).as_hex())  # type: ignore
 
-    def draw_graph(
+    def draw(
         self,
         labels: list[int] | Tensor | None,
         title: str = "",
@@ -73,7 +73,6 @@ class ElevenNodes:
             node_size=600,
         )
         ax.set_title(title)
-
         edge_labels = nx.get_edge_attributes(self.G, 'weight')
         nx.draw_networkx_edge_labels(self.G, pos=pos, edge_labels=edge_labels, font_size=6)
         nx.draw_networkx_labels(
