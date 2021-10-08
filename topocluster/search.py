@@ -71,7 +71,7 @@ class Knn(nn.Module):
     Whether to Lp-normalize the vectors for pairwise-distance computation.
     .. note:: 
         When vectors u and v are normalized to unit length, the Euclidean distance betwen them
-        is equal to ||u - v||^2 = (1-cos(u, v)), that is the Euclidean distance over the end-points
+        is equal to :math:`\\|u - v\\|^2 = (1-\\cos(u, v))`, that is the Euclidean distance over the end-points
         of u and v is a proper metric which gives the same ordering as the Cosine distance for
         any comparison of vectors, and furthermore avoids the potentially expensive trigonometric
         operations required to yield a proper metric.
