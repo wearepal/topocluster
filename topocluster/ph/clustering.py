@@ -1,12 +1,12 @@
 from __future__ import annotations
+import numpy as np
 from typing import NamedTuple, Sequence
 
-import matplotlib.pyplot as plt
+import numpy.typing as npt
 import torch
 from torch import Tensor
 
 from topocluster import search
-from topocluster.ph.utils import plot_persistence
 
 __all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
 
@@ -14,16 +14,34 @@ __all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
 class MergeOutput(NamedTuple):
     root_idxs: Tensor
     labels: Tensor
-    barcode: Tensor
-    tree: Tensor | None = None
 
 
 def merge_h0(
+    neighbor_graph: Tensor | npt.NDArray[np.uint],
+    *,
+    density_map: Tensor | npt.NDArray[np.floating],
+    threshold: float,
+) -> MergeOutput:
+    """Merging Data Using Topological Persistence.
+    Fast persistence-based merging algorithm specialised for 0-dimensional homology.
+    """
+    import ph_rs
+
+    if isinstance(neighbor_graph, Tensor):
+        neighbor_graph = neighbor_graph.detach().cpu().numpy()
+    if isinstance(density_map, Tensor):
+        density_map = density_map.detach().cpu().numpy()
+    root_idxs = torch.as_tensor(ph_rs.merge_h0(neighbor_graph, density_map, threshold))
+    _, labels = root_idxs.unique(return_inverse=True)
+
+    return MergeOutput(root_idxs=root_idxs, labels=labels)
+
+
+def merge_h0_torch(
     neighbor_graph: Tensor | Sequence[Tensor],
     *,
     density_map: Tensor,
     threshold: float,
-    store_tree: bool = False,
 ) -> MergeOutput:
     """Merging Data Using Topological Persistence.
     Fast persistence-based merging algorithm specialised for 0-dimensional homology.
@@ -32,9 +50,7 @@ def merge_h0(
     # merging happens in a bottom-up fashion, meaning each node defines its own cluster
     root_idxs = torch.arange(len(density_map), dtype=torch.long, device=density_map.device)
     # List of barcodes for each reference index
-    barcode_ls: list[Tensor] = []
     # Store the complete time-evolution of the filtration if requested
-    tree_ls = [root_idxs.clone()] if store_tree else None
     # Positional indexes for mapping from absolute index to time
     filtration_times = torch.empty_like(sort_idxs)
 
@@ -67,27 +83,12 @@ def merge_h0(
                     # Merge the upper-star neighbors and their descendents into c_max.
                     root_idxs[child_node_idxs] = c_max_idx
 
-                    # record the birth/death times for the connected components
-                    barcode_ls.append(
-                        torch.stack((p_c_nbd[merge_mask], p_vi.expand(num_merges)), dim=-1)
-                    )
             # assign v_i to cluster c_max
             root_idxs[i] = c_max_idx
 
-        # Extend the merging tree.
-        if tree_ls is not None:
-            tree_ls.append(root_idxs.clone())
+    _, labels = root_idxs.unique(return_inverse=True)
 
-    tree = None if tree_ls is None else torch.stack(tree_ls, -1)
-    cluster_idxs, labels = root_idxs.unique(return_inverse=True)
-
-    p_C = density_map[cluster_idxs]
-    p_min = density_map[sort_idxs[-1]].item()
-    # Record the birth-death pairs for the modes of the data
-    barcode_ls.append(torch.stack([p_C, torch.full_like(p_C, p_min)], dim=-1))
-    barcode = torch.cat(barcode_ls, dim=0).long()
-
-    return MergeOutput(root_idxs=root_idxs, labels=labels, barcode=barcode, tree=tree)
+    return MergeOutput(root_idxs=root_idxs, labels=labels)
 
 
 def compute_density_map(pc: Tensor, k: int, scale: float) -> tuple[Tensor, Tensor]:
@@ -126,19 +127,11 @@ class Tomato:
         self.k_rips = k_rips
         self.scale = scale
         self.threshold = threshold
-        self.barcode: Tensor | None = None
-
-    def plot(self) -> None:
-        if self.barcode is not None:
-            plot_persistence(self.barcode)
-            plt.show()
 
     def __call__(self, x: Tensor, threshold: float | None = None) -> Tensor:
         threshold = self.threshold if threshold is None else threshold
         output = tomato(
             x, k_kde=self.k_kde, k_rips=self.k_rips, scale=self.scale, threshold=threshold
         )
-
-        self.barcode = output.barcode
 
         return output.labels
