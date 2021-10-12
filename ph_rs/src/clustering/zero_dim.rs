@@ -46,3 +46,11 @@ pub fn merge_h0(graph: &Vec<Vec<usize>>, dm: &Vec<f32>, threshold: f32) -> Vec<u
     }
     root_inds
 }
+
+#[test]
+fn test_merge_h0() {
+    let graph = vec![vec![2], vec![0], vec![1], vec![1, 2]];
+    let dm = vec![1.0, 2.0, 3.0, 2.5];
+    let out = merge_h0(&graph, &dm, 0.0);
+    assert!(out.len() == dm.len());
+}
