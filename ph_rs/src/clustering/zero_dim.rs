@@ -64,15 +64,16 @@ pub fn merge_h0(
                     // then merge the root vertex into cmax.
                     if persistence < threshold {
                         if let Some(mut c) = clusters.remove(&cnbd_idx) {
-                            clusters.get_mut(&cmax_idx).unwrap().append(&mut c);
                             for &elem in c.iter() {
                                 root_idxs[elem] = cmax_idx;
                             }
+                            clusters.get_mut(&cmax_idx).unwrap().append(&mut c);
                         }
                         root_idxs[cnbd_idx] = cmax_idx;
                     }
                 }
             }
+
             root_idxs[i] = cmax_idx;
             clusters.get_mut(&cmax_idx).unwrap().push(i);
         }
