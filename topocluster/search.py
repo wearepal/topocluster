@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 import math
-from typing import NamedTuple, cast, overload
+from typing import NamedTuple, overload
 
 import attr
 import faiss  # type: ignore
@@ -17,22 +17,7 @@ __all__ = [
     "KnnIVF",
     "KnnIVFPQ",
     "pnorm",
-    "cosine_similarity",
 ]
-
-
-def cosine_similarity(
-    tensor_a: Tensor,
-    tensor_b: Tensor,
-    *,
-    dim: int = -1,
-    normalize: bool = True,
-) -> Tensor:
-    if normalize:
-        tensor_a = F.normalize(tensor_a, dim=dim, p=2)
-        tensor_b = F.normalize(tensor_b, dim=dim, p=2)
-
-    return cast(Tensor, (tensor_a * tensor_b).sum(dim))
 
 
 def pnorm(
@@ -77,7 +62,7 @@ class Knn(nn.Module):
         operations required to yield a proper metric.
     """
 
-    def __attrs_pre_init__(self):
+    def __attrs_pre_init__(self) -> None:
         super().__init__()
 
     @abstractmethod
@@ -94,6 +79,8 @@ class Knn(nn.Module):
     def forward(
         self,
         x: Tensor,
+        *,
+        y: Tensor | None = ...,
         return_distances: Literal[False] = ...,
     ) -> Tensor:
         ...
@@ -102,6 +89,8 @@ class Knn(nn.Module):
     def forward(
         self,
         x: Tensor,
+        *,
+        y: Tensor | None = ...,
         return_distances: Literal[True] = ...,
     ) -> KnnOutput:
         ...
@@ -109,30 +98,39 @@ class Knn(nn.Module):
     def forward(
         self,
         x: Tensor,
+        *,
+        y: Tensor | None = None,
         return_distances: bool = False,
     ) -> Tensor | KnnOutput:
-        d = x.size(1)
-        index = self._build_index(d=d)
 
-        if x.is_cuda:
-            index = self._index_to_gpu(index=index)
-
+        x_np = x.detach().cpu().numpy()
         if self.normalize:
             x = F.normalize(x, dim=1, p=self.p)
 
-        x_np = x.detach().cpu().numpy()
+        if y is None:
+            y = x
+            y_np = x_np
+        else:
+            if self.normalize:
+                y = F.normalize(y, dim=1, p=self.p)
+            y_np = x.detach().cpu().numpy()
+
+        index = self._build_index(d=x.size(1))
+        if x.is_cuda or y.is_cuda:
+            index = self._index_to_gpu(index=index)
+
         if not index.is_trained:
             index.train(x=x_np)  # type: ignore
         # add vectors to the index
         index.add(x=x_np)  # type: ignore
         # search for the nearest k neighbors for each data-point
-        distances_np, indices_np = index.search(x=x_np, k=self.k)  # type: ignore
+        distances_np, indices_np = index.search(x=y_np, k=self.k)  # type: ignore
         # Convert back from numpy to torch
         indices = torch.as_tensor(indices_np, device=x.device)
 
         if return_distances:
-            if x.requires_grad:
-                distances = pnorm(x[:, None], x[indices, :], dim=-1, p=self.p, root=False)
+            if x.requires_grad or y.requires_grad:
+                distances = pnorm(x[:, None], y[indices, :], dim=-1, p=self.p, root=False)
             else:
                 distances = torch.as_tensor(distances_np, device=x.device)
 
@@ -169,9 +167,11 @@ class KnnIVF(KnnExact):
 @attr.define(kw_only=True)
 class KnnIVFPQ(KnnExact):
     nlist: int = 100
+    """Number of Voronoi cells to form with k-means clustering."""
+    nprobe: int = 1
+    """Number of neighboring Voronoi cells to probe."""
     bits: int = 8
     num_centroids = 8
-    nprobe: int = 1
 
     def _build_index(self, d: int) -> faiss.IndexIVFPQ:
         quantizer = super()._build_index(d=d)

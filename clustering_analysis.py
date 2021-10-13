@@ -31,6 +31,7 @@ from topocluster.metrics import clustering_accuracy
 
 # from topocluster.ph import DTMDensity, DTM, merge_h0_torch as merge_h0
 from topocluster.ph import DTMDensity, DTM, merge_h0
+
 # from topocluster.viz import visualize_clusters, visualize_merging
 
 import timm
@@ -116,7 +117,6 @@ def main(
         density_map = density_map.log()
         assert not torch.any(density_map.isnan())
         return graph, density_map
-    
 
     # umap_x = None
     # if save_dir is not None:
@@ -139,85 +139,85 @@ def main(
     #         knn_d = search.KnnIVF(k=k_density, normalize=False, nprobe=4, nlist=100)
     #     for q in (2, 5, 10, 15, 20, 25):
 
+    # topograd
+    # if method is Method.h0 and (gd_iters > 0):
+    #     x.requires_grad_(True)
+    #     optimizer = optim.AdamW([x], lr=1.0e-2)
+    #     for i in range(gd_iters):
+    #         typer.echo(f"Iteration {i}/{gd_iters} of topograd.")
 
-            # topograd
-            # if method is Method.h0 and (gd_iters > 0):
-            #     x.requires_grad_(True)
-            #     optimizer = optim.AdamW([x], lr=1.0e-2)
-            #     for i in range(gd_iters):
-            #         typer.echo(f"Iteration {i}/{gd_iters} of topograd.")
+    #         complex = DTMRipsComplex(points=x, k=15)
+    #         st = complex.create_simplex_tree(max_dimension=1)
+    #         st.compute_persistence()
 
-            #         complex = DTMRipsComplex(points=x, k=15)
-            #         st = complex.create_simplex_tree(max_dimension=1)
-            #         st.compute_persistence()
+    #         pairs = st.persistence_pairs()
+    #         typer.echo(f"Number of clusters: {len(pairs)}")
 
-            #         pairs = st.persistence_pairs()
-            #         typer.echo(f"Number of clusters: {len(pairs)}")
+    #         p1b = torch.tensor([i[0] for i in pairs if (len(i[1]) > 0)])
+    #         p1d = torch.tensor([i[1] for i in pairs if (len(i[1]) > 0)])
+    #         if (i > 0) and i % 50 == 0:
+    #             gudhi.plot_persistence_diagram(st.persistence())
+    #             plt.show()
+    #         diag = torch.norm(x[p1d] - x[p1b], dim=-1)
+    # diag[num_classes] *= -1
+    # Total persistence is a special case of Wasserstein distance
+    # target_diag = torch.stack(
+    #     [torch.zeros(num_classes), torch.full((num_classes,), fill_value=1)], dim=-1
+    # )
+    # loss = -wasserstein_distance(diag, [], order=2, enable_autodiff=True)
 
-            #         p1b = torch.tensor([i[0] for i in pairs if (len(i[1]) > 0)])
-            #         p1d = torch.tensor([i[1] for i in pairs if (len(i[1]) > 0)])
-            #         if (i > 0) and i % 50 == 0:
-            #             gudhi.plot_persistence_diagram(st.persistence())
-            #             plt.show()
-            #         diag = torch.norm(x[p1d] - x[p1b], dim=-1)
-            # diag[num_classes] *= -1
-            # Total persistence is a special case of Wasserstein distance
-            # target_diag = torch.stack(
-            #     [torch.zeros(num_classes), torch.full((num_classes,), fill_value=1)], dim=-1
-            # )
-            # loss = -wasserstein_distance(diag, [], order=2, enable_autodiff=True)
+    # graph, density_map = get_clustering_inputs()
+    # merge_out = merge_h0(
+    #     neighbor_graph=graph, density_map=density_map, threshold=0, store_tree=False
+    # )
+    # root_idxs = merge_out.root_idxs
+    # optimizer.zero_grad()
+    # root_idxs_u = root_idxs.unique()
+    # modes = density_map[root_idxs_u].sort(descending=True).values
+    # loss = (modes[num_classes:] - density_map.min().detach()).mean()
+    # loss += density_map.max().detach() - modes[:num_classes].mean()
+    # typer.echo(f"Loss: {loss.item()}")
+    # # typer.echo(f"Number of clusters: {len(root_idxs_u)}")
+    # loss.backward()
+    # optimizer.step()
 
-            # graph, density_map = get_clustering_inputs()
-            # merge_out = merge_h0(
-            #     neighbor_graph=graph, density_map=density_map, threshold=0, store_tree=False
-            # )
-            # root_idxs = merge_out.root_idxs
-            # optimizer.zero_grad()
-            # root_idxs_u = root_idxs.unique()
-            # modes = density_map[root_idxs_u].sort(descending=True).values
-            # loss = (modes[num_classes:] - density_map.min().detach()).mean()
-            # loss += density_map.max().detach() - modes[:num_classes].mean()
-            # typer.echo(f"Loss: {loss.item()}")
-            # # typer.echo(f"Number of clusters: {len(root_idxs_u)}")
-            # loss.backward()
-            # optimizer.step()
+    # x.requires_grad_(False)
 
-            # x.requires_grad_(False)
+    # graph, density_map = get_clustering_inputs(_q=q)
+    # density_map /= density_map.max()
+    # merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=0)
+    # labels = merge_out.labels
+    # typer.echo(f"Number of clusters: {len(np.unique(labels))}")
+    # labels_u = labels.unique()
+    # modes = density_map[labels_u]
 
-            # graph, density_map = get_clustering_inputs(_q=q)
-            # density_map /= density_map.max()
-            # merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=0)
-            # labels = merge_out.labels
-            # typer.echo(f"Number of clusters: {len(np.unique(labels))}")
-            # labels_u = labels.unique()
-            # modes = density_map[labels_u]
-            
-            # if (save_dir is not None) and (umap_x is not None):
-            #     # for k in (10, 50, 100, 150, 200):
-            #     k = None
-            #     # top_k = labels_u[modes.topk(k=k).indices]
-            #     gt_viz = visualize_clusters(
-            #         umap_x,
-            #         labels=density_map,
-            #         # title=f"Ground Truth (kviz={len(top_k)}, kd={k_density}, q={q})",
-            #         title=f"Density Map (kd={k_density}, q={q})",
-            #         legend=False,
-            #         top_k=k,
-            #     )
-            #     # gt_viz.savefig(save_dir / f"kviz={len(top_k)}_kd={knn_d}_ground_truth.png")
-            #     gt_viz.savefig(save_dir / f"kd={k_density}_q={q}_ground_truth.png")
-            #     plt.close(gt_viz)
-            # else:
-            #     pred_dir = None
-            #     umap_x = None
-
+    # if (save_dir is not None) and (umap_x is not None):
+    #     # for k in (10, 50, 100, 150, 200):
+    #     k = None
+    #     # top_k = labels_u[modes.topk(k=k).indices]
+    #     gt_viz = visualize_clusters(
+    #         umap_x,
+    #         labels=density_map,
+    #         # title=f"Ground Truth (kviz={len(top_k)}, kd={k_density}, q={q})",
+    #         title=f"Density Map (kd={k_density}, q={q})",
+    #         legend=False,
+    #         top_k=k,
+    #     )
+    #     # gt_viz.savefig(save_dir / f"kviz={len(top_k)}_kd={knn_d}_ground_truth.png")
+    #     gt_viz.savefig(save_dir / f"kd={k_density}_q={q}_ground_truth.png")
+    #     plt.close(gt_viz)
+    # else:
+    #     pred_dir = None
+    #     umap_x = None
 
     graph, density_map = get_clustering_inputs(_q=2)
     for i, tau in enumerate(np.linspace(tau_min, tau_max, num_tau)):
-    # for tau in [5.0] * 3:
+        # for tau in [5.0] * 3:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         if method is Method.h0:
-            merge_out = merge_h0(neighbor_graph=graph.clone(), density_map=density_map.clone(), threshold=tau)
+            merge_out = merge_h0(
+                neighbor_graph=graph.clone(), density_map=density_map.clone(), threshold=tau
+            )
             labels = merge_out.labels
         else:
             tomato = Tomato(weights_=density_map.numpy(), merge_threshold=tau)
