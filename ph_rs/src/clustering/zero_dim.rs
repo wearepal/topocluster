@@ -1,4 +1,3 @@
-use std;
 use std::collections::{HashMap, HashSet};
 use std::mem::drop;
 
@@ -53,28 +52,25 @@ pub fn merge_h0(
             }
             // cmax_d is no longer needed
             drop(cmax_d);
-            // exclude cmax from the subsequent interation
-            cnbd_idxs.remove(&cmax_idx);
 
             for &cnbd_idx in cnbd_idxs.iter() {
-                // compute the persistence between each root vertex and the
-                // current vertex
-                let persistence = density_map[cnbd_idx] - density_map[i];
-                // if the persistence is below the user-defined threshold,
-                // then merge the root vertex into cmax.
-                if persistence < threshold {
-                    if let Some(mut c) = clusters.remove(&cnbd_idx) {
-                        // clusters.get_mut(&cmax_idx).unwrap().append(&mut c);
-                        let cmax = clusters.get_mut(&cmax_idx);
-                        match cmax {
-                            None => print!("cmax: {:?}, cmax_idx: {:?}", cmax, cmax_idx),
-                            Some(i) => i.append(&mut c),
+                // exclude cmax: the other vertices will be merged into it if below
+                // the persistence threshold
+                if cnbd_idx != cmax_idx {
+                    // compute the persistence between each root vertex and the
+                    // current vertex
+                    let persistence = density_map[cnbd_idx] - density_map[i];
+                    // if the persistence is below the user-defined threshold,
+                    // then merge the root vertex into cmax.
+                    if persistence < threshold {
+                        if let Some(mut c) = clusters.remove(&cnbd_idx) {
+                            clusters.get_mut(&cmax_idx).unwrap().append(&mut c);
+                            for &elem in c.iter() {
+                                root_idxs[elem] = cmax_idx;
+                            }
                         }
-                        for &elem in c.iter() {
-                            root_idxs[elem] = cmax_idx;
-                        }
+                        root_idxs[cnbd_idx] = cmax_idx;
                     }
-                    root_idxs[cnbd_idx] = cmax_idx;
                 }
             }
             root_idxs[i] = cmax_idx;

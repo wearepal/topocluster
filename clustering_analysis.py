@@ -52,7 +52,7 @@ def main(
     num_tau: int = typer.Option(15, "--num-tau", "-nt"),
     gd_iters: int = typer.Option(0, "--gd-iters", "-it"),
 ) -> None:
-    random_seed(seed_value=601, use_cuda=False)
+    random_seed(seed_value=47, use_cuda=False)
     # mnist = MNIST(root="data", train=True, download=True)
     # # model: ResNetV2 = timm.create_model('resnetv2_50x1_bitm', pretrained=True)
     # model = torch.hub.load('facebookresearch/dino:main', 'dino_vits8')
@@ -101,7 +101,7 @@ def main(
 
     num_classes = len(np.unique(y_np))
 
-    knn_g = search.KnnIVF(k=k_graph, normalize=False, nprobe=4, nlist=100)
+    knn_g = search.KnnIVF(k=k_graph, normalize=False, nprobe=4, nlist=5)
     knn_d = None
 
     def get_clustering_inputs(_q: float = 2.0) -> tuple[Tensor, Tensor]:
@@ -214,9 +214,10 @@ def main(
 
     graph, density_map = get_clustering_inputs(_q=2)
     for i, tau in enumerate(np.linspace(tau_min, tau_max, num_tau)):
+    # for tau in [5.0] * 3:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         if method is Method.h0:
-            merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=tau)
+            merge_out = merge_h0(neighbor_graph=graph.clone(), density_map=density_map.clone(), threshold=tau)
             labels = merge_out.labels
         else:
             tomato = Tomato(weights_=density_map.numpy(), merge_threshold=tau)
