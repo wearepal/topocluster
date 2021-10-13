@@ -4,7 +4,7 @@ import math
 from typing import Iterator, List, Optional
 
 from kit import implements
-import pretrainedmodels
+import timm
 import pytorch_lightning as pl
 import torch
 from torch import Tensor
@@ -13,7 +13,6 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from topocluster.reduction import RandomProjector
-from topocluster.utils.logging import EmbeddingProgbar
 
 __all__ = ["GreedyCoreSetSampler"]
 
@@ -21,7 +20,8 @@ __all__ = ["GreedyCoreSetSampler"]
 class _Embedder(nn.Module):
     def __init__(self, depth: int, n_components: int | None = None) -> None:
         super().__init__()
-        self.net = pretrainedmodels.inceptionv4(pretrained="imagenet").features[:depth]
+        self.net = timm.create_model('inception_v4', pretrained=True).features[:depth]
+
         self.rand_proj = RandomProjector(n_components=n_components) if n_components else None
 
     def __call__(self, x: Tensor) -> Tensor:
@@ -94,7 +94,6 @@ class GreedyCoreSetSampler(Sampler[List[int]]):
         embedder_module = _EmbedderModule(embedder=embedder)
 
         trainer = copy.deepcopy(trainer)
-        trainer.callbacks.append(EmbeddingProgbar(trainer=trainer))
         trainer.test(model=embedder_module, test_dataloaders=dataloader, verbose=False)
         self.embeddings = embedder_module.embeddings
         self.budget = dataloader.batch_size

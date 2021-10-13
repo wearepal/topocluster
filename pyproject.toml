@@ -21,8 +21,6 @@ torchvision = "^0.10.0"
 scikit-learn = "^0.24.1"
 conduit = {git = "https://github.com/predictive-analytics-lab/conduit.git", branch = "main"}
 umap-learn = "^0.5.1"
-pretrainedmodels = "^0.7.4"
-fast-soft-sort = {git = "https://github.com/google-research/fast-soft-sort.git"}
 ranzen = {version = "^1.0.0", extras = ["all"]}
 attrs = "^21.2.0"
 typer = "^0.4.0"
