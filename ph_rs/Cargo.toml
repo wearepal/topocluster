@@ -9,10 +9,7 @@ name = "ph_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-ndarray = {version = "0.15", optional = false, default_features = false}
-numpy = {version = "*", optional = false, default_features = false}
 
 [dependencies.pyo3]
 version = "0.14.5"
 features = ["extension-module"]
-

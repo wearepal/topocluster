@@ -1,6 +1,5 @@
-pub mod clustering;
-
 use pyo3::prelude::{pymodule, PyModule, PyResult, Python};
+mod clustering;
 
 #[pymodule]
 fn ph_rs(_py: Python<'_>, m: &PyModule) -> PyResult<()> {

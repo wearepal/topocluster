@@ -692,6 +692,17 @@ pyparsing = ">=2.2.1"
 python-dateutil = ">=2.7"
 
 [[package]]
+name = "maturin"
+version = "0.11.4"
+description = "Build and publish crates with pyo3, rust-cpython and cffi bindings as well as rust binaries as python packages"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+toml = ">=0.10.2,<0.11.0"
+
+[[package]]
 name = "multidict"
 version = "5.1.0"
 description = "multidict implementation"
@@ -1800,7 +1811,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "6b0ace616e71bb4756aedac19c3709729b01c620a459243e732ec842ed8860ff"
+content-hash = "fbbc72070d0d7a6ad10d9640cea006123d9647594280e58bd44fc2c80bd5a9cf"
 
 [metadata.files]
 absl-py = [
@@ -2293,6 +2304,19 @@ matplotlib = [
     {file = "matplotlib-3.4.3-pp37-pypy37_pp73-macosx_10_9_x86_64.whl", hash = "sha256:556965514b259204637c360d213de28d43a1f4aed1eca15596ce83f768c5a56f"},
     {file = "matplotlib-3.4.3-pp37-pypy37_pp73-manylinux2010_x86_64.whl", hash = "sha256:54a026055d5f8614f184e588f6e29064019a0aa8448450214c0b60926d62d919"},
     {file = "matplotlib-3.4.3.tar.gz", hash = "sha256:fc4f526dfdb31c9bd6b8ca06bf9fab663ca12f3ec9cdf4496fb44bc680140318"},
+]
+maturin = [
+    {file = "maturin-0.11.4-py3-none-macosx_10_7_x86_64.whl", hash = "sha256:9c4eb3b7a6399cdb3b098095037eb26da0242c1bd48b5067ef48e1204e7ba7ba"},
+    {file = "maturin-0.11.4-py3-none-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:e3e5bfff69074ee307df661678ef94cfe3048afe4cf34bea19446701f67af4eb"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:f9fbc687bf363717d09d9dfbc4c57f627ef0b74273089ac10ed2418a98d0681e"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:580f1e3a05f66b5eb4b73615a40563237f0b611884a75fc6fa98b423ccd46a4c"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:c8b1899391bcec7b47bd4423231d4df214538d3f1f1ad709af958751b6480afd"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:80d728c9741f012c2afd1b516309eaca986bd6734b8e711d3f560b8c1d02d8c3"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:1e1c8db8eb1e9edf6adfb21e8fd0a0080ae770ef3ac3e71cd961caf970f043c7"},
+    {file = "maturin-0.11.4-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:b606da2839a2095c425086a2fc32bcdf108fb8491ef7cce998a8599f3d6ce057"},
+    {file = "maturin-0.11.4-py3-none-win32.whl", hash = "sha256:04fcb8de4a7667500aa40fd97ac853776e8f5872d0776ab50cfa499b53e32bd6"},
+    {file = "maturin-0.11.4-py3-none-win_amd64.whl", hash = "sha256:e7897fcbafdc90a356814a54833a3ca81fd27e97a02c763addf122a5c6dcbc75"},
+    {file = "maturin-0.11.4.tar.gz", hash = "sha256:b1cd9c35c911a11532c1182d35041cda0602f470cab8d76124ca049c8bba896a"},
 ]
 multidict = [
     {file = "multidict-5.1.0-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:b7993704f1a4b204e71debe6095150d43b2ee6150fa4f44d6d966ec356a8d61f"},

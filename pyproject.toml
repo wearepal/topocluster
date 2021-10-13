@@ -27,6 +27,7 @@ ranzen = {version = "^1.0.0", extras = ["all"]}
 attrs = "^21.2.0"
 typer = "^0.4.0"
 timm = "^0.4.12"
+maturin = "^0.11.4"
 
 [tool.poetry.dev-dependencies]
 black = "*"

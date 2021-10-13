@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from enum import Enum
 from pathlib import Path
 import shutil
-from typing import Optional, Sequence, NamedTuple
+from typing import Optional 
 
 from gudhi.clustering.tomato import Tomato
 import matplotlib.pyplot as plt
@@ -35,7 +35,6 @@ import timm
 
 
 
-
 class Method(Enum):
     h0 = "h0"
     tomato = "tomato"
@@ -52,7 +51,7 @@ def main(
     num_tau: int = typer.Option(15, "--num-tau", "-nt"),
     gd_iters: int = typer.Option(0, "--gd-iters", "-it"),
 ) -> None:
-    random_seed(seed_value=42, use_cuda=False)
+    random_seed(seed_value=601, use_cuda=False)
     # mnist = MNIST(root="data", train=True, download=True)
     # # model: ResNetV2 = timm.create_model('resnetv2_50x1_bitm', pretrained=True)
     # model = torch.hub.load('facebookresearch/dino:main', 'dino_vits8')
@@ -164,6 +163,7 @@ def main(
     # x.requires_grad_(False)
 
     graph, density_map = get_clustering_inputs()
+    density_map /= density_map.max()
 
     if save_dir is not None:
         if save_dir.exists():
