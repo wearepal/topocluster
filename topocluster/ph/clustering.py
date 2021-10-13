@@ -8,7 +8,13 @@ from torch import Tensor
 
 from topocluster import search
 
-__all__ = ["MergeOutput", "merge_h0", "tomato", "Tomato"]
+__all__ = [
+    "MergeOutput",
+    "merge_h0",
+    "merge_h0_torch",
+    "tomato",
+    "Tomato",
+]
 
 
 class MergeOutput(NamedTuple):

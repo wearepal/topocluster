@@ -15,7 +15,7 @@ pub fn merge_h0(
     let indices: Vec<_> = (0..density_map.len()).collect();
     // sort the vertices in descending order of density
     let mut pairs: Vec<_> = density_map.iter().zip(indices).collect();
-    pairs.sort_unstable_by(|a, b| b.0.partial_cmp(a.0).unwrap());
+    pairs.sort_by(|a, b| b.0.partial_cmp(a.0).unwrap());
     let (_, sort_idxs): (Vec<f32>, Vec<usize>) = pairs.iter().cloned().unzip();
     // indicates the root index to which each vertex is assigned
     let mut root_idxs: Vec<usize> = (0..density_map.len()).collect();

@@ -25,24 +25,31 @@ def visualize_clusters(
     labels: npt.NDArray[np.number] | Tensor,
     title: str | None = None,
     legend: bool = True,
+    top_k: npt.NDArray[np.uint] | Tensor | None = None,
+    palette: str = "viridis",
 ) -> plt.Figure:
     if x.shape[1] != 2:
         raise ValueError("Cluster-visualization can only be performed for 2-dimensional inputs.")
     if isinstance(x, Tensor):
         x = x.detach().cpu().numpy()
     if isinstance(labels, Tensor):
-        labels_ls = labels.detach().cpu().long().tolist()
-    else:
-        labels_ls = labels.astype("uint").tolist()
+        labels_ls = labels.detach().cpu().long()
+    labels_ls = labels.tolist()
+
+    if isinstance(top_k, Tensor):
+        top_k = top_k.detach().cpu().long()
 
     classes = np.unique(labels)
     num_classes = len(classes)
     fig, ax = plt.subplots(dpi=100, figsize=(6, 6))
-    cmap = ListedColormap(sns.color_palette("Spectral", num_classes).as_hex())  # type: ignore
+    cmap = ListedColormap(sns.color_palette(palette, num_classes).as_hex())  # type: ignore
     sc = ax.scatter(x[:, 0], x[:, 1], lw=0, s=40, c=labels_ls, cmap=cmap)
+    if top_k is not None:
+        ax.scatter(x[top_k, 0], x[top_k, 1], lw=0, s=60, marker="v", c="k")
     ax.set_xticks([])
     ax.set_yticks([])
     sns.despine(left=True, bottom=True, right=True)
+    plt.colorbar(sc)
 
     if legend:
 
