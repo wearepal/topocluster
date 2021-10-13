@@ -1,6 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::mem::drop;
 
+/// Merges data based on their 0-dimensional persistence.
+/// # Arguments
+/// * `neighbor_graph` - Vector encoding the neighbourhood of each vertex.
+/// * `density_map` - Vector containing the density associated with each vertex.
+/// * `threshold` - Persistence threshold for merging.
 pub fn merge_h0(
     neighbor_graph: &Vec<Vec<usize>>,
     density_map: &Vec<f32>,
@@ -40,14 +45,16 @@ pub fn merge_h0(
 
             for &nbd_idx in nbd_idxs.iter() {
                 let root_idx = root_idxs[*nbd_idx];
-                cnbd_idxs.insert(root_idx);
-                // If the density of the root vertex is greater than
-                // the highest density up until this point, that vertex
-                // becomes the new cmax.
-                let root_d = density_map[root_idx];
-                if root_d > cmax_d {
-                    cmax_idx = root_idx;
-                    cmax_d = root_d;
+                if !cnbd_idxs.contains(&root_idx) {
+                    cnbd_idxs.insert(root_idx);
+                    // If the density of the root vertex is greater than
+                    // the highest density up until this point, that vertex
+                    // becomes the new cmax.
+                    let root_d = density_map[root_idx];
+                    if root_d > cmax_d {
+                        cmax_idx = root_idx;
+                        cmax_d = root_d;
+                    }
                 }
             }
             // cmax_d is no longer needed
@@ -63,17 +70,20 @@ pub fn merge_h0(
                     // if the persistence is below the user-defined threshold,
                     // then merge the root vertex into cmax.
                     if persistence < threshold {
-                        if let Some(mut c) = clusters.remove(&cnbd_idx) {
-                            for &elem in c.iter() {
+                        let c = clusters.remove(&cnbd_idx);
+                        let cmax = clusters.get_mut(&cmax_idx).unwrap();
+                        if c.is_some() {
+                            for &elem in c.as_ref().unwrap().iter() {
                                 root_idxs[elem] = cmax_idx;
+                                cmax.push(elem);
                             }
-                            clusters.get_mut(&cmax_idx).unwrap().append(&mut c);
+                            root_idxs[cnbd_idx] = cmax_idx;
                         }
                         root_idxs[cnbd_idx] = cmax_idx;
+                        cmax.push(cnbd_idx);
                     }
                 }
             }
-
             root_idxs[i] = cmax_idx;
             clusters.get_mut(&cmax_idx).unwrap().push(i);
         }
