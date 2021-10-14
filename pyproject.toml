@@ -26,6 +26,7 @@ attrs = "^21.2.0"
 typer = "^0.4.0"
 timm = "^0.4.12"
 maturin = "^0.11.4"
+seaborn = "^0.11.2"
 
 [tool.poetry.dev-dependencies]
 black = "*"

@@ -1,7 +1,7 @@
 from __future__ import annotations
-import numpy as np
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Sequence, cast
 
+import numpy as np
 import numpy.typing as npt
 import torch
 from torch import Tensor
@@ -23,21 +23,32 @@ class MergeOutput(NamedTuple):
 
 
 def merge_h0(
-    neighbor_graph: Tensor | npt.NDArray[np.uint],
+    neighbor_graph: Tensor
+    | npt.NDArray[np.uint]
+    | Sequence[npt.NDArray[np.uint]]
+    | Sequence[Sequence[int]],
     *,
     density_map: Tensor | npt.NDArray[np.floating],
     threshold: float,
 ) -> MergeOutput:
-    """Merging Data Using Topological Persistence.
-    Fast persistence-based merging algorithm specialised for 0-dimensional homology.
+    """
+    Merges data based on their 0-dimensional persistence.
+
+    :param neighbor_graph: Tensory, array or sequence encoding the neighbourhood of each vertex.
+    :param density_map: Tensor, array or sequence encoding the density of each vertex.
+    :param threshold: Persistence threshold for merging.
+
+    :returns: Tensor containing the root index (cluster) of each vertex.
     """
     import ph_rs
 
     if isinstance(neighbor_graph, Tensor):
-        neighbor_graph = neighbor_graph.detach().cpu().numpy()
+        neighbor_graph = cast(np.ndarray, neighbor_graph.detach().cpu().numpy())
     if isinstance(density_map, Tensor):
-        density_map = density_map.detach().cpu().numpy()
-    root_idxs = torch.as_tensor(ph_rs.merge_h0(neighbor_graph, density_map, threshold))
+        density_map = cast(np.ndarray, density_map.detach().cpu().numpy())
+    root_idxs = torch.as_tensor(
+        ph_rs.merge_h0(neighbor_graph, density_map=density_map, threshold=threshold)
+    )
     _, labels = root_idxs.unique(return_inverse=True)
 
     return MergeOutput(root_idxs=root_idxs, labels=labels)

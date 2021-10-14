@@ -2,39 +2,38 @@ from __future__ import annotations
 
 if 1:
     import faiss  # type: ignore
-import torch.nn.functional as F
-from gudhi.wasserstein import wasserstein_distance
-from torch import Tensor
-from gudhi.weighted_rips_complex import WeightedRipsComplex
-from scipy.spatial.distance import cdist
-import gudhi
-from torchvision.datasets import MNIST
-from ranzen.torch import prop_random_split
-import torchvision.transforms.functional as TF
-from torch.utils.data import DataLoader, TensorDataset
+
 from enum import Enum
 from pathlib import Path
 import shutil
 from typing import Optional
 
+import gudhi
 from gudhi.clustering.tomato import Tomato
+from gudhi.wasserstein import wasserstein_distance
+from gudhi.weighted_rips_complex import WeightedRipsComplex
 import matplotlib.pyplot as plt
 import numpy as np
+from ranzen.torch import prop_random_split
 from ranzen.torch.utils import random_seed
+from scipy.spatial.distance import cdist
 from sklearn.metrics import adjusted_mutual_info_score, normalized_mutual_info_score
+import timm
 import torch
-from torch import optim
+from torch import Tensor, optim
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
+from torchvision.datasets import MNIST
+import torchvision.transforms.functional as TF
 import typer
 
 from topocluster import search
 from topocluster.metrics import clustering_accuracy
 
 # from topocluster.ph import DTMDensity, DTM, merge_h0_torch as merge_h0
-from topocluster.ph import DTMDensity, DTM, merge_h0
+from topocluster.ph import DTM, DTMDensity, merge_h0
 
 # from topocluster.viz import visualize_clusters, visualize_merging
-
-import timm
 
 
 class Method(Enum):

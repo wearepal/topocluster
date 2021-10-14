@@ -5,7 +5,7 @@ fn main() {
     let graph = vec![
         vec![1, 3],
         vec![0],
-        vec![0, 1],
+        vec![0, 1] ,
         vec![1, 3],
         vec![1, 2],
         vec![2, 3, 4],

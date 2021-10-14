@@ -44,20 +44,20 @@ class ElevenNodes:
         density_map_ls = []
         edges = []
         for i, v in enumerate(self.nodes):
-            edges.append(torch.as_tensor(v.edges))
+            edges.append(v.edges)
             density_map_ls.append(v.density)
             for nbr in v.edges:
                 weight = round(v.density - self.nodes[nbr].density, 2)
                 self.G.add_edge(nbr, i, weight=weight)
 
         self.edges = edges
-        self.density_map = torch.as_tensor(density_map_ls)
+        self.density_map = np.array(density_map_ls)
         self._NODE_LABELS = dict(zip(range(len(self.G.nodes)), density_map_ls))
         self._CMAP = np.array(sns.color_palette("Set3", len(self.density_map)).as_hex())  # type: ignore
 
     def draw(
         self,
-        labels: list[int] | Tensor | None,
+        labels: list[int] | np.ndarray | None,
         title: str = "",
     ) -> plt.Figure:  # type: ignore
         fig, ax = plt.subplots(dpi=100, figsize=(8, 6))
