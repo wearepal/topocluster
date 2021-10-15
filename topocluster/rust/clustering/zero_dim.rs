@@ -14,14 +14,15 @@ pub fn merge_h0(
         neighbor_graph.len() == density_map.len(),
         "Neighbor graph and density map must have the same length."
     );
+    let len = density_map.len();
 
-    let indices: Vec<_> = (0..density_map.len()).collect();
+    let indices: Vec<_> = (0..len).collect();
     // sort the vertices in descending order of density
     let mut pairs: Vec<_> = density_map.iter().zip(indices).collect();
-    pairs.sort_unstable_by(|a, b| b.0.partial_cmp(a.0).unwrap());
+    pairs.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
     let sort_idxs: Vec<usize> = pairs.iter().map(|x| x.1).collect();
     // indicates the root index to which each vertex is assigned
-    let mut root_idxs: Vec<usize> = (0..density_map.len()).collect();
+    let mut root_idxs: Vec<usize> = (0..len).collect();
     // mapping between root indexes and child indexes.
     let mut clusters: HashMap<usize, Vec<usize>> = HashMap::new();
 
@@ -32,7 +33,7 @@ pub fn merge_h0(
         let mut d_cmax: f32 = -f32::INFINITY;
         // indexes of the clusters to which the neighboring vertices
         // currently belong.
-        let mut cnbd_idxs = Vec::with_capacity(nbd_idxs.len());
+        let mut cnbd_idxs = Vec::with_capacity(len);
         let d_i = density_map[i];
 
         for &j in nbd_idxs.iter() {

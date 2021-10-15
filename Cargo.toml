@@ -9,6 +9,8 @@ crate-type = ["cdylib"]
 path = "./topocluster/rust/lib.rs"
 
 [dependencies]
+numpy = "*"
+ndarray = "*"
 
 [dependencies.pyo3]
 version = "0.14.5"
