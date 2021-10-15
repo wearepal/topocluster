@@ -20,7 +20,7 @@ __all__ = [
 
 
 def clustering_accuracy(
-    labels_true: npt.NDArray[np.int_] | Tensor, labels_pred: npt.NDArray[np.int_] | Tensor
+    labels_true: npt.NDArray[np.uint] | Tensor, labels_pred: npt.NDArray[np.uint] | Tensor
 ) -> float:
     label_map = optimal_assignment(labels_true=labels_true, labels_pred=labels_pred, encode=True)
     num_hits = 0

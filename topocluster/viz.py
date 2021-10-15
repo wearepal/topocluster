@@ -27,7 +27,8 @@ def visualize_clusters(
     legend: bool = True,
     top_k: npt.NDArray[np.uint] | Tensor | None = None,
     palette: str = "viridis",
-) -> plt.Figure:
+    cbar: bool = False,
+) -> plt.Figure:  # type: ignore
     if x.shape[1] != 2:
         raise ValueError("Cluster-visualization can only be performed for 2-dimensional inputs.")
     if isinstance(x, Tensor):
@@ -49,7 +50,8 @@ def visualize_clusters(
     ax.set_xticks([])
     ax.set_yticks([])
     sns.despine(left=True, bottom=True, right=True)
-    plt.colorbar(sc)
+    if cbar:
+        plt.colorbar(sc)
 
     if legend:
 

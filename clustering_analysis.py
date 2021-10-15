@@ -31,7 +31,7 @@ from topocluster import search
 from topocluster.metrics import clustering_accuracy
 
 # from topocluster.ph import DTMDensity, DTM, merge_h0_torch as merge_h0
-from topocluster.ph import DTM, DTMDensity, merge_h0
+from topocluster.ph import DTM, DTMDensity, merge_h0, tomato
 
 # from topocluster.viz import visualize_clusters, visualize_merging
 
@@ -211,26 +211,39 @@ def main(
 
     graph, density_map = get_clustering_inputs(_q=2)
     for i, tau in enumerate(np.linspace(tau_min, tau_max, num_tau)):
+        # for i, tau in enumerate([0]):
         # for tau in [5.0] * 3:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         if method is Method.h0:
-            merge_out = merge_h0(
-                neighbor_graph=graph.clone(), density_map=density_map.clone(), threshold=tau
-            )
+            merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=tau)
             labels = merge_out.labels
         else:
-            tomato = Tomato(weights_=density_map.numpy(), merge_threshold=tau)
-            tomato.fit(x.numpy())
-            labels = tomato.labels_
+            # merge_out = tomato(neighbor_graph=graph, density_map=density_map, threshold=tau)
+            # labels = merge_out.labels
+
+            labels = (
+                Tomato(
+                    merge_threshold=tau,
+                    k=k_graph,
+                    k_DTM=k_density,
+                    graph_type="manual",
+                    density_type="manual",
+                )
+                .fit(X=graph.numpy(), weights=density_map.numpy())
+                .labels_
+            )
 
         # print(merge_out.labels.unique())
         ami = adjusted_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"AMI: {ami}")
         nmi = normalized_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"NMI: {nmi}")
-        typer.echo(f"Number of clusters: {len(np.unique(labels))}")
+        num_clusters = len(np.unique(labels))
+        typer.echo(f"Number of clusters: {num_clusters}")
         acc = clustering_accuracy(labels_true=y, labels_pred=labels)
         typer.echo(f"Accuracy: {acc}%")
+        if num_clusters < num_classes:
+            break
 
         # # pd = plot_persistence(merge_out.barcode, threshold=tau)
         # if (pred_dir is not None) and (umap_x is not None):

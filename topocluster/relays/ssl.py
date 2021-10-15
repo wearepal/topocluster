@@ -1,11 +1,12 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Any, ClassVar, List, Optional, Type, Union
+from typing import Any, ClassVar, Dict, List, Optional, Type, Union
 
 import attr
 from conduit.data.datamodules import CdtDataModule
 from conduit.models import CdtModel
+from hydra.utils import to_absolute_path
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from ranzen.hydra.relay import Option, Relay
@@ -43,7 +44,7 @@ class SSLRelay(Relay):
         )
         super().with_hydra(root=root, clear_cache=clear_cache, **configs)
 
-    def run(self, raw_config=None) -> None:
+    def run(self, raw_config: Dict[str, Any] | None = None) -> None:
         self.log(f"Current working directory: '{os.getcwd()}'")
 
         self.artifacts_dir.mkdir(exist_ok=True, parents=True)
@@ -63,7 +64,7 @@ class SSLRelay(Relay):
         train_logger.log_hyperparams(hparams)
 
         if hasattr(self.datamodule, "root"):
-            self.datamodule.root = to_absolute_path(cfg.datamodule.root)  # type: ignore
+            self.datamodule.root = to_absolute_path(self.datamodule.root)  # type: ignore
         self.datamodule.setup()
         self.datamodule.prepare_data()
 

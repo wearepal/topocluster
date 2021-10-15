@@ -18,5 +18,19 @@ fn ph_rs(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ))
     }
 
+    #[pyfn(m)]
+    #[pyo3(name = "tomato", text_signature = "graph, density_map, threshold")]
+    fn tomato_py(
+        neighbor_graph: Vec<Vec<usize>>,
+        density_map: Vec<f32>,
+        threshold: f32,
+    ) -> PyResult<Vec<usize>> {
+        Ok(clustering::zero_dim::tomato(
+            &neighbor_graph,
+            &density_map,
+            threshold,
+        ))
+    }
+
     Ok(())
 }
