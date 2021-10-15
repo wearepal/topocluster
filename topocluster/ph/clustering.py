@@ -24,7 +24,7 @@ def merge_h0(
     | Sequence[npt.NDArray[np.uint]]
     | Sequence[Sequence[int]],
     *,
-    density_map: Tensor | npt.NDArray[np.floating],
+    density_map: Tensor | npt.NDArray[np.floating] | Sequence[float],
     threshold: float,
 ) -> MergeOutput:
     """

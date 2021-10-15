@@ -18,37 +18,31 @@ pub fn merge_h0(
     let indices: Vec<_> = (0..density_map.len()).collect();
     // sort the vertices in descending order of density
     let mut pairs: Vec<_> = density_map.iter().zip(indices).collect();
-    pairs.sort_by(|a, b| b.0.partial_cmp(a.0).unwrap());
-    let (_, sort_idxs): (Vec<f32>, Vec<usize>) = pairs.iter().cloned().unzip();
+    pairs.sort_unstable_by(|a, b| b.0.partial_cmp(a.0).unwrap());
+    let sort_idxs: Vec<usize> = pairs.iter().map(|x| x.1).collect();
     // indicates the root index to which each vertex is assigned
     let mut root_idxs: Vec<usize> = (0..density_map.len()).collect();
     // mapping between root indexes and child indexes.
     let mut clusters: HashMap<usize, Vec<usize>> = HashMap::new();
 
     for &i in sort_idxs.iter() {
-        /* let nbd_idxs: Vec<&usize> = neighbor_graph[i]
-        .iter()
-        .filter(|x| density_map[**x] > density_map[i])
-        .collect::<Vec<&usize>>(); */
-
         let nbd_idxs = &neighbor_graph[i];
         // index of the neighboring vertex with the highest density
         let mut cmax_idx: usize = 0;
         let mut d_cmax: f32 = -f32::INFINITY;
         // indexes of the clusters to which the neighboring vertices
         // currently belong.
-        let mut cnbd_idxs = HashSet::with_capacity(nbd_idxs.len());
+        let mut cnbd_idxs = Vec::with_capacity(nbd_idxs.len());
         let d_i = density_map[i];
 
         for &j in nbd_idxs.iter() {
             if density_map[j] > d_i {
                 let rj = root_idxs[j];
-                if cnbd_idxs.insert(rj) {
-                    let d_rj = density_map[rj];
-                    if d_rj > d_cmax {
-                        d_cmax = d_rj;
-                        cmax_idx = rj;
-                    }
+                cnbd_idxs.push(rj);
+                let d_rj = density_map[rj];
+                if d_rj > d_cmax {
+                    d_cmax = d_rj;
+                    cmax_idx = rj;
                 }
             }
         }
@@ -114,7 +108,7 @@ pub fn tomato(
     // sort the vertices in descending order of density
     let mut pairs: Vec<_> = density_map.iter().zip(indices).collect();
     pairs.sort_by(|a, b| b.0.partial_cmp(a.0).unwrap());
-    let (_, sort_idxs): (Vec<f32>, Vec<usize>) = pairs.iter().unzip();
+    let (_, sort_idxs): (Vec<f32>, Vec<usize>) = pairs.iter().cloned().unzip();
     // indicates the root index to which each vertex is assigned
     let mut root_idxs: Vec<usize> = (0..density_map.len()).collect();
     // mapping between root indexes and child indexes.
