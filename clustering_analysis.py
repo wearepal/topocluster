@@ -31,9 +31,8 @@ from topocluster import search
 from topocluster.metrics import clustering_accuracy
 
 # from topocluster.ph import DTMDensity, DTM, merge_h0_torch as merge_h0
-from topocluster.ph import DTM, DTMDensity, merge_h0, tomato
-
-# from topocluster.viz import visualize_clusters, visualize_merging
+from topocluster.ph import DTMDensity, merge_h0, tomato
+from topocluster.viz import visualize_clusters
 
 
 class Method(Enum):
@@ -47,6 +46,7 @@ def main(
     save_dir: Optional[Path] = typer.Option(None, "--save-dir", "-s"),
     num_samples: int = typer.Option(10_000, "--num-samples", "-n"),
     k_density: Optional[int] = typer.Option(None, "--k-density", "-kd"),
+    q: int = typer.Option(2, "--q", "-q"),
     tau_min: float = typer.Option(0, "--tau-min", "-tmin"),
     tau_max: float = typer.Option(5, "--tau-max", "-tmax"),
     num_tau: int = typer.Option(15, "--num-tau", "-nt"),
@@ -117,21 +117,6 @@ def main(
         assert not torch.any(density_map.isnan())
         return graph, density_map
 
-    # umap_x = None
-    # if save_dir is not None:
-    #     if save_dir.exists():
-    #         shutil.rmtree(save_dir)
-    #     pred_dir = save_dir / "predicted"
-    #     pred_dir.mkdir(parents=True, exist_ok=True)
-    #     typer.echo(f"Save directory created at {str(save_dir.resolve())}")
-
-    #     from umap import UMAP
-
-    #     typer.echo(f"Reducing data with UMAP.")
-    #     mapper = UMAP(n_neighbors=25, n_components=2)
-    #     umap_x = mapper.fit_transform(x)
-    #     assert isinstance(umap_x, np.ndarray)
-
     # for k_density in (10, 20, 50, 80, 150, 250, 500):
     #     k_density = k_graph if k_density is None else k_density
     #     if k_density != k_graph:
@@ -182,7 +167,6 @@ def main(
 
     # x.requires_grad_(False)
 
-    # graph, density_map = get_clustering_inputs(_q=q)
     # density_map /= density_map.max()
     # merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=0)
     # labels = merge_out.labels
@@ -190,48 +174,56 @@ def main(
     # labels_u = labels.unique()
     # modes = density_map[labels_u]
 
-    # if (save_dir is not None) and (umap_x is not None):
-    #     # for k in (10, 50, 100, 150, 200):
-    #     k = None
-    #     # top_k = labels_u[modes.topk(k=k).indices]
-    #     gt_viz = visualize_clusters(
-    #         umap_x,
-    #         labels=density_map,
-    #         # title=f"Ground Truth (kviz={len(top_k)}, kd={k_density}, q={q})",
-    #         title=f"Density Map (kd={k_density}, q={q})",
-    #         legend=False,
-    #         top_k=k,
-    #     )
-    #     # gt_viz.savefig(save_dir / f"kviz={len(top_k)}_kd={knn_d}_ground_truth.png")
-    #     gt_viz.savefig(save_dir / f"kd={k_density}_q={q}_ground_truth.png")
-    #     plt.close(gt_viz)
-    # else:
-    #     pred_dir = None
-    #     umap_x = None
+    graph, density_map = get_clustering_inputs(_q=q)
+
+    if save_dir is not None:
+        from umap import UMAP
+
+        typer.echo(f"Reducing data with UMAP.")
+        mapper = UMAP(n_neighbors=25, n_components=2)
+        umap_x = mapper.fit_transform(x)
+        assert isinstance(umap_x, np.ndarray)
+
+        pred_dir = save_dir / "predicted"
+        pred_dir.mkdir(parents=True, exist_ok=True)
+
+        gt_viz = visualize_clusters(
+            umap_x,
+            labels=y_np,
+            title=f"Ground Truth",
+            # title=f"Density Map (kd={k_density}, q={q})",
+            legend=True,
+            top_k=None,
+        )
+        # gt_viz.savefig(save_dir / f"kviz={len(top_k)}_kd={knn_d}_ground_truth.png")
+        gt_viz.savefig(save_dir / "ground_truth.png")
+        plt.close(gt_viz)
+    else:
+        pred_dir = None
+        umap_x = None
 
     graph, density_map = get_clustering_inputs(_q=2)
-    for i, tau in enumerate(np.linspace(tau_min, tau_max, num_tau)):
-        # for i, tau in enumerate([0]):
-        # for tau in [5.0] * 3:
+    taus = np.linspace(tau_min, tau_max, num_tau).tolist()
+    taus.append(float("inf"))
+    for _, tau in enumerate(taus):
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         if method is Method.h0:
             merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=tau)
             labels = merge_out.labels
         else:
-            # merge_out = tomato(neighbor_graph=graph, density_map=density_map, threshold=tau)
-            # labels = merge_out.labels
-
-            labels = (
-                Tomato(
-                    merge_threshold=tau,
-                    k=k_graph,
-                    k_DTM=k_density,
-                    graph_type="manual",
-                    density_type="manual",
-                )
-                .fit(X=graph.numpy(), weights=density_map.numpy())
-                .labels_
-            )
+            merge_out = tomato(neighbor_graph=graph, density_map=density_map, threshold=tau)
+            labels = merge_out.labels
+            # labels = (
+            #     Tomato(
+            #         merge_threshold=tau,
+            #         k=k_graph,
+            #         k_DTM=k_density,
+            #         graph_type="manual",
+            #         density_type="manual",
+            #     )
+            #     .fit(X=graph.numpy(), weights=density_map.numpy())
+            #     .labels_
+            # )
 
         # print(merge_out.labels.unique())
         ami = adjusted_mutual_info_score(labels_true=y, labels_pred=labels)
@@ -242,14 +234,22 @@ def main(
         typer.echo(f"Number of clusters: {num_clusters}")
         acc = clustering_accuracy(labels_true=y, labels_pred=labels)
         typer.echo(f"Accuracy: {acc}%")
-        if num_clusters < num_classes:
-            break
+        # if num_clusters < num_classes:
+        #     break
 
-        # # pd = plot_persistence(merge_out.barcode, threshold=tau)
-        # if (pred_dir is not None) and (umap_x is not None):
-        #     fig = visualize_clusters(umap_x, labels=labels, title=rf"$\tau={tau}$", legend=False)
-        #     fig.savefig(pred_dir / f"{i}.png")
-        #     plt.close(fig)
+        # pd = plot_persistence(merge_out.barcode, threshold=tau)
+        if (pred_dir is not None) and (umap_x is not None):
+            fig = visualize_clusters(
+                umap_x,
+                labels=y_np,
+                title=rf"$\tau={tau}$",
+                legend=True,
+                top_k=labels,
+                palette="bright",
+            )
+            plt.show()
+            # fig.savefig(pred_dir / f"{i}.png")
+            plt.close(fig)
 
 
 if __name__ == "__main__":
