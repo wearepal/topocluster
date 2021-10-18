@@ -29,9 +29,7 @@ import typer
 
 from topocluster import search
 from topocluster.metrics import clustering_accuracy
-
-# from topocluster.ph import DTMDensity, DTM, merge_h0_torch as merge_h0
-from topocluster.ph import DTMDensity, merge_h0, tomato
+from topocluster.ph import DTMDensity, cluster_h0
 from topocluster.viz import visualize_clusters
 
 
@@ -143,36 +141,6 @@ def main(
     #             gudhi.plot_persistence_diagram(st.persistence())
     #             plt.show()
     #         diag = torch.norm(x[p1d] - x[p1b], dim=-1)
-    # diag[num_classes] *= -1
-    # Total persistence is a special case of Wasserstein distance
-    # target_diag = torch.stack(
-    #     [torch.zeros(num_classes), torch.full((num_classes,), fill_value=1)], dim=-1
-    # )
-    # loss = -wasserstein_distance(diag, [], order=2, enable_autodiff=True)
-
-    # graph, density_map = get_clustering_inputs()
-    # merge_out = merge_h0(
-    #     neighbor_graph=graph, density_map=density_map, threshold=0, store_tree=False
-    # )
-    # root_idxs = merge_out.root_idxs
-    # optimizer.zero_grad()
-    # root_idxs_u = root_idxs.unique()
-    # modes = density_map[root_idxs_u].sort(descending=True).values
-    # loss = (modes[num_classes:] - density_map.min().detach()).mean()
-    # loss += density_map.max().detach() - modes[:num_classes].mean()
-    # typer.echo(f"Loss: {loss.item()}")
-    # # typer.echo(f"Number of clusters: {len(root_idxs_u)}")
-    # loss.backward()
-    # optimizer.step()
-
-    # x.requires_grad_(False)
-
-    # density_map /= density_map.max()
-    # merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=0)
-    # labels = merge_out.labels
-    # typer.echo(f"Number of clusters: {len(np.unique(labels))}")
-    # labels_u = labels.unique()
-    # modes = density_map[labels_u]
 
     graph, density_map = get_clustering_inputs(_q=q)
 
@@ -207,23 +175,21 @@ def main(
     taus.append(float("inf"))
     for _, tau in enumerate(taus):
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
-        if method is Method.h0:
-            merge_out = merge_h0(neighbor_graph=graph, density_map=density_map, threshold=tau)
-            labels = merge_out.labels
-        else:
-            merge_out = tomato(neighbor_graph=graph, density_map=density_map, threshold=tau)
-            labels = merge_out.labels
-            # labels = (
-            #     Tomato(
-            #         merge_threshold=tau,
-            #         k=k_graph,
-            #         k_DTM=k_density,
-            #         graph_type="manual",
-            #         density_type="manual",
-            #     )
-            #     .fit(X=graph.numpy(), weights=density_map.numpy())
-            #     .labels_
-            # )
+        merge_out = cluster_h0(
+            neighbor_graph=graph, density_map=density_map, threshold=tau, greedy=method is Method.h0
+        )
+        labels = merge_out.labels
+        # labels = (
+        #     Tomato(
+        #         merge_threshold=tau,
+        #         k=k_graph,
+        #         k_DTM=k_density,
+        #         graph_type="manual",
+        #         density_type="manual",
+        #     )
+        #     .fit(X=graph.numpy(), weights=density_map.numpy())
+        #     .labels_
+        # )
 
         # print(merge_out.labels.unique())
         ami = adjusted_mutual_info_score(labels_true=y, labels_pred=labels)

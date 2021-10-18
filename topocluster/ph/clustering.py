@@ -8,8 +8,7 @@ from torch import Tensor
 
 __all__ = [
     "MergeOutput",
-    "merge_h0",
-    "tomato",
+    "cluster_h0",
 ]
 
 
@@ -18,7 +17,7 @@ class MergeOutput(NamedTuple):
     labels: npt.NDArray[np.uint]
 
 
-def merge_h0(
+def cluster_h0(
     neighbor_graph: Tensor
     | npt.NDArray[np.uint]
     | Sequence[npt.NDArray[np.uint]]
@@ -26,6 +25,7 @@ def merge_h0(
     *,
     density_map: Tensor | npt.NDArray[np.floating] | Sequence[float],
     threshold: float,
+    greedy: bool = False,
 ) -> MergeOutput:
     """
     Merges data based on their 0-dimensional persistence.
@@ -41,36 +41,10 @@ def merge_h0(
     if isinstance(density_map, Tensor):
         density_map = cast(np.ndarray, density_map.detach().cpu().numpy())
     root_idxs = np.array(
-        ph_rs.merge_h0(neighbor_graph, density_map=density_map, threshold=threshold)
+        ph_rs.cluster_h0(
+            neighbor_graph, density_map=density_map, threshold=threshold, greedy=greedy
+        )
     )
-    _, labels = np.unique(root_idxs, return_inverse=True)
-
-    return MergeOutput(root_idxs=root_idxs, labels=labels)
-
-
-def tomato(
-    neighbor_graph: Tensor
-    | npt.NDArray[np.uint]
-    | Sequence[npt.NDArray[np.uint]]
-    | Sequence[Sequence[int]],
-    *,
-    density_map: Tensor | npt.NDArray[np.floating],
-    threshold: float,
-) -> MergeOutput:
-    """
-    Merges data based on their 0-dimensional persistence according to the ToMATo algorithm.
-
-    :param neighbor_graph: Tensory, array or sequence encoding the neighbourhood of each vertex.
-    :param density_map: Tensor, array or sequence encoding the density of each vertex.
-    :param threshold: Persistence threshold for merging.
-
-    :returns: Tensor containing the root index (cluster) of each vertex.
-    """
-    if isinstance(neighbor_graph, Tensor):
-        neighbor_graph = cast(np.ndarray, neighbor_graph.detach().cpu().numpy())
-    if isinstance(density_map, Tensor):
-        density_map = cast(np.ndarray, density_map.detach().cpu().numpy())
-    root_idxs = np.array(ph_rs.tomato(neighbor_graph, density_map=density_map, threshold=threshold))
     _, labels = np.unique(root_idxs, return_inverse=True)
 
     return MergeOutput(root_idxs=root_idxs, labels=labels)
