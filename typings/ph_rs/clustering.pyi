@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Sequence
 
 import numpy as np
@@ -10,7 +11,7 @@ def cluster_h0(
     density_map: npt.NDArray[np.floating] | Sequence[float],
     threshold: float,
     greedy: bool,
-) -> list[int]:
+) -> tuple[list[int], list[int]]:
     """
     Merges data based on their 0-dimensional persistence.
 
@@ -20,5 +21,6 @@ def cluster_h0(
     :param greedy: Whether to make cluster assignments greedily (based on the maximumdensity of the
         root indexes instead of the maximum density of the neighbour indexes).
 
-    :returns: Sequence containing the root index (cluster) of each vertex.
+    :returns: Sequence containing the root index (cluster) of each vertex along with a Sequence of
+        persistence pairs.
     """

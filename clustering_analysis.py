@@ -4,6 +4,7 @@ if 1:
     import faiss  # type: ignore
 
 from enum import Enum
+from itertools import groupby
 from pathlib import Path
 import shutil
 from typing import Optional
@@ -171,14 +172,27 @@ def main(
         umap_x = None
 
     graph, density_map = get_clustering_inputs(_q=2)
-    taus = np.linspace(tau_min, tau_max, num_tau).tolist()
-    taus.append(float("inf"))
-    for _, tau in enumerate(taus):
+    # taus = np.linspace(tau_min, tau_max, num_tau).tolist()
+    # taus.append(float("inf"))
+    # for _, tau in enumerate(taus):
+    for tau in [float("inf")]:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         merge_out = cluster_h0(
             neighbor_graph=graph, density_map=density_map, threshold=tau, greedy=method is Method.h0
         )
         labels = merge_out.labels
+        num_clusters = len(np.unique(labels))
+        pers_pairs_fin_ls, pers_pairs_inf_ls = (
+            list(group[1]) for group in groupby(merge_out.persistence_pairs, lambda x: x[1] is None)
+        )
+        pers_pairs_inf_ls = [pair[0] for pair in pers_pairs_inf_ls]
+        pers_pairs_fin = torch.as_tensor(pers_pairs_fin_ls, dtype=torch.long)
+        pers_pairs_inf = torch.as_tensor(pers_pairs_inf_ls, dtype=torch.long)
+
+        pers_fin = torch.diff(density_map[pers_pairs_fin], dim=1).squeeze(1)
+        _, sort_idxs = pers_fin.sort(descending=False)
+        components = torch.cat([pers_pairs_inf, pers_pairs_fin[:, 0][sort_idxs]])
+
         # labels = (
         #     Tomato(
         #         merge_threshold=tau,
@@ -196,7 +210,6 @@ def main(
         typer.echo(f"AMI: {ami}")
         nmi = normalized_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"NMI: {nmi}")
-        num_clusters = len(np.unique(labels))
         typer.echo(f"Number of clusters: {num_clusters}")
         acc = clustering_accuracy(labels_true=y, labels_pred=labels)
         typer.echo(f"Accuracy: {acc}%")
@@ -210,7 +223,7 @@ def main(
                 labels=y_np,
                 title=rf"$\tau={tau}$",
                 legend=True,
-                top_k=labels,
+                top_k=components[:10],
                 palette="bright",
             )
             plt.show()

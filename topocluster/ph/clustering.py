@@ -15,6 +15,7 @@ __all__ = [
 class MergeOutput(NamedTuple):
     root_idxs: npt.NDArray[np.uint]
     labels: npt.NDArray[np.uint]
+    persistence_pairs: list[tuple[int, int | None]]
 
 
 def cluster_h0(
@@ -40,11 +41,10 @@ def cluster_h0(
         neighbor_graph = cast(np.ndarray, neighbor_graph.detach().cpu().numpy())
     if isinstance(density_map, Tensor):
         density_map = cast(np.ndarray, density_map.detach().cpu().numpy())
-    root_idxs = np.array(
-        ph_rs.cluster_h0(
-            neighbor_graph, density_map=density_map, threshold=threshold, greedy=greedy
-        )
+    root_idxs_ls, persistence_pairs = ph_rs.cluster_h0(
+        neighbor_graph, density_map=density_map, threshold=threshold, greedy=greedy
     )
+    root_idxs = np.array(root_idxs_ls)
     _, labels = np.unique(root_idxs, return_inverse=True)
 
-    return MergeOutput(root_idxs=root_idxs, labels=labels)
+    return MergeOutput(root_idxs=root_idxs, labels=labels, persistence_pairs=persistence_pairs)
