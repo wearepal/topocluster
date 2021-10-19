@@ -136,17 +136,13 @@ pub fn cluster_h0(
 }
 
 #[test]
-fn test_greedy() {
+fn test_cluster_h0() {
     let graph = vec![vec![2], vec![0], vec![1], vec![1, 2]];
     let dm = vec![1.0, 2.0, 3.0, 2.5];
+    // non-greedy variant
     let (out, _) = cluster_h0(&graph, &dm, 0.0, false);
     assert!(out.len() == dm.len());
-}
-
-#[test]
-fn test_non_greedy() {
-    let graph = vec![vec![2], vec![0], vec![1], vec![1, 2]];
-    let dm = vec![1.0, 2.0, 3.0, 2.5];
+    // greedy variant
     let (out, _) = cluster_h0(&graph, &dm, 0.0, true);
     assert!(out.len() == dm.len());
 }
