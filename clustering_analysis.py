@@ -4,20 +4,15 @@ if 1:
     import faiss  # type: ignore
 
 from enum import Enum
-from itertools import groupby
 from pathlib import Path
 import shutil
 from typing import Optional
 
 import gudhi
-from gudhi.clustering.tomato import Tomato
-from gudhi.wasserstein import wasserstein_distance
-from gudhi.weighted_rips_complex import WeightedRipsComplex
 import matplotlib.pyplot as plt
 import numpy as np
 from ranzen.torch import prop_random_split
 from ranzen.torch.utils import random_seed
-from scipy.spatial.distance import cdist
 from sklearn.metrics import adjusted_mutual_info_score, normalized_mutual_info_score
 import timm
 import torch
@@ -26,11 +21,12 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision.datasets import MNIST
 import torchvision.transforms.functional as TF
+from tqdm import tqdm
 import typer
 
 from topocluster import search
 from topocluster.metrics import clustering_accuracy
-from topocluster.ph import DTMDensity, cluster_h0
+from topocluster.ph import DTMDensity, cluster_h0, sort_persistence_pairs
 from topocluster.viz import visualize_clusters
 
 
@@ -50,6 +46,7 @@ def main(
     tau_max: float = typer.Option(5, "--tau-max", "-tmax"),
     num_tau: int = typer.Option(15, "--num-tau", "-nt"),
     gd_iters: int = typer.Option(0, "--gd-iters", "-it"),
+    destnum: Optional[int] = typer.Option(None, "--destnum", "-dn"),
 ) -> None:
     random_seed(seed_value=47, use_cuda=False)
     # mnist = MNIST(root="data", train=True, download=True)
@@ -103,11 +100,13 @@ def main(
     knn_g = search.KnnIVF(k=k_graph, normalize=False, nprobe=4, nlist=5)
     knn_d = None
 
-    def get_clustering_inputs(_q: float = 2.0) -> tuple[Tensor, Tensor]:
-        typer.echo("Computing the neighborhood graph.")
+    def get_clustering_inputs(_q: float = 2.0, verbose: bool = True) -> tuple[Tensor, Tensor]:
+        if verbose:
+            typer.echo("Computing the neighborhood graph.")
         knn_out = knn_g(x, return_distances=True)
         graph = knn_out.indices
-        typer.echo("Computing the density map.")
+        if verbose:
+            typer.echo("Computing the density map.")
         if knn_d is not None:
             knn_out = knn_d(x, return_distances=True)
 
@@ -116,32 +115,31 @@ def main(
         assert not torch.any(density_map.isnan())
         return graph, density_map
 
-    # for k_density in (10, 20, 50, 80, 150, 250, 500):
-    #     k_density = k_graph if k_density is None else k_density
-    #     if k_density != k_graph:
-    #         knn_d = search.KnnIVF(k=k_density, normalize=False, nprobe=4, nlist=100)
-    #     for q in (2, 5, 10, 15, 20, 25):
-
     # topograd
-    # if method is Method.h0 and (gd_iters > 0):
-    #     x.requires_grad_(True)
-    #     optimizer = optim.AdamW([x], lr=1.0e-2)
-    #     for i in range(gd_iters):
-    #         typer.echo(f"Iteration {i}/{gd_iters} of topograd.")
+    if gd_iters > 0:
+        destnum = num_classes if destnum is None else destnum
+        x.requires_grad_(True)
+        optimizer = optim.AdamW([x], lr=1.0e-2)
+        with tqdm(desc="topograd", total=gd_iters) as pbar:
+            for i in range(gd_iters):
+                # typer.echo(f"Iteration {i}/{gd_iters} of topograd.")
+                graph, density_map = get_clustering_inputs(_q=q, verbose=False)
+                merge_out = cluster_h0(
+                    neighbor_graph=graph,
+                    density_map=density_map,
+                    threshold=float("inf"),
+                    greedy=method is Method.h0,
+                )
+                pers_pairs = sort_persistence_pairs(
+                    merge_out.persistence_pairs, density_map=density_map
+                )
 
-    #         complex = DTMRipsComplex(points=x, k=15)
-    #         st = complex.create_simplex_tree(max_dimension=1)
-    #         st.compute_persistence()
-
-    #         pairs = st.persistence_pairs()
-    #         typer.echo(f"Number of clusters: {len(pairs)}")
-
-    #         p1b = torch.tensor([i[0] for i in pairs if (len(i[1]) > 0)])
-    #         p1d = torch.tensor([i[1] for i in pairs if (len(i[1]) > 0)])
-    #         if (i > 0) and i % 50 == 0:
-    #             gudhi.plot_persistence_diagram(st.persistence())
-    #             plt.show()
-    #         diag = torch.norm(x[p1d] - x[p1b], dim=-1)
+                loss = pers_pairs.persistence[destnum - 1 :].sum()
+                loss -= pers_pairs.persistence[: destnum - 1].sum()
+                pbar.set_postfix(loss=loss.item(), n_components=len(pers_pairs))
+                loss.backward()
+                optimizer.step()
+                pbar.update()
 
     graph, density_map = get_clustering_inputs(_q=q)
 
@@ -150,7 +148,7 @@ def main(
 
         typer.echo(f"Reducing data with UMAP.")
         mapper = UMAP(n_neighbors=25, n_components=2)
-        umap_x = mapper.fit_transform(x)
+        umap_x = mapper.fit_transform(x.detach().cpu().numpy())
         assert isinstance(umap_x, np.ndarray)
 
         pred_dir = save_dir / "predicted"
@@ -163,58 +161,38 @@ def main(
             # title=f"Density Map (kd={k_density}, q={q})",
             legend=True,
             top_k=None,
+            palette="bright",
         )
         # gt_viz.savefig(save_dir / f"kviz={len(top_k)}_kd={knn_d}_ground_truth.png")
         gt_viz.savefig(save_dir / "ground_truth.png")
+        plt.show()
         plt.close(gt_viz)
     else:
         pred_dir = None
         umap_x = None
 
     graph, density_map = get_clustering_inputs(_q=2)
-    # taus = np.linspace(tau_min, tau_max, num_tau).tolist()
-    # taus.append(float("inf"))
-    # for _, tau in enumerate(taus):
-    for tau in [float("inf")]:
+    taus = np.linspace(tau_min, tau_max, num_tau).tolist()
+    taus.append(float("inf"))
+    for i, tau in enumerate(taus):
+        # for tau in [float("inf")]:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         merge_out = cluster_h0(
             neighbor_graph=graph, density_map=density_map, threshold=tau, greedy=method is Method.h0
         )
         labels = merge_out.labels
         num_clusters = len(np.unique(labels))
-        pers_pairs_fin_ls, pers_pairs_inf_ls = (
-            list(group[1]) for group in groupby(merge_out.persistence_pairs, lambda x: x[1] is None)
-        )
-        pers_pairs_inf_ls = [pair[0] for pair in pers_pairs_inf_ls]
-        pers_pairs_fin = torch.as_tensor(pers_pairs_fin_ls, dtype=torch.long)
-        pers_pairs_inf = torch.as_tensor(pers_pairs_inf_ls, dtype=torch.long)
-
-        pers_fin = torch.diff(density_map[pers_pairs_fin], dim=1).squeeze(1)
-        _, sort_idxs = pers_fin.sort(descending=False)
-        components = torch.cat([pers_pairs_inf, pers_pairs_fin[:, 0][sort_idxs]])
-
-        # labels = (
-        #     Tomato(
-        #         merge_threshold=tau,
-        #         k=k_graph,
-        #         k_DTM=k_density,
-        #         graph_type="manual",
-        #         density_type="manual",
-        #     )
-        #     .fit(X=graph.numpy(), weights=density_map.numpy())
-        #     .labels_
-        # )
+        typer.echo(f"Number of clusters: {num_clusters}")
+        if num_clusters < num_classes:
+            break
 
         # print(merge_out.labels.unique())
         ami = adjusted_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"AMI: {ami}")
         nmi = normalized_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"NMI: {nmi}")
-        typer.echo(f"Number of clusters: {num_clusters}")
         acc = clustering_accuracy(labels_true=y, labels_pred=labels)
         typer.echo(f"Accuracy: {acc}%")
-        # if num_clusters < num_classes:
-        #     break
 
         # pd = plot_persistence(merge_out.barcode, threshold=tau)
         if (pred_dir is not None) and (umap_x is not None):
@@ -223,11 +201,10 @@ def main(
                 labels=y_np,
                 title=rf"$\tau={tau}$",
                 legend=True,
-                top_k=components[:10],
+                # top_k=components[:10],
                 palette="bright",
             )
-            plt.show()
-            # fig.savefig(pred_dir / f"{i}.png")
+            fig.savefig(pred_dir / f"{i}.png")
             plt.close(fig)
 
 

@@ -11,7 +11,7 @@ def cluster_h0(
     density_map: npt.NDArray[np.floating] | Sequence[float],
     threshold: float,
     greedy: bool,
-) -> tuple[list[int], list[int]]:
+) -> tuple[list[int], list[int | None]]:
     """
     Merges data based on their 0-dimensional persistence.
 
