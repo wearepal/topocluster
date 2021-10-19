@@ -1,3 +1,0 @@
-defaults:
-  - /schema/reducer: rand
-n_components: 10

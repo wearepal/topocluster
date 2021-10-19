@@ -1,4 +1,0 @@
-defaults:
-  - /schema/datamodule: mnist
-  - defaults
-train_batch_size: 512

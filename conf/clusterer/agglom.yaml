@@ -1,6 +1,0 @@
-defaults:
-  - /schema/clusterer: agglom
-affinity: euclidean
-distance_threshold: null
-linkage: ward
-compute_distances: False

@@ -1,4 +1,0 @@
-defaults:
-  - /schema/datamodule: umnist
-  - defaults
-train_batch_size: 512
