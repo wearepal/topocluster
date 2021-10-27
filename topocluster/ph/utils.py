@@ -4,7 +4,6 @@ from typing import Sequence
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import numpy as np
-from scipy.cluster.hierarchy import dendrogram
 from torch import Tensor
 
 __all__ = ["plot_persistence"]

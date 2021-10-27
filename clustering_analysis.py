@@ -9,22 +9,12 @@ import shutil
 from typing import Any, Optional
 
 from conduit.models.utils import prefix_keys
-import gudhi
-import gudhi as gd
-from gudhi.persistence_graphical_tools import plot_persistence_diagram
 import matplotlib.pyplot as plt
 import numpy as np
-from ranzen.torch import prop_random_split
 from ranzen.torch.utils import random_seed
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import adjusted_mutual_info_score, normalized_mutual_info_score
-import timm
 import torch
 from torch import Tensor, optim
-import torch.nn.functional as F
-from torch.utils.data import DataLoader, TensorDataset
-from torchvision.datasets import MNIST
-import torchvision.transforms.functional as TF
 from tqdm import tqdm
 import typer
 from umap import UMAP
@@ -68,44 +58,6 @@ def main(
     )
     random_seed(seed_value=47, use_cuda=False)
     make_viz = wandb_mode is not WandbMode.disabled
-
-    # mnist = MNIST(root="data", train=True, download=True)
-    # # model: ResNetV2 = timm.create_model('resnetv2_50x1_bitm', pretrained=True)
-    # model = torch.hub.load('facebookresearch/dino:main', 'dino_vits8')
-    # # model = torch.hub.load('facebookresearch/dino:main', 'dino_vitb8')
-    # # model = torch.hub.load('facebookresearch/dino:main', 'dino_resnet50')
-    # mean = [0.485, 0.456, 0.406]
-    # std = [0.229, 0.224, 0.225]
-    # data = TF.normalize(
-    #     (mnist.data / 255.0).unsqueeze(1).expand(-1, 3, -1, -1),
-    #     mean=mean,
-    #     std=std,
-    # )
-    # ds = TensorDataset(data, mnist.targets)
-    # props = min(num_samples / len(ds), 1.0)
-    # ds = prop_random_split(ds, props=props)
-    # if isinstance(ds, list):
-    #     ds = ds[0]
-
-    # dl = DataLoader(ds, batch_size=256, shuffle=False)
-    # del mnist
-
-    # x_ls = []
-    # y_ls = []
-    # with torch.no_grad():
-    #     for x, y in dl:
-    #         # intermediate_output = model.get_intermediate_layers(x, 4)
-    #         # x_enc = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
-    #         # x = K.resize(x, size=(224, 224))
-    #         x_enc = model(x)
-    #         x_ls.append(x_enc)
-    #         y_ls.append(y)
-    # x = torch.cat(x_ls, dim=0)
-    # y = torch.cat(y_ls, dim=0)
-    # y_np = y.numpy()
-    # del ds
-
-    # x = F.normalize(x, dim=1, p=2)
 
     path_to_encodings = Path("post_pretrain_train_encodings_ldim=10.pt")
     data = torch.load(path_to_encodings)
@@ -251,10 +203,6 @@ def main(
         pers_pairs = sort_persistence_pairs(merge_out.persistence_pairs, density_map=density_map)
         # gd.plot_persistence_diagram(density_map[pers_pairs.persistence_pairs])
         plot_persistence(density_map[pers_pairs.indices], density_map[pers_pairs.inf_components])
-        # plot_persistence_diagram(
-        #     (pers_pairs.densities.flip(dims=[1])).tolist(),
-        #     [-float("inf"), pers_pairs.inf_components[0]],
-        # )
         plt.show()
         components = pers_pairs.components
 
