@@ -2,6 +2,7 @@ from __future__ import annotations
 from itertools import groupby
 from typing import NamedTuple, Sequence, cast
 
+import attr
 import numpy as np
 import numpy.typing as npt
 import ph_rs
@@ -49,31 +50,47 @@ def cluster_h0(
     return MergeOutput(root_idxs=root_idxs, labels=labels, persistence_pairs=persistence_pairs)
 
 
-class SortedPersistencePairs(NamedTuple):
-    persistence_pairs: Tensor
+@attr.define(kw_only=True)
+class PersistencePairs:
+    indices: Tensor
+    densities: Tensor
     persistence: Tensor
     inf_components: Tensor
 
     def __len__(self) -> int:
-        return len(self.persistence_pairs) + len(self.inf_components)
+        return len(self.indices) + len(self.inf_components)
+
+    @property
+    def components(self) -> Tensor:
+        if self.indices.numel() > 0:
+            return torch.cat([self.inf_components, self.indices[:, 0]])
+        return self.inf_components
 
 
 def sort_persistence_pairs(
-    persistence_pairs: list[tuple[int, int | None]], density_map: Tensor
-) -> SortedPersistencePairs:
-    pers_pairs_fin_ls, pers_pairs_inf_ls = (
-        list(group[1]) for group in groupby(persistence_pairs, lambda x: x[1] is None)
-    )
+    persistence_pairs: list[tuple[int, int | None]], *, density_map: Tensor
+) -> PersistencePairs:
+    groups = {
+        key: list(values) for key, values in groupby(persistence_pairs, lambda x: x[1] is None)
+    }
+    pers_pairs_fin_ls = groups.get(False, [])
+    pers_pairs_inf_ls = groups.get(True, [])
+
     pers_pairs_inf_ls = [pair[0] for pair in pers_pairs_inf_ls]
-    pers_pairs_fin = torch.as_tensor(pers_pairs_fin_ls, dtype=torch.long)
     pers_pairs_inf = torch.as_tensor(pers_pairs_inf_ls, dtype=torch.long)
 
-    pers_fin = -torch.diff(density_map[pers_pairs_fin], dim=1).squeeze(1)
+    pers_pairs_fin = torch.as_tensor(pers_pairs_fin_ls, dtype=torch.long)
+    densities = density_map[pers_pairs_fin]
+    if pers_pairs_fin_ls:
+        pers_fin = -torch.diff(densities, dim=1).squeeze(1)
+    else:
+        pers_fin = torch.tensor([[]], dtype=torch.float32)
     pers_fin_sorted, sort_idxs = pers_fin.sort(descending=True)
     pers_pairs_fin_sorted = pers_pairs_fin[sort_idxs]
 
-    return SortedPersistencePairs(
-        persistence_pairs=pers_pairs_fin_sorted,
+    return PersistencePairs(
+        indices=pers_pairs_fin_sorted,
+        densities=densities,
         persistence=pers_fin_sorted,
         inf_components=pers_pairs_inf,
     )
