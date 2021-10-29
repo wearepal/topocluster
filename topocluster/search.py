@@ -118,7 +118,7 @@ class Knn(nn.Module):
         else:
             if self.normalize:
                 y = F.normalize(y, dim=1, p=self.p)
-            y_np = x.detach().cpu().numpy()
+            y_np = y.detach().cpu().numpy()
 
         index = self._build_index(d=x.size(1))
         if x.is_cuda or y.is_cuda:
@@ -127,9 +127,9 @@ class Knn(nn.Module):
         if not index.is_trained:
             index.train(x=x_np)  # type: ignore
         # add vectors to the index
-        index.add(x=x_np)  # type: ignore
+        index.add(x=y_np)  # type: ignore
         # search for the nearest k neighbors for each data-point
-        distances_np, indices_np = index.search(x=y_np, k=self.k)  # type: ignore
+        distances_np, indices_np = index.search(x=x_np, k=self.k)  # type: ignore
         # Convert back from numpy to torch
         indices = torch.as_tensor(indices_np, device=x.device)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import attr
 from conduit.data.datamodules import CdtDataModule
@@ -18,7 +18,6 @@ __all__ = [
 
 @attr.define(kw_only=True)
 class SSLRelay(Relay):
-    artifacts_dir: ClassVar[Path] = Path("artifacts")
     log_offline: bool = False
     exp_group: Optional[str] = None
 
@@ -47,9 +46,6 @@ class SSLRelay(Relay):
     def run(self, raw_config: Dict[str, Any] | None = None) -> None:
         self.log(f"Current working directory: '{os.getcwd()}'")
 
-        self.artifacts_dir.mkdir(exist_ok=True, parents=True)
-        self.log(f"Artifacts directory: '{self.artifacts_dir.resolve()}'")
-
         logger_kwargs = dict(
             entity="predictive-analytics-lab",
             project="topocluster",
@@ -57,11 +53,9 @@ class SSLRelay(Relay):
             group=self.model.__class__.__name__ if self.exp_group is None else self.exp_group,
         )
         train_logger = WandbLogger(**logger_kwargs, reinit=True)
-        hparams = {"artifacts_dir": self.artifacts_dir.resolve(), "cwd": os.getcwd()}
         if raw_config is not None:
             self.log("-----\n" + str(raw_config) + "\n-----")
-            hparams.update(raw_config)
-        train_logger.log_hyperparams(hparams)
+            train_logger.log_hyperparams(raw_config)
 
         if hasattr(self.datamodule, "root"):
             self.datamodule.root = to_absolute_path(self.datamodule.root)  # type: ignore

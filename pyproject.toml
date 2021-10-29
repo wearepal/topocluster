@@ -19,7 +19,7 @@ torch = "^1.8.0"
 faiss-cpu = "^1.7.0"
 torchvision = "^0.10.0"
 scikit-learn = "^0.24.1"
-conduit = {git = "https://github.com/predictive-analytics-lab/conduit.git", branch = "main"}
+conduit = {git = "https://github.com/predictive-analytics-lab/conduit.git", branch = "ssl2"}
 umap-learn = "^0.5.1"
 ranzen = {version = "^1.0.0", extras = ["all"]}
 attrs = "^21.2.0"

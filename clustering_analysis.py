@@ -4,8 +4,8 @@ if 1:
     import faiss  # type: ignore
 
 from enum import Enum
+import math
 from pathlib import Path
-import shutil
 from typing import Any, Optional
 
 from conduit.models.utils import prefix_keys
@@ -42,9 +42,9 @@ def main(
     num_samples: int = typer.Option(10_000, "--num-samples", "-ns"),
     k_density: Optional[int] = typer.Option(None, "--k-density", "-kd"),
     q: int = typer.Option(2, "--q", "-q"),
-    # tau_min: float = typer.Option(0, "--tau-min", "-tmin"),
-    # tau_max: float = typer.Option(5, "--tau-max", "-tmax"),
-    # num_tau: int = typer.Option(15, "--num-tau", "-nt"),
+    tau_min: float = typer.Option(0, "--tau-min", "-tmin"),
+    tau_max: float = typer.Option(0, "--tau-max", "-tmax"),
+    num_tau: int = typer.Option(1, "--num-tau", "-nt"),
     ft_iters: int = typer.Option(0, "--ft-iters", "-it"),
     n_components: Optional[int] = typer.Option(None, "--n-components", "-nc"),
     wandb_mode: WandbMode = typer.Option("offline", "--wandb-mode", "-wm"),
@@ -177,21 +177,26 @@ def main(
                 wandb.log(logging_dict)
 
     graph, density_map = get_clustering_inputs(_q=q)
-    # taus = np.linspace(tau_min, tau_max, num_tau).tolist()
-    # taus.append(float("inf"))
-    taus = [float("inf")]
+    taus = np.linspace(tau_min, tau_max, num_tau).tolist()
+    taus.append(float("inf"))
 
+    one_nn = search.KnnExact(k=1, normalize=False)
     for tau in taus:
         # for tau in [float("inf")]:
         typer.echo(f"\nClustering on {len(x)} data-points with threshold={tau}.")
         merge_out = cluster_h0(
             neighbor_graph=graph, density_map=density_map, threshold=tau, greedy=greedy
         )
-        labels = merge_out.labels
+        labels = merge_out.root_idxs
+        centers = np.unique(merge_out.root_idxs)
+        labels2 = centers[one_nn(x=x, y=x[centers])].squeeze()
+        typer.echo(
+            "Fraction of labels shared by k-center and neighbourhood cluster-assignment strategies: "
+            f"{(labels == labels2).mean()}"
+        )
+
         num_clusters = len(np.unique(labels))
         typer.echo(f"Number of clusters: {num_clusters}")
-        # if num_clusters < num_classes:
-        #     break
 
         ami = adjusted_mutual_info_score(labels_true=y, labels_pred=labels)
         typer.echo(f"AMI: {ami}")
@@ -200,37 +205,44 @@ def main(
         acc = clustering_accuracy(labels_true=y, labels_pred=labels)
         typer.echo(f"Accuracy: {acc}%")
 
-        pers_pairs = sort_persistence_pairs(merge_out.persistence_pairs, density_map=density_map)
-        # gd.plot_persistence_diagram(density_map[pers_pairs.persistence_pairs])
-        plot_persistence(density_map[pers_pairs.indices], density_map[pers_pairs.inf_components])
-        plt.show()
-        components = pers_pairs.components
+        pers_pairs = None
+        if math.isinf(tau):
+            pers_pairs = sort_persistence_pairs(
+                merge_out.persistence_pairs, density_map=density_map
+            )
+            plot_persistence(
+                density_map[pers_pairs.indices], density_map[pers_pairs.inf_components]
+            )
+            # plt.show()
+            components = pers_pairs.components
 
-        typer.echo(f"Number of components: {len(pers_pairs)}")
-        typer.echo(f"Number of finite components: {len(pers_pairs.indices)}")
-        typer.echo(f"Number of infinite components: {len(pers_pairs.inf_components)}")
+            typer.echo(f"Number of components: {len(pers_pairs)}")
+            typer.echo(f"Number of finite components: {len(pers_pairs.indices)}")
+            typer.echo(f"Number of infinite components: {len(pers_pairs.inf_components)}")
 
         if make_viz:
-            fig, ax = plt.subplots(dpi=100)
-            plt.style.use("seaborn-bright")
-            ax.plot(
-                range(len(pers_pairs.inf_components) + 1, len(components) + 1),
-                pers_pairs.persistence,
-            )
-            ax.set_ylabel("Persistence")
-            ax.set_xlabel("Rank")
-            ax.set_title(rf"Persistence vs. Rank (k={k_graph}, $\tau={tau}$)")
-            plt.show()
+            if pers_pairs is not None:
+                fig, ax = plt.subplots(dpi=100)
+                plt.style.use("seaborn-bright")
+                ax.plot(
+                    range(len(pers_pairs.inf_components) + 1, len(components) + 1),
+                    pers_pairs.persistence,
+                )
+                ax.set_ylabel("Persistence")
+                ax.set_xlabel("Rank")
+                ax.set_title(rf"Persistence vs. Rank (k={k_graph}, $\tau={tau}$)")
+                # plt.show()
+
             if umap_x is not None:
                 fig = visualize_clusters(
                     umap_x,
                     labels=y_np,
                     title=rf"$\tau={tau}, k={k_graph}$",
                     legend=True,
-                    top_k=components,
+                    top_k=None if pers_pairs is None else pers_pairs.components,
                     palette="bright",
                 )
-                plt.show()
+                # plt.show()
                 plt.close(fig)
 
 
